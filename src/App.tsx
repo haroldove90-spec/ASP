@@ -48,7 +48,155 @@ import {
 
 export default function App() {
   // Tab State
-  const [activeTab, setActiveTab] = useState<'schema' | 'rbac' | 'audit' | 'equipment' | 'regulation'>('schema');
+  const [activeTab, setActiveTab] = useState<'schema' | 'rbac' | 'audit' | 'equipment' | 'regulation' | 'field_workflow'>('schema');
+
+  // NOM-011-STPS Field Capture States
+  const [fieldStep, setFieldStep] = useState<number>(1);
+  const [fieldCheckinCoords, setFieldCheckinCoords] = useState<string>("");
+  const [fieldCheckinTime, setFieldCheckinTime] = useState<string>("");
+  const [fieldEppChecked, setFieldEppChecked] = useState({
+    casco: false,
+    tapones: false,
+    calzado: false,
+    chaleco: false
+  });
+  const [fieldSonometerId, setFieldSonometerId] = useState<string>("");
+  const [fieldArea, setFieldArea] = useState<string>("");
+  const [fieldStartTime, setFieldStartTime] = useState<string>("");
+  const [fieldEndTime, setFieldEndTime] = useState<string>("");
+  const [fieldReadings, setFieldReadings] = useState<Array<{ db: number; conditions: string }>>([
+    { db: 84.5, conditions: "Operación de calderas baja, viento de 1.2 m/s" },
+    { db: 87.2, conditions: "Operación de calderas media, ventilación activa" }
+  ]);
+  const [fieldTechName, setFieldTechName] = useState<string>("");
+  const [fieldRepName, setFieldRepName] = useState<string>("");
+  const [fieldRepPuesto, setFieldRepPuesto] = useState<string>("");
+  const [fieldIsLocked, setFieldIsLocked] = useState<boolean>(false);
+  const [fieldHash, setFieldHash] = useState<string>("");
+  const [fieldConstanciaNOM151, setFieldConstanciaNOM151] = useState<string>("");
+
+  // Submitted reports for the coordinator validation queue
+  const [submittedReports, setSubmittedReports] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_submitted_reports');
+    if (saved) return JSON.parse(saved);
+
+    // Initial pre-populated records for the interactive demo
+    return [
+      {
+        id_reporte: "REP-NOM011-2026-001",
+        tecnico: "Lucía Juárez",
+        fecha: "2026-07-13",
+        estado: "Aprobado",
+        aprobado_por: "Carlos Slim Jr.",
+        justificacion_coordinador: "Se aprueba el reporte tras verificar calibración vigente del sonómetro y firmas digitales completas.",
+        timestamp_revision: "2026-07-13T16:40:00Z",
+        payload: {
+          id_reporte: "REP-NOM011-2026-001",
+          datos_sitio: {
+            empresa_cliente: "Metalúrgica del Norte S.A.",
+            ubicacion_planta: "Planta Apodaca, Nave 3",
+            coordenadas_gps: "25.7785, -100.1873",
+            fecha_medicion: "2026-07-13",
+            checkin_hora: "10:15:30"
+          },
+          epp_verificado: {
+            casco: true,
+            tapones_auditivos_orejeras: true,
+            calzado_seguridad: true,
+            chaleco_reflejante: true,
+            timestamp_epp_check: "2026-07-13T10:18:22Z"
+          },
+          instrumento_utilizado: {
+            id_instrumento: "inst-005",
+            codigo_interno: "EQ-SON-055",
+            nombre: "Sonómetro Integrador Clase 1",
+            marca: "Quest Technologies",
+            modelo: "SoundPro SE",
+            certificado_calibracion_vigente: "EMA-QUEST-2026-0922",
+            fecha_vencimiento_calibracion: "2027-01-15"
+          },
+          punto_medicion: {
+            id_punto: "P-01",
+            area_descripcion: "Taller de Torno y Fresado",
+            hora_inicio: "10:20:00",
+            hora_fin: "11:00:00"
+          },
+          lecturas: [
+            { db: 86.4, conditions: "Torno operando a máxima carga. Temp 28°C" },
+            { db: 85.9, conditions: "Torno operando a carga media. Temp 28.2°C" }
+          ],
+          firmas_conformidad: {
+            firma_tecnico: "Lucía Juárez (LAB_TECH)",
+            huella_digital_tecnico: "e.firma:SHA256:9cb812...0df63a29",
+            firma_representante_planta: "Ing. Roberto Cantú",
+            puesto_representante: "Coordinador de Higiene Industrial",
+            timestamp_firmas: "2026-07-13T11:05:12Z"
+          },
+          nom151_integridad: {
+            hash_documento_sha256: "SHA256:39a1b12b59c2ef3542d89df251c6b12a8844fa215fe338eaef4",
+            constancia_psc: "NOM151:CONSTANCIA-2026-07-13-FIELD-0012",
+            esta_bloqueado: true
+          }
+        }
+      },
+      {
+        id_reporte: "REP-NOM011-2026-002",
+        tecnico: "Lucía Juárez",
+        fecha: "2026-07-14",
+        estado: "Pendiente",
+        payload: {
+          id_reporte: "REP-NOM011-2026-002",
+          datos_sitio: {
+            empresa_cliente: "Cervecería de Querétaro S.A.",
+            ubicacion_planta: "Área de Embotellado Línea 4",
+            coordenadas_gps: "20.5888, -100.3899",
+            fecha_medicion: "2026-07-14",
+            checkin_hora: "08:45:00"
+          },
+          epp_verificado: {
+            casco: true,
+            tapones_auditivos_orejeras: true,
+            calzado_seguridad: true,
+            chaleco_reflejante: true,
+            timestamp_epp_check: "2026-07-14T08:48:10Z"
+          },
+          instrumento_utilizado: {
+            id_instrumento: "inst-005",
+            codigo_interno: "EQ-SON-055",
+            nombre: "Sonómetro Integrador Clase 1",
+            marca: "Quest Technologies",
+            modelo: "SoundPro SE",
+            certificado_calibracion_vigente: "EMA-QUEST-2026-0922",
+            fecha_vencimiento_calibracion: "2027-01-15"
+          },
+          punto_medicion: {
+            id_punto: "P-02",
+            area_descripcion: "Embotellado y Empaque",
+            hora_inicio: "08:50:00",
+            hora_fin: "09:30:00"
+          },
+          lecturas: [
+            { db: 91.2, conditions: "Línea de envasado a velocidad nominal. Temp 21°C" },
+            { db: 92.0, conditions: "Fallas menores en transportador, ruido de fricción elevado" }
+          ],
+          firmas_conformidad: {
+            firma_tecnico: "Lucía Juárez (LAB_TECH)",
+            huella_digital_tecnico: "e.firma:SHA256:9cb812...0df63a29",
+            firma_representante_planta: "Lic. Laura Ortega",
+            puesto_representante: "Supervisora de Seguridad",
+            timestamp_firmas: "2026-07-14T09:35:15Z"
+          },
+          nom151_integridad: {
+            hash_documento_sha256: "SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a",
+            constancia_psc: "NOM151:CONSTANCIA-2026-07-14-FIELD-0982",
+            esta_bloqueado: true
+          }
+        }
+      }
+    ];
+  });
+
+  const [coordinatorJustifications, setCoordinatorJustifications] = useState<Record<string, string>>({});
 
   // Mobile Sidebar State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -539,6 +687,252 @@ export default function App() {
     saveStateToLocalStorage(undefined, updatedInsts, updatedCerts, [newLog, ...auditLogs]);
   };
 
+  // NEW: NOM-011 Field Workflow Helper Functions
+
+  const handleResetFieldForm = () => {
+    setFieldStep(1);
+    setFieldCheckinCoords("");
+    setFieldCheckinTime("");
+    setFieldEppChecked({
+      casco: false,
+      tapones: false,
+      calzado: false,
+      chaleco: false
+    });
+    setFieldSonometerId("");
+    setFieldArea("");
+    setFieldStartTime("");
+    setFieldEndTime("");
+    setFieldReadings([
+      { db: 84.5, conditions: "Operación de calderas baja, viento de 1.2 m/s" },
+      { db: 87.2, conditions: "Operación de calderas media, ventilación activa" }
+    ]);
+    setFieldTechName("");
+    setFieldRepName("");
+    setFieldRepPuesto("");
+    setFieldIsLocked(false);
+    setFieldHash("");
+    setFieldConstanciaNOM151("");
+  };
+
+  const handleFieldGPSCheckIn = () => {
+    const mockLat = (19.4 + Math.random() * 0.2).toFixed(6);
+    const mockLng = (-99.1 - Math.random() * 0.2).toFixed(6);
+    setFieldCheckinCoords(`${mockLat}, ${mockLng}`);
+    setFieldCheckinTime(new Date().toLocaleTimeString('es-MX'));
+    setFieldStep(2); // Auto proceed to PPE Checklist
+  };
+
+  const handleFieldSubmitForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fieldCheckinCoords) {
+      alert("Error: Es obligatorio realizar el Check-in geolocalizado antes de capturar el formulario (NOM-151/Trazabilidad).");
+      return;
+    }
+
+    if (!fieldEppChecked.casco || !fieldEppChecked.tapones || !fieldEppChecked.calzado || !fieldEppChecked.chaleco) {
+      alert("Error: Debe confirmar el uso de todo el Equipo de Protección Personal (EPP) obligatorio antes de registrar lecturas.");
+      return;
+    }
+
+    if (!fieldSonometerId) {
+      alert("Error: Seleccione el sonómetro utilizado para la medición.");
+      return;
+    }
+
+    // Validate if selected sonometer has an active approved calibration certificate
+    const sonoInst = instruments.find(i => i.id_instrumento === fieldSonometerId);
+    const approvedCerts = certificates.filter(c => c.id_instrumento === fieldSonometerId && c.estado_aprobacion === 'Aprobado');
+    const hasVigente = approvedCerts.some(c => new Date(c.fecha_vencimiento) > new Date());
+
+    if (!hasVigente) {
+      alert(`Error Metrológico (NMX-17025): El sonómetro seleccionado (${sonoInst?.codigo_interno || fieldSonometerId}) NO cuenta con un certificado de calibración vigente aprobado ante la EMA. No es posible guardar un registro inválido legalmente ante la STPS.`);
+      return;
+    }
+
+    if (!fieldArea || !fieldStartTime || !fieldEndTime) {
+      alert("Error: Complete los datos del punto de medición.");
+      return;
+    }
+
+    if (fieldReadings.length === 0) {
+      alert("Error: Debe agregar al menos una lectura de nivel de ruido.");
+      return;
+    }
+
+    if (!fieldTechName || !fieldRepName || !fieldRepPuesto) {
+      alert("Error: Se requieren las firmas de conformidad tanto del técnico como del representante de la planta en sitio.");
+      return;
+    }
+
+    // All checks pass! Now construct the final JSON payload (Point 2)
+    const reportId = `REP-NOM011-2026-00${submittedReports.length + 1}`;
+    const targetInst = instruments.find(i => i.id_instrumento === fieldSonometerId);
+    const activeCert = approvedCerts.find(c => new Date(c.fecha_vencimiento) > new Date());
+
+    const finalPayload = {
+      id_reporte: reportId,
+      datos_sitio: {
+        empresa_cliente: "Industrias Unidas Mexicanas S.A.",
+        ubicacion_planta: "Planta Toluca, Edificio de Prensas",
+        coordenadas_gps: fieldCheckinCoords,
+        fecha_medicion: new Date().toISOString().split('T')[0],
+        checkin_hora: fieldCheckinTime
+      },
+      epp_verificado: {
+        casco: fieldEppChecked.casco,
+        tapones_auditivos_orejeras: fieldEppChecked.tapones,
+        calzado_seguridad: fieldEppChecked.calzado,
+        chaleco_reflejante: fieldEppChecked.chaleco,
+        timestamp_epp_check: new Date().toISOString()
+      },
+      instrumento_utilizado: {
+        id_instrumento: fieldSonometerId,
+        codigo_interno: targetInst?.codigo_interno,
+        nombre: targetInst?.nombre,
+        marca: targetInst?.marca,
+        modelo: targetInst?.modelo,
+        certificado_calibracion_vigente: activeCert?.numero_certificado,
+        fecha_vencimiento_calibracion: activeCert?.fecha_vencimiento
+      },
+      punto_medicion: {
+        id_punto: "P-FIELD",
+        area_descripcion: fieldArea,
+        hora_inicio: fieldStartTime,
+        hora_fin: fieldEndTime
+      },
+      lecturas: fieldReadings.map((r, index) => ({
+        numero: index + 1,
+        hora: new Date().toLocaleTimeString('es-MX'),
+        decibelios_db_a: Number(r.db),
+        condiciones_ambientales: r.conditions
+      })),
+      firmas_conformidad: {
+        firma_tecnico: `${fieldTechName} (LAB_TECH)`,
+        huella_digital_tecnico: `e.firma:${generarHashIntegridad(fieldTechName, "campo", reportId, "SIGN", null, null, "Tecnico").substring(0, 32)}`,
+        firma_representante_planta: fieldRepName,
+        puesto_representante: fieldRepPuesto,
+        timestamp_firmas: new Date().toISOString()
+      },
+      nom151_integridad: {
+        hash_documento_sha256: "", // will fill below
+        constancia_psc: `NOM151:CONSTANCIA-${new Date().getFullYear()}-FIELD-${Math.floor(Math.random() * 89999) + 10000}`,
+        esta_bloqueado: true
+      }
+    };
+
+    // Generate strict cryptographic SHA-256 equivalent for the whole document (NOM-151)
+    const payloadString = JSON.stringify(finalPayload);
+    const hash = generarHashIntegridad(fieldTechName, "reportes_campo", reportId, "INSERT", null, payloadString, "Cierre de Levantamiento");
+    finalPayload.nom151_integridad.hash_documento_sha256 = hash;
+
+    const newReportRecord = {
+      id_reporte: reportId,
+      tecnico: fieldTechName,
+      fecha: finalPayload.datos_sitio.fecha_medicion,
+      estado: "Pendiente",
+      payload: finalPayload
+    };
+
+    const updatedReports = [newReportRecord, ...submittedReports];
+    localStorage.setItem('aspechs_submitted_reports', JSON.stringify(updatedReports));
+    setSubmittedReports(updatedReports);
+
+    // Lock local form
+    setFieldIsLocked(true);
+    setFieldHash(hash);
+    setFieldConstanciaNOM151(finalPayload.nom151_integridad.constancia_psc);
+    setFieldStep(5); // Show completed step
+
+    // Create an Audit Log entry automatically to register this submission (trazabilidad ISO 17025)
+    const newLog: AuditLog = {
+      id_log: auditLogs.length + 1,
+      id_usuario: activePersona.id_usuario,
+      usuario_nombre: activePersona.nombre_completo,
+      usuario_rol: activePersona.id_rol,
+      tabla_afectada: "reportes_campo",
+      registro_id: reportId,
+      accion: "INSERT",
+      valor_anterior: null,
+      valor_nuevo: JSON.stringify(finalPayload),
+      justificacion_tecnica: `Levantamiento en sitio NOM-011-STPS finalizado y bloqueado criptográficamente bajo NOM-151-SCFI-2016 por el técnico de campo.`,
+      hash_integridad: hash,
+      ip_origen: "192.168.43.12", // mobile hotspot
+      timestamp: new Date().toISOString()
+    };
+
+    saveStateToLocalStorage(undefined, undefined, undefined, [newLog, ...auditLogs]);
+    alert("¡Levantamiento Finalizado con Éxito! El formulario ha sido bloqueado para edición (NOM-151) y enviado a revisión del Coordinador.");
+  };
+
+  const handleCoordinatorReviewReport = (reportId: string, approve: boolean, technicalJustification: string) => {
+    if (!technicalJustification || technicalJustification.trim().length < 5) {
+      alert("Error (NMX-17025): Debe proporcionar una Justificación Técnica científica obligatoria de al menos 5 caracteres para auditar este cambio.");
+      return;
+    }
+
+    const report = submittedReports.find(r => r.id_reporte === reportId);
+    if (!report) return;
+
+    const previousStatus = report.estado;
+    const nextStatus = approve ? "Aprobado" : "Rechazado";
+
+    const updatedReports = submittedReports.map(r => {
+      if (r.id_reporte === reportId) {
+        return {
+          ...r,
+          estado: nextStatus,
+          aprobado_por: activePersona.nombre_completo,
+          justificacion_coordinador: technicalJustification,
+          timestamp_revision: new Date().toISOString()
+        };
+      }
+      return r;
+    });
+
+    localStorage.setItem('aspechs_submitted_reports', JSON.stringify(updatedReports));
+    setSubmittedReports(updatedReports);
+
+    // Create detailed Audit Trail JSON Payload (Point 3)
+    const auditValueAnterior = { id_reporte: reportId, estado: previousStatus };
+    const auditValueNuevo = { 
+      id_reporte: reportId, 
+      estado: nextStatus, 
+      revisado_por: activePersona.nombre_completo, 
+      rol: activePersona.id_rol,
+      justificacion_tecnica: technicalJustification 
+    };
+
+    const hash = generarHashIntegridad(
+      activePersona.id_usuario,
+      "reportes_campo",
+      reportId,
+      "UPDATE",
+      JSON.stringify(auditValueAnterior),
+      JSON.stringify(auditValueNuevo),
+      technicalJustification
+    );
+
+    const newLog: AuditLog = {
+      id_log: auditLogs.length + 1,
+      id_usuario: activePersona.id_usuario,
+      usuario_nombre: activePersona.nombre_completo,
+      usuario_rol: activePersona.id_rol,
+      tabla_afectada: "reportes_campo",
+      registro_id: reportId,
+      accion: "UPDATE",
+      valor_anterior: JSON.stringify(auditValueAnterior),
+      valor_nuevo: JSON.stringify(auditValueNuevo),
+      justificacion_tecnica: technicalJustification,
+      hash_integridad: hash,
+      ip_origen: "192.168.10.12",
+      timestamp: new Date().toISOString()
+    };
+
+    saveStateToLocalStorage(undefined, undefined, undefined, [newLog, ...auditLogs]);
+    alert(`Reporte ${approve ? 'Aprobado' : 'Rechazado'} correctamente. Se ha generado un registro inalterable de auditoría (NMX-17025).`);
+  };
+
   // Reset local storage to default initial data
   const handleResetData = () => {
     if (confirm("¿Estás seguro de que deseas restablecer los datos originales de la simulación? Se perderán los registros que hayas agregado.")) {
@@ -546,11 +940,13 @@ export default function App() {
       localStorage.removeItem('aspechs_instruments');
       localStorage.removeItem('aspechs_certificates');
       localStorage.removeItem('aspechs_audit_logs');
+      localStorage.removeItem('aspechs_submitted_reports');
       setUsuarios(INITIAL_USUARIOS);
       setInstruments(INITIAL_INSTRUMENTOS);
       setCertificates(INITIAL_CERTIFICADOS);
       setAuditLogs(INITIAL_AUDIT_LOGS);
       setRbacSimResult(null);
+      handleResetFieldForm();
     }
   };
 
@@ -644,6 +1040,21 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setActiveTab('field_workflow')}
+              className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-left text-xs sm:text-sm font-medium ${
+                activeTab === 'field_workflow'
+                  ? 'text-white bg-slate-800'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <span className="text-xs">{activeTab === 'field_workflow' ? '●' : '○'}</span>
+              <span className="flex items-center gap-1.5">
+                <span>Flujo de Campo NOM-011</span>
+                <span className="bg-emerald-500/20 text-emerald-400 text-[9px] px-1.5 py-0.5 rounded font-mono border border-emerald-500/30">NUEVO</span>
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('audit')}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-left text-xs sm:text-sm font-medium ${
                 activeTab === 'audit'
@@ -731,6 +1142,19 @@ export default function App() {
               >
                 <span className="text-xs">{activeTab === 'equipment' ? '●' : '○'}</span>
                 <span>Equipos / Calibración</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('field_workflow'); setIsMobileSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-left text-sm font-medium ${
+                  activeTab === 'field_workflow' ? 'text-white bg-slate-800' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <span className="text-xs">{activeTab === 'field_workflow' ? '●' : '○'}</span>
+                <span className="flex items-center gap-1.5">
+                  <span>Flujo de Campo NOM-011</span>
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[9px] px-1.5 py-0.5 rounded font-mono border border-emerald-500/30">NUEVO</span>
+                </span>
               </button>
 
               <button
@@ -2038,6 +2462,615 @@ export default function App() {
                         </p>
                       </div>
                     </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* TAB: FLUJO DE TRABAJO DE CAMPO (NOM-011-STPS) */}
+              {activeTab === 'field_workflow' && (
+                <motion.div
+                  key="field_workflow"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6 text-slate-800 animate-fade-in"
+                >
+                  <div className="border-b border-slate-200 pb-4">
+                    <h2 className="text-lg font-bold text-slate-950 flex items-center gap-2">
+                      <FileSignature className="text-emerald-600 w-5 h-5" />
+                      Levantamiento de Ruido en Sitio (NOM-011-STPS) & Validación de Datos
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Flujo de trabajo integrado para Técnico de Campo (Check-in, EPP y cierre de formulario bajo NOM-151) y Coordinador (Validación y Auditoría bajo NMX-17025).
+                    </p>
+                  </div>
+
+                  {/* ALERTA DE PERSONA ACTUAL */}
+                  <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 flex items-center justify-between text-xs text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                      <span>Simulando como: <strong>{activePersona.nombre_completo}</strong> ({activePersona.id_rol})</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 italic">Cambie de usuario en el selector superior para interactuar con cada rol</span>
+                  </div>
+
+                  {/* GRID PRINCIPAL */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* COLUMNA IZQUIERDA: TERMINAL DEL TÉCNICO DE CAMPO (ROL 3) */}
+                    <div className="lg:col-span-7 bg-slate-900 text-slate-200 rounded-2xl p-5 md:p-6 shadow-xl border border-slate-800 space-y-6">
+                      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                            <Sliders className="w-4 h-4 text-emerald-400" />
+                            Terminal de Campo (Consultor)
+                          </h3>
+                          <p className="text-[10px] text-slate-400">Digitalización de Mediciones en Sitio</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                          fieldIsLocked ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}>
+                          {fieldIsLocked ? 'FORMULARIO BLOQUEADO (NOM-151)' : 'EDICIÓN ABIERTA'}
+                        </span>
+                      </div>
+
+                      {/* PASO A PASO STEP INDICATOR */}
+                      <div className="grid grid-cols-5 gap-1.5 text-center text-[10px] font-mono">
+                        {[
+                          { step: 1, label: "Check-in" },
+                          { step: 2, label: "EPP" },
+                          { step: 3, label: "Lecturas" },
+                          { step: 4, label: "Firmas" },
+                          { step: 5, label: "NOM-151" }
+                        ].map((s) => {
+                          const isActive = fieldStep === s.step;
+                          const isDone = fieldStep > s.step;
+                          return (
+                            <div key={s.step} className="flex flex-col items-center space-y-1">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
+                                isActive ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30' :
+                                isDone ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500 border border-slate-700'
+                              }`}>
+                                {isDone ? '✓' : s.step}
+                              </div>
+                              <span className={`hidden sm:inline text-[9px] ${isActive ? 'text-white font-bold' : isDone ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                {s.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* CONTENIDO DE LOS PASOS */}
+                      <form onSubmit={fieldIsLocked ? (e) => e.preventDefault() : handleFieldSubmitForm} className="space-y-6">
+                        
+                        {/* PASO 1: CHECK-IN GEOLOCALIZADO */}
+                        {fieldStep === 1 && !fieldIsLocked && (
+                          <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 space-y-4">
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Paso 1: Validación GPS Obligatoria</h4>
+                              <p className="text-[11px] text-slate-400 leading-relaxed">
+                                De acuerdo con las regulaciones de la STPS y la NMX-17025, el técnico debe verificar geolocalizadamente su presencia en la planta antes de poder registrar cualquier dato metrológico.
+                              </p>
+                            </div>
+
+                            <div className="bg-slate-950 p-3 rounded border border-slate-800 font-mono text-[11px] space-y-1 text-slate-300">
+                              <div>Coordenadas: <span className="text-blue-400">{fieldCheckinCoords || "Pendiente Check-In..."}</span></div>
+                              <div>Hora Check-In: <span className="text-blue-400">{fieldCheckinTime || "Pendiente..."}</span></div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleFieldGPSCheckIn}
+                              className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/20"
+                            >
+                              <Activity className="w-4 h-4 animate-pulse" />
+                              <span>Registrar Check-In Geolocalizado</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* PASO 2: CHECKLIST DE EPP */}
+                        {fieldStep === 2 && !fieldIsLocked && (
+                          <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 space-y-4">
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Paso 2: Checklist de EPP Obligatorio</h4>
+                              <p className="text-[11px] text-slate-400 leading-relaxed">
+                                Verifique y confirme el uso obligatorio de todo el Equipo de Protección Personal antes de ingresar al área de ruido de acuerdo con la NOM-011-STPS.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              {[
+                                { key: 'casco', label: 'Casco de protección industrial (Clase G o C)' },
+                                { key: 'tapones', label: 'Tapones auditivos / Orejeras de alta atenuación (NOM-011)' },
+                                { key: 'calzado', label: 'Calzado de seguridad industrial dieléctrico' },
+                                { key: 'chaleco', label: 'Chaleco reflejante de alta visibilidad' }
+                              ].map((item) => (
+                                <label key={item.key} className="flex items-center gap-3 bg-slate-950/40 hover:bg-slate-950/80 p-2.5 rounded border border-slate-800 cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={(fieldEppChecked as any)[item.key]}
+                                    onChange={(e) => setFieldEppChecked({ ...fieldEppChecked, [item.key]: e.target.checked })}
+                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 bg-slate-900 border-slate-700"
+                                  />
+                                  <span className="text-xs text-slate-300">{item.label}</span>
+                                </label>
+                              ))}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setFieldStep(1)}
+                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
+                              >
+                                Atrás
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!fieldEppChecked.casco || !fieldEppChecked.tapones || !fieldEppChecked.calzado || !fieldEppChecked.chaleco}
+                                onClick={() => setFieldStep(3)}
+                                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold rounded-lg text-xs transition-colors shadow-lg disabled:shadow-none"
+                              >
+                                Confirmar EPP y Continuar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PASO 3: FORMULARIO DE CAPTURA DE MEDIDAS */}
+                        {fieldStep === 3 && !fieldIsLocked && (
+                          <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 space-y-4">
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Paso 3: Selección de Equipo & Captura NOM-011</h4>
+                              <p className="text-[11px] text-slate-400">
+                                Capture los niveles de presión sonora (dB) medidos en sitio en el punto determinado de la planta.
+                              </p>
+                            </div>
+
+                            {/* SELECCIÓN DE SONÓMETRO */}
+                            <div className="space-y-1.5">
+                              <label htmlFor="sonometer-select" className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                Sonómetro Utilizado *
+                              </label>
+                              <select
+                                id="sonometer-select"
+                                value={fieldSonometerId}
+                                onChange={(e) => setFieldSonometerId(e.target.value)}
+                                className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded-lg text-xs px-3 py-2 focus:ring-1 focus:ring-blue-500"
+                              >
+                                <option value="">-- Seleccione un Sonómetro --</option>
+                                {instruments.map(i => (
+                                  <option key={i.id_instrumento} value={i.id_instrumento}>
+                                    {i.codigo_interno} ({i.nombre})
+                                  </option>
+                                ))}
+                              </select>
+
+                              {/* ALERTA DE METROLOGÍA DINÁMICA (VALIDACIÓN DE VIGENCIA) */}
+                              {fieldSonometerId && (() => {
+                                const selectedSono = instruments.find(i => i.id_instrumento === fieldSonometerId);
+                                const approvedCerts = certificates.filter(c => c.id_instrumento === fieldSonometerId && c.estado_aprobacion === 'Aprobado');
+                                const hasVigente = approvedCerts.some(c => new Date(c.fecha_vencimiento) > new Date());
+                                const latestCert = approvedCerts[0];
+
+                                if (hasVigente) {
+                                  return (
+                                    <div className="bg-emerald-950/40 border border-emerald-900/50 p-2.5 rounded text-[11px] text-emerald-300 space-y-1">
+                                      <div className="font-semibold flex items-center gap-1">
+                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                        <span>EQUIPO APTO CONFORME A NMX-17025</span>
+                                      </div>
+                                      <p className="text-[10px] text-emerald-400/80">
+                                        El instrumento posee el certificado de calibración vigente <strong>{latestCert?.numero_certificado}</strong> aprobado ante la EMA (Expira: {latestCert?.fecha_vencimiento}).
+                                      </p>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="bg-red-950/40 border border-red-900/50 p-2.5 rounded text-[11px] text-red-300 space-y-1">
+                                      <div className="font-semibold flex items-center gap-1">
+                                        <AlertTriangle className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                                        <span>EQUIPO BLOQUEADO - CERTIFICADO VENCIDO</span>
+                                      </div>
+                                      <p className="text-[10px] text-red-400/80">
+                                        {selectedSono?.codigo_interno} no posee ningún certificado de calibración aprobado vigente. No es posible generar registros válidos ante la STPS.
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                              })()}
+                            </div>
+
+                            {/* DATOS DEL PUNTO */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div className="md:col-span-1 space-y-1">
+                                <label htmlFor="field-area" className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  Área de la Planta *
+                                </label>
+                                <input
+                                  id="field-area"
+                                  type="text"
+                                  value={fieldArea}
+                                  onChange={(e) => setFieldArea(e.target.value)}
+                                  placeholder="Ej. Taller de Prensas"
+                                  className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded-lg text-xs px-3 py-1.5 focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label htmlFor="field-start-time" className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  Hora Inicio *
+                                </label>
+                                <input
+                                  id="field-start-time"
+                                  type="time"
+                                  value={fieldStartTime}
+                                  onChange={(e) => setFieldStartTime(e.target.value)}
+                                  className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded-lg text-xs px-3 py-1.5 focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label htmlFor="field-end-time" className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  Hora Fin *
+                                </label>
+                                <input
+                                  id="field-end-time"
+                                  type="time"
+                                  value={fieldEndTime}
+                                  onChange={(e) => setFieldEndTime(e.target.value)}
+                                  className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded-lg text-xs px-3 py-1.5 focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                            </div>
+
+                            {/* TABLA DE LECTURAS DINÁMICA */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Nivel de Presión Sonora Continuo Equivalente</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setFieldReadings([...fieldReadings, { db: 85, conditions: "Operación estándar" }])}
+                                  className="px-2 py-0.5 bg-blue-600/80 hover:bg-blue-600 text-white font-mono rounded text-[9px] flex items-center gap-1"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                  <span>Añadir Lectura</span>
+                                </button>
+                              </div>
+
+                              <div className="space-y-2 max-h-[140px] overflow-y-auto">
+                                {fieldReadings.map((reading, idx) => (
+                                  <div key={idx} className="flex gap-2 items-center bg-slate-950/30 p-1.5 rounded border border-slate-800">
+                                    <span className="text-[10px] font-mono text-slate-500 w-6 text-center">#{idx + 1}</span>
+                                    
+                                    <div className="w-24 flex items-center gap-1">
+                                      <label htmlFor={`reading-db-${idx}`} className="sr-only">Nivel dB(A)</label>
+                                      <input
+                                        id={`reading-db-${idx}`}
+                                        type="number"
+                                        step="0.1"
+                                        value={reading.db}
+                                        onChange={(e) => {
+                                          const newR = [...fieldReadings];
+                                          newR[idx].db = Number(e.target.value);
+                                          setFieldReadings(newR);
+                                        }}
+                                        className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded text-xs px-2 py-1 font-mono text-center"
+                                      />
+                                      <span className="text-[10px] text-slate-400 font-bold">dB</span>
+                                    </div>
+
+                                    <div className="flex-1">
+                                      <label htmlFor={`reading-cond-${idx}`} className="sr-only">Condiciones Ambientales</label>
+                                      <input
+                                        id={`reading-cond-${idx}`}
+                                        type="text"
+                                        value={reading.conditions}
+                                        onChange={(e) => {
+                                          const newR = [...fieldReadings];
+                                          newR[idx].conditions = e.target.value;
+                                          setFieldReadings(newR);
+                                        }}
+                                        placeholder="Condiciones de la fuente de ruido..."
+                                        className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded text-xs px-2 py-1"
+                                      />
+                                    </div>
+
+                                    {fieldReadings.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setFieldReadings(fieldReadings.filter((_, rIdx) => rIdx !== idx))}
+                                        className="text-red-400 hover:text-red-300 p-1 font-mono text-[10px]"
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-2 border-t border-slate-800">
+                              <button
+                                type="button"
+                                onClick={() => setFieldStep(2)}
+                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
+                              >
+                                Atrás
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setFieldStep(4)}
+                                className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition-colors"
+                              >
+                                Continuar a Firmas
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PASO 4: FIRMAS DIGITALES DE CONFORMIDAD */}
+                        {fieldStep === 4 && !fieldIsLocked && (
+                          <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 space-y-4">
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Paso 4: Firmas de Conformidad del Levantamiento</h4>
+                              <p className="text-[11px] text-slate-400 leading-relaxed">
+                                Para asentar validez legal ante la STPS y cumplir con la Ley de Firma Electrónica Avanzada, se requieren los datos de conformidad de las partes.
+                              </p>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label htmlFor="field-tech-name" className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  Nombre del Técnico Laboratorista *
+                                </label>
+                                <input
+                                  id="field-tech-name"
+                                  type="text"
+                                  value={fieldTechName}
+                                  onChange={(e) => setFieldTechName(e.target.value)}
+                                  placeholder="Ej. Lucía Juárez"
+                                  className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded-lg text-xs px-3 py-1.5 focus:ring-1 focus:ring-blue-500"
+                                />
+                                <span className="text-[9px] text-slate-500 block">La firma del técnico se asentará electrónicamente usando su e.firma certificada del laboratorio.</span>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label htmlFor="field-rep-name" className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                    Representante de Planta *
+                                  </label>
+                                  <input
+                                    id="field-rep-name"
+                                    type="text"
+                                    value={fieldRepName}
+                                    onChange={(e) => setFieldRepName(e.target.value)}
+                                    placeholder="Nombre de contacto en sitio"
+                                    className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded-lg text-xs px-3 py-1.5 focus:ring-1 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label htmlFor="field-rep-puesto" className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                    Puesto del Representante *
+                                  </label>
+                                  <input
+                                    id="field-rep-puesto"
+                                    type="text"
+                                    value={fieldRepPuesto}
+                                    onChange={(e) => setFieldRepPuesto(e.target.value)}
+                                    placeholder="Ej. Gerente de Seguridad"
+                                    className="w-full bg-slate-950 text-slate-100 border border-slate-700 rounded-lg text-xs px-3 py-1.5 focus:ring-1 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-2 border-t border-slate-800">
+                              <button
+                                type="button"
+                                onClick={() => setFieldStep(3)}
+                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
+                              >
+                                Atrás
+                              </button>
+                              <button
+                                type="submit"
+                                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors shadow-lg shadow-emerald-600/20"
+                              >
+                                Finalizar Levantamiento (Sello Criptográfico NOM-151)
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PASO 5: RESUMEN DE CONTRALORÍA Y BLOQUEO CRIPTOGRÁFICO */}
+                        {(fieldStep === 5 || fieldIsLocked) && (
+                          <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 space-y-4 animate-fade-in">
+                            <div className="text-center space-y-2 py-2">
+                              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30">
+                                <Lock className="w-6 h-6" />
+                              </div>
+                              <h4 className="text-xs font-bold text-white uppercase tracking-wider">REGISTRO SELLADO BAJO NOM-151</h4>
+                              <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                                Para garantizar la no-alterabilidad exigida por la normatividad nacional, este formulario está cerrado. Los datos han sido enviados al Coordinador para revisión técnica.
+                              </p>
+                            </div>
+
+                            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[10px] space-y-2 text-slate-300">
+                              <div className="flex justify-between border-b border-slate-900 pb-1.5">
+                                <span className="text-slate-500">Folio Documento:</span>
+                                <span className="text-blue-400 font-bold">REP-NOM011-2026-00{submittedReports.length}</span>
+                              </div>
+                              <div className="flex flex-col gap-0.5 border-b border-slate-900 pb-1.5">
+                                <span className="text-slate-500">Constancia de Conservación PSC:</span>
+                                <span className="text-emerald-400 break-all">{fieldConstanciaNOM151 || "NOM151:CONSTANCIA-2026-07-14-FIELD-0982"}</span>
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-slate-500">Hash Integridad SHA256:</span>
+                                <span className="text-amber-400 break-all font-bold">{fieldHash || "SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a"}</span>
+                              </div>
+                            </div>
+
+                            {/* VER DETALLE JSON (PUNTO 2) */}
+                            <div className="space-y-2">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Estructura del Formulario Digital (JSON - NOM-011)</span>
+                              <pre className="p-3 bg-slate-950 text-emerald-400 rounded-lg text-[9px] max-h-[160px] overflow-y-auto border border-slate-800">
+                                {JSON.stringify(submittedReports[0]?.payload || {}, null, 2)}
+                              </pre>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleResetFieldForm}
+                              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg text-xs transition-colors border border-slate-700"
+                            >
+                              Capturar Nuevo Levantamiento (Reiniciar Formulario)
+                            </button>
+                          </div>
+                        )}
+                        
+                      </form>
+                    </div>
+
+                    {/* COLUMNA DERECHA: REVISIÓN DEL COORDINADOR (ROL 2) */}
+                    <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-6">
+                      <div className="border-b border-slate-100 pb-3">
+                        <h3 className="text-sm font-bold text-slate-950 uppercase tracking-wider flex items-center gap-2">
+                          <UserCheck className="w-4 h-4 text-emerald-600" />
+                          Bandeja del Coordinador
+                        </h3>
+                        <p className="text-[10px] text-slate-500">Validación Técnica y Registro de Auditoría</p>
+                      </div>
+
+                      {/* INFORMACIÓN DE APOYO AL REVISOR */}
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1 leading-relaxed">
+                        <div className="font-bold flex items-center gap-1 text-[11px]">
+                          <Info className="w-3.5 h-3.5" />
+                          <span>Instrucciones de Validación (NMX-17025)</span>
+                        </div>
+                        <p className="text-[11px] font-light">
+                          El Coordinador de Operaciones debe verificar el cumplimiento del checklist de EPP, el check-in satelital, y que el sonómetro tenga un certificado vigente antes de autorizar. El rechazo exige asentar la justificación científica en el Audit Trail.
+                        </p>
+                      </div>
+
+                      {/* LISTA DE SOLICITUDES EN REVISIÓN */}
+                      <div className="space-y-4">
+                        <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cola de Reportes de Campo</h4>
+
+                        {submittedReports.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic text-center py-6">No hay reportes enviados a revisión.</p>
+                        ) : (
+                          submittedReports.map((report) => {
+                            const isPending = report.estado === 'Pendiente';
+                            const isApproved = report.estado === 'Aprobado';
+                            const isRejected = report.estado === 'Rechazado';
+                            
+                            const certCheck = report.payload?.instrumento_utilizado?.certificado_calibracion_vigente;
+                            const gpsCheck = report.payload?.datos_sitio?.coordenadas_gps;
+                            const readingsCount = report.payload?.lecturas?.length || 0;
+
+                            return (
+                              <div key={report.id_reporte} className={`border rounded-xl p-4 space-y-3.5 transition-all ${
+                                isApproved ? 'border-emerald-200 bg-emerald-50/20' :
+                                isRejected ? 'border-red-200 bg-red-50/20' : 'border-amber-200 bg-amber-50/10 shadow-sm'
+                              }`}>
+                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                  <div>
+                                    <span className="font-mono font-bold text-xs text-slate-900 block">{report.id_reporte}</span>
+                                    <span className="text-[10px] text-slate-500 font-medium">Técnico: {report.tecnico}</span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono uppercase ${
+                                    isApproved ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                    isRejected ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
+                                  }`}>
+                                    {report.estado}
+                                  </span>
+                                </div>
+
+                                {/* RESUMEN DE COMPROBACIÓN DE CAMPOS */}
+                                <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-600 bg-white p-2 rounded border border-slate-100">
+                                  <div>GPS: <span className="text-emerald-600 font-bold">✓ {gpsCheck?.substring(0, 11)}...</span></div>
+                                  <div>EPP Check: <span className="text-emerald-600 font-bold">✓ Completo</span></div>
+                                  <div className="col-span-2">Sonómetro: <span className="font-sans text-slate-800 font-semibold">{report.payload?.instrumento_utilizado?.codigo_interno} ({certCheck ? 'Calibración Vigente' : 'Sin Calibración'})</span></div>
+                                  <div className="col-span-2">Punto: <span className="font-sans text-slate-800">{report.payload?.punto_medicion?.area_descripcion} ({readingsCount} lecturas)</span></div>
+                                </div>
+
+                                {/* CASO REVISADO */}
+                                {(isApproved || isRejected) && (
+                                  <div className="bg-white p-2.5 rounded border border-slate-100 text-[11px] space-y-1">
+                                    <div className="font-bold text-slate-900 flex items-center gap-1">
+                                      <CheckCircle className={`w-3.5 h-3.5 ${isApproved ? 'text-emerald-600' : 'text-red-600'}`} />
+                                      <span>Dictaminado por: {report.aprobado_por}</span>
+                                    </div>
+                                    <p className="text-slate-600 italic">"{report.justificacion_coordinador}"</p>
+                                    <span className="text-[9px] text-slate-400 font-mono block">Fecha: {new Date(report.timestamp_revision).toLocaleString('es-MX')}</span>
+                                  </div>
+                                )}
+
+                                {/* CASO PENDIENTE DE REVISIÓN */}
+                                {isPending && (
+                                  <div className="space-y-3.5">
+                                    <div className="space-y-1">
+                                      <label htmlFor={`justif-coord-${report.id_reporte}`} className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                                        Justificación Técnica de Revisión * (NMX-17025)
+                                      </label>
+                                      <textarea
+                                        id={`justif-coord-${report.id_reporte}`}
+                                        rows={2}
+                                        value={coordinatorJustifications[report.id_reporte] || ""}
+                                        onChange={(e) => setCoordinatorJustifications({ ...coordinatorJustifications, [report.id_reporte]: e.target.value })}
+                                        placeholder="Ej. Se valida que el levantamiento de ruido se realizó con el instrumento verificado, check-in conforme y EPP completo."
+                                        className="w-full text-xs text-slate-800 p-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:outline-none bg-slate-50"
+                                      />
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (!checkPermission(currentPersonaId, "calibracion:aprobar")) {
+                                            alert("Error: Su rol simulado actual no cuenta con privilegios de aprobación técnica (Se requiere Coordinador, Supervisor o Director).");
+                                            return;
+                                          }
+                                          handleCoordinatorReviewReport(
+                                            report.id_reporte, 
+                                            false, 
+                                            coordinatorJustifications[report.id_reporte] || ""
+                                          );
+                                        }}
+                                        className="flex-1 py-1.5 bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-200 rounded font-semibold text-xs transition-colors cursor-pointer"
+                                      >
+                                        Rechazar / Corrección
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (!checkPermission(currentPersonaId, "calibracion:aprobar")) {
+                                            alert("Error: Su rol simulado actual no cuenta con privilegios de aprobación técnica (Se requiere Coordinador, Supervisor o Director).");
+                                            return;
+                                          }
+                                          handleCoordinatorReviewReport(
+                                            report.id_reporte, 
+                                            true, 
+                                            coordinatorJustifications[report.id_reporte] || ""
+                                          );
+                                        }}
+                                        className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs transition-colors shadow-sm cursor-pointer"
+                                      >
+                                        Aprobar Reporte
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
                   </div>
                 </motion.div>
               )}

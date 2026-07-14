@@ -210,6 +210,28 @@ export const INITIAL_INSTRUMENTOS: Instrumento[] = [
     ubicacion: "Estación de Muestreo de H&S",
     intervalo_calibracion_meses: 6,
     estado_operativo: "Fuera de Servicio"
+  },
+  {
+    id_instrumento: "inst-005",
+    codigo_interno: "EQ-SON-055",
+    nombre: "Sonómetro Integrador Clase 1",
+    marca: "Quest Technologies",
+    modelo: "SoundPro SE",
+    numero_serie: "QP-10928374",
+    ubicacion: "Almacén de Equipos de Higiene",
+    intervalo_calibracion_meses: 12,
+    estado_operativo: "Operativo"
+  },
+  {
+    id_instrumento: "inst-006",
+    codigo_interno: "EQ-SON-091",
+    nombre: "Sonómetro Integrador Clase 2",
+    marca: "Larson Davis",
+    modelo: "LxT LXT1",
+    numero_serie: "LD-55291",
+    ubicacion: "Módulo de Seguridad Industrial",
+    intervalo_calibracion_meses: 12,
+    estado_operativo: "Operativo"
   }
 ];
 
@@ -274,6 +296,36 @@ export const INITIAL_CERTIFICADOS: CertificadoCalibracion[] = [
     fecha_aprobacion: "2024-01-08T09:20:00Z",
     justificacion_aprobacion: "Liberado para mediciones de pH en efluentes industriales. Se requiere recertificación.",
     sello_digital_nom151: "NOM151:CONSTANCIA-2024-01-08-PSC-0012"
+  },
+  {
+    id_certificado: "cert-005",
+    id_instrumento: "inst-005",
+    numero_certificado: "EMA-QUEST-2026-0922",
+    laboratorio_emisor: "Acústica y Vibraciones de México (Acreditación EMA M-77)",
+    fecha_calibracion: "2026-01-15",
+    fecha_vencimiento: "2027-01-15", // Vigente!
+    url_documento: "https://certificados.aspechs.com/EMA-QUEST-2026-0922.pdf",
+    archivo_hash_sha256: "fa4b6850e387550fdab836ed7e6dc881de23001b3296acb03c834a3179dfa999",
+    estado_aprobacion: "Aprobado",
+    aprobado_por: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
+    fecha_aprobacion: "2026-01-17T11:00:00Z",
+    justificacion_aprobacion: "Calibración aprobada para sonómetro de levantamiento en sitio (NOM-011-STPS). Desviación menor a 0.2 dB.",
+    sello_digital_nom151: "NOM151:CONSTANCIA-2026-01-17-PSC-0922"
+  },
+  {
+    id_certificado: "cert-006",
+    id_instrumento: "inst-006",
+    numero_certificado: "EMA-LARSON-2024-4421",
+    laboratorio_emisor: "Acústica y Vibraciones de México (Acreditación EMA M-77)",
+    fecha_calibracion: "2024-03-01",
+    fecha_vencimiento: "2025-03-01", // Vencido!
+    url_documento: "https://certificados.aspechs.com/EMA-LARSON-2024-4421.pdf",
+    archivo_hash_sha256: "bc991cb921938ac5f59c8b931e129450ad89a12a215fe338eaef47c8b931e211",
+    estado_aprobacion: "Aprobado",
+    aprobado_por: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
+    fecha_aprobacion: "2024-03-04T12:00:00Z",
+    justificacion_aprobacion: "Certificación anterior del sonómetro secundario. Requiere calibración urgente para uso en campo.",
+    sello_digital_nom151: "NOM151:CONSTANCIA-2024-03-04-PSC-4421"
   }
 ];
 
