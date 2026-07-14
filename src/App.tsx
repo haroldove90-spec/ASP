@@ -25,7 +25,17 @@ import {
   XCircle,
   FileSpreadsheet,
   Download,
-  Edit3
+  Edit3,
+  Home,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Clock,
+  Calculator,
+  ArrowRight,
+  MapPin,
+  UserPlus,
+  FileCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -48,7 +58,7 @@ import {
 
 export default function App() {
   // Tab State
-  const [activeTab, setActiveTab] = useState<'schema' | 'rbac' | 'audit' | 'equipment' | 'regulation' | 'field_workflow'>('schema');
+  const [activeTab, setActiveTab] = useState<'home' | 'schema' | 'rbac' | 'audit' | 'equipment' | 'regulation' | 'field_workflow'>('home');
 
   // NOM-011-STPS Field Capture States
   const [fieldStep, setFieldStep] = useState<number>(1);
@@ -197,6 +207,42 @@ export default function App() {
   });
 
   const [coordinatorJustifications, setCoordinatorJustifications] = useState<Record<string, string>>({});
+
+  // Dynamic Home/Dashboard States
+  const [jornadaIniciada, setJornadaIniciada] = useState<boolean>(false);
+  const [jornadaStartTime, setJornadaStartTime] = useState<string>("");
+  const [jornadaGPS, setJornadaGPS] = useState<string>("");
+
+  // Cotizador States for Admin/Ventas
+  const [quoteType, setQuoteType] = useState<string>("NOM-011-STPS");
+  const [quotePoints, setQuotePoints] = useState<number>(5);
+  const [quoteDistance, setQuoteDistance] = useState<number>(20);
+  const [quoteClient, setQuoteClient] = useState<string>("Arneses del Eje S.A.");
+  const [generatedQuotes, setGeneratedQuotes] = useState<any[]>([
+    { id: "COT-001", cliente: "Vidriera del Norte", servicio: "NOM-011-STPS (Ruido)", puntos: 10, costo: 24500, fecha: "2026-07-10", estado: "Enviado" },
+    { id: "COT-002", cliente: "Papelera de Occidente", servicio: "NOM-015-STPS (Térmicas)", puntos: 4, costo: 15200, fecha: "2026-07-12", estado: "Aceptado" },
+  ]);
+
+  // Invoice control state for Admin/Ventas and Director
+  const [invoices, setInvoices] = useState<any[]>([
+    { id: "FAC-1002", cliente: "Vidriera del Norte", monto: 24500, estado: "Pendiente", vencimiento: "2026-08-10" },
+    { id: "FAC-1001", cliente: "Papelera de Occidente", monto: 15200, estado: "Pagado", vencimiento: "2026-07-30" },
+    { id: "FAC-1000", cliente: "Cementos de Hidalgo", monto: 45000, estado: "Pagado", vencimiento: "2026-06-15" },
+    { id: "FAC-0999", cliente: "Metales de Saltillo", monto: 18900, estado: "Vencido", vencimiento: "2026-07-01" },
+  ]);
+
+  // Service Calendar Tasks for Coordinador
+  const [scheduledServices, setScheduledServices] = useState<any[]>([
+    { id: "SERV-101", cliente: "Arneses del Eje S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-15", tecnico: "Lucía Juárez", instrumento: "SON-819", estado: "Asignado" },
+    { id: "SERV-102", cliente: "Química de Coahuila S.A.", servicio: "Calibración de Flujo", fecha: "2026-07-16", tecnico: "Pendiente", instrumento: "Pendiente", estado: "Pendiente Asignación" },
+    { id: "SERV-103", cliente: "Lácteos del Bajío S.A. de C.V.", servicio: "Estrés Térmico NOM-015", fecha: "2026-07-18", tecnico: "Pendiente", instrumento: "Pendiente", estado: "Pendiente Asignación" },
+    { id: "SERV-104", cliente: "Refinería Monterrey S.A.", servicio: "Medición Perimetral NMX-R-046", fecha: "2026-07-20", tecnico: "Lucía Juárez", instrumento: "SON-819", estado: "Asignado" },
+  ]);
+
+  // Instrument assignments state
+  const [selectedInstAssign, setSelectedInstAssign] = useState<string>("");
+  const [selectedTechAssign, setSelectedTechAssign] = useState<string>("");
+  const [selectedServAssign, setSelectedServAssign] = useState<string>("");
 
   // Mobile Sidebar State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -950,6 +996,137 @@ export default function App() {
     }
   };
 
+  // Home Dashboard Handlers
+  const handleAssignService = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedServAssign || !selectedTechAssign || !selectedInstAssign) {
+      alert("Por favor seleccione todos los campos para realizar la asignación.");
+      return;
+    }
+    // Check NMX-17025 calibration compliance
+    const selectedInst = instruments.find(i => i.id_instrumento === selectedInstAssign);
+    const approvedCerts = certificates.filter(c => c.id_instrumento === selectedInstAssign && c.estado_aprobacion === 'Aprobado');
+    const hasVigente = approvedCerts.some(c => new Date(c.fecha_vencimiento) > new Date());
+    
+    if (!hasVigente) {
+      alert("ERROR DE CONFIGURACIÓN NMX-17025: El equipo seleccionado no cuenta con calibración vigente aprobado ante la EMA. No puede operar.");
+      return;
+    }
+
+    const techUser = usuarios.find(u => u.id_usuario === selectedTechAssign);
+    if (!techUser) return;
+
+    setScheduledServices(prev => prev.map(s => {
+      if (s.id === selectedServAssign) {
+        return {
+          ...s,
+          tecnico: techUser.nombre_completo,
+          instrumento: selectedInst?.codigo_interno || "",
+          estado: "Asignado"
+        };
+      }
+      return s;
+    }));
+
+    // Log this assignment in the Audit Trail automatically
+    const newLog: AuditLog = {
+      id_log: auditLogs.length + 1,
+      id_usuario: activePersona.id_usuario,
+      usuario_nombre: activePersona.nombre_completo,
+      usuario_rol: activePersona.id_rol,
+      tabla_afectada: "asignacion_servicios",
+      registro_id: selectedServAssign,
+      accion: "UPDATE",
+      valor_anterior: null,
+      valor_nuevo: JSON.stringify({ tecnico: techUser.nombre_completo, instrumento: selectedInst?.codigo_interno, estado: "Asignado" }),
+      justificacion_tecnica: `Asignación de instrumento calibrado (${selectedInst?.codigo_interno}) y técnico homologado (${techUser.nombre_completo}) conforme a procedimientos de calidad ISO 17025.`,
+      hash_integridad: generarHashIntegridad(activePersona.id_usuario, "asignacion_servicios", selectedServAssign, "UPDATE", null, selectedInstAssign, "Asignacion"),
+      ip_origen: "192.168.10.15",
+      timestamp: new Date().toISOString()
+    };
+    saveStateToLocalStorage(undefined, undefined, undefined, [newLog, ...auditLogs]);
+
+    alert(`Asignación exitosa: Equipo ${selectedInst?.codigo_interno} asignado al técnico ${techUser.nombre_completo} para el servicio.`);
+    setSelectedServAssign("");
+    setSelectedInstAssign("");
+    setSelectedTechAssign("");
+  };
+
+  const handleGenerateQuote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quoteClient) {
+      alert("Por favor especifique el nombre del cliente.");
+      return;
+    }
+
+    let base = 0;
+    let pricePerPoint = 0;
+    if (quoteType === "NOM-011-STPS") {
+      base = 3500;
+      pricePerPoint = 1800;
+    } else if (quoteType === "NOM-015-STPS") {
+      base = 4200;
+      pricePerPoint = 2200;
+    } else if (quoteType === "NOM-025-STPS") {
+      base = 3000;
+      pricePerPoint = 1500;
+    } else {
+      base = 5500;
+      pricePerPoint = 0; // perimetral unique
+    }
+
+    const costPoints = pricePerPoint * quotePoints;
+    const costViaticos = quoteDistance * 12.5;
+    const subtotal = base + costPoints + costViaticos;
+    const costTotal = Math.round(subtotal * 1.16);
+
+    const newQuote = {
+      id: `COT-00${generatedQuotes.length + 1}`,
+      cliente: quoteClient,
+      servicio: quoteType === "NOM-011-STPS" ? "NOM-011-STPS (Ruido)" : quoteType === "NOM-015-STPS" ? "NOM-015-STPS (Térmicas)" : quoteType === "NOM-025-STPS" ? "NOM-025-STPS (Iluminación)" : "NMX-R-046 (Perimetral)",
+      puntos: quotePoints,
+      costo: costTotal,
+      fecha: new Date().toISOString().split('T')[0],
+      estado: "Enviado"
+    };
+
+    setGeneratedQuotes([newQuote, ...generatedQuotes]);
+    
+    // Auto-create matching invoice in Pending state
+    const newInvoice = {
+      id: `FAC-100${invoices.length + 2}`,
+      cliente: quoteClient,
+      monto: costTotal,
+      estado: "Pendiente",
+      vencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    };
+    setInvoices([newInvoice, ...invoices]);
+
+    alert(`Cotización generada con éxito para ${quoteClient} por un total de ${costTotal.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'})}. Se ha registrado automáticamente una factura en estado Pendiente.`);
+    setQuoteClient("");
+  };
+
+  const handleToggleInvoiceStatus = (invoiceId: string, newStatus: string) => {
+    setInvoices(prev => prev.map(inv => {
+      if (inv.id === invoiceId) {
+        return { ...inv, estado: newStatus };
+      }
+      return inv;
+    }));
+  };
+
+  const handleToggleJornada = () => {
+    if (!jornadaIniciada) {
+      setJornadaIniciada(true);
+      setJornadaStartTime(new Date().toLocaleTimeString('es-MX'));
+      setJornadaGPS("25.4382, -100.9734 (Zona Industrial Saltillo)");
+    } else {
+      setJornadaIniciada(false);
+      setJornadaStartTime("");
+      setJornadaGPS("");
+    }
+  };
+
   // Filter instruments based on search
   const filteredInstruments = useMemo(() => {
     return instruments.filter(inst => {
@@ -1003,6 +1180,16 @@ export default function App() {
     return { total, vigentes, vencenPronto, vencidos, fueraServicio };
   }, [instruments, certificates]);
 
+  // Dynamic financial computations for Director and Sales
+  const financials = useMemo(() => {
+    const totalCotizado = generatedQuotes.reduce((acc, q) => acc + q.costo, 0);
+    const totalFacturado = invoices.reduce((acc, inv) => acc + inv.monto, 0);
+    const totalRecaudado = invoices.filter(inv => inv.estado === 'Pagado').reduce((acc, inv) => acc + inv.monto, 0);
+    const totalPendiente = invoices.filter(inv => inv.estado === 'Pendiente').reduce((acc, inv) => acc + inv.monto, 0);
+    const totalVencido = invoices.filter(inv => inv.estado === 'Vencido').reduce((acc, inv) => acc + inv.monto, 0);
+    return { totalCotizado, totalFacturado, totalRecaudado, totalPendiente, totalVencido };
+  }, [generatedQuotes, invoices]);
+
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden font-sans">
       
@@ -1015,6 +1202,18 @@ export default function App() {
           </div>
           
           <nav className="space-y-1">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-left text-xs sm:text-sm font-medium ${
+                activeTab === 'home'
+                  ? 'text-white bg-slate-800 font-bold'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Home className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Home / Portal</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('schema')}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-left text-xs sm:text-sm font-medium ${
@@ -1125,6 +1324,16 @@ export default function App() {
             
             <nav className="space-y-1">
               <button
+                onClick={() => { setActiveTab('home'); setIsMobileSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-left text-sm font-medium ${
+                  activeTab === 'home' ? 'text-white bg-slate-800 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Home className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>Home / Portal</span>
+              </button>
+
+              <button
                 onClick={() => { setActiveTab('schema'); setIsMobileSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-left text-sm font-medium ${
                   activeTab === 'schema' ? 'text-white bg-slate-800' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -1220,8 +1429,10 @@ export default function App() {
               <span className="text-slate-500 hidden sm:inline">Sistema Integral de Operaciones</span>
               <span className="text-slate-300 hidden sm:inline">/</span>
               <span className="font-semibold text-slate-800">
+                {activeTab === 'home' && "Dashboard Principal / Portal Inteligente"}
                 {activeTab === 'schema' && "Panel de Control - Esquema de Base de Datos"}
                 {activeTab === 'equipment' && "Gestión de Equipos y Vigencias"}
+                {activeTab === 'field_workflow' && "Levantamiento de Campo NOM-011-STPS"}
                 {activeTab === 'audit' && "Bitácora de Auditoría (Audit Trail)"}
                 {activeTab === 'regulation' && "Marco de Conformidad Legal"}
                 {activeTab === 'rbac' && "Control de Acceso de Usuarios (RBAC)"}
@@ -1337,6 +1548,834 @@ export default function App() {
           <div className="bg-white p-5 md:p-6 rounded-xl border border-slate-200 shadow-sm min-h-[500px]">
             <AnimatePresence mode="wait">
               
+              {/* TAB 0: HOME / PORTAL PRINCIPAL */}
+              {activeTab === 'home' && (
+                <motion.div
+                  key="home"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6"
+                >
+                  {/* Banner de Bienvenida con Contexto */}
+                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 p-6 rounded-2xl text-white shadow-md border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold font-mono border border-emerald-500/30 rounded">
+                          SISTEMA ACTIVO (RBAC)
+                        </span>
+                        <span className="text-slate-400 text-xs">•</span>
+                        <span className="text-xs text-slate-300 font-semibold font-mono">ASP/ECH&S v2.4</span>
+                      </div>
+                      <h2 className="text-xl md:text-2xl font-bold tracking-tight">
+                        Bienvenido de vuelta, <span className="text-emerald-400">{activePersona.nombre_completo}</span>
+                      </h2>
+                      <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+                        Estás simulando el perfil de <strong className="text-white">{activePersona.puesto}</strong>. El portal ha personalizado tus accesos rápidos y controles según tu rol <code className="bg-slate-800 text-emerald-400 px-1 py-0.5 rounded font-mono text-[10px]">{activePersona.id_rol}</code> conforme a la directiva de seguridad.
+                      </p>
+                    </div>
+                    <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 shrink-0 text-right min-w-[160px] hidden sm:block">
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fecha de Operación</div>
+                      <div className="text-sm font-bold text-white font-mono">{new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                      <div className="text-[10px] text-emerald-400 font-semibold mt-1 flex items-center justify-end gap-1 font-mono">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Zona Horaria: UTC-6 (MX)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ----------------- VISTA 1: DIRECTOR (DIR_OPER) ----------------- */}
+                  {activePersona.id_rol === 'DIR_OPER' && (
+                    <div className="space-y-6">
+                      {/* Subtítulo Sección */}
+                      <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                        <div>
+                          <h3 className="text-md font-bold text-slate-800 flex items-center gap-1.5">
+                            <TrendingUp className="text-emerald-600 w-4 h-4" />
+                            Mando Directivo y Control Operativo Financiero
+                          </h3>
+                          <p className="text-xs text-slate-500">Métricas consolidadas de facturación, contratos y alertas críticas de calibraciones.</p>
+                        </div>
+                        <span className="bg-blue-50 text-blue-700 text-[10px] px-2 py-1 rounded-md font-mono font-bold border border-blue-200">
+                          DIRECTOR PORTAL
+                        </span>
+                      </div>
+
+                      {/* Tarjetas Financieras */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Cotizado (Mes)</div>
+                            <div className="text-xl md:text-2xl font-bold text-slate-900 font-mono">
+                              {financials.totalCotizado.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-1">Servicios ambientales prospectados</div>
+                          </div>
+                          <div className="bg-blue-100 text-blue-700 p-3 rounded-lg">
+                            <Calculator className="w-5 h-5" />
+                          </div>
+                        </div>
+
+                        <div className="bg-emerald-50/50 border border-emerald-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Total Facturado</div>
+                            <div className="text-xl md:text-2xl font-bold text-emerald-800 font-mono">
+                              {financials.totalFacturado.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
+                            </div>
+                            <div className="text-[10px] text-emerald-600 mt-1">Emitido y registrado fiscalmente</div>
+                          </div>
+                          <div className="bg-emerald-100 text-emerald-700 p-3 rounded-lg">
+                            <DollarSign className="w-5 h-5" />
+                          </div>
+                        </div>
+
+                        <div className="bg-green-50/50 border border-green-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-1">Recaudado / Cobrado</div>
+                            <div className="text-xl md:text-2xl font-bold text-green-800 font-mono">
+                              {financials.totalRecaudado.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
+                            </div>
+                            <div className="text-[10px] text-green-600 mt-1">Liquidez en banco (Flujo activo)</div>
+                          </div>
+                          <div className="bg-green-100 text-green-700 p-3 rounded-lg">
+                            <CheckCircle className="w-5 h-5" />
+                          </div>
+                        </div>
+
+                        <div className="bg-amber-50/50 border border-amber-200 p-5 rounded-xl shadow-sm flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Pendiente por Cobrar</div>
+                            <div className="text-xl md:text-2xl font-bold text-amber-800 font-mono">
+                              {financials.totalPendiente.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
+                            </div>
+                            <div className="text-[10px] text-amber-600 mt-1">Cuentas por cobrar activas</div>
+                          </div>
+                          <div className="bg-amber-100 text-amber-700 p-3 rounded-lg">
+                            <Clock className="w-5 h-5" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Fila Central: Gráfica Financiera Simulada y Alertas de Calibración */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* Gráfica Financiera Simulada */}
+                        <div className="lg:col-span-2 bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4">
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Distribución del Flujo de Efectivo</h4>
+                          
+                          <div className="space-y-4 pt-2">
+                            {/* Bar 1: Cotizado */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs font-semibold">
+                                <span className="text-slate-600">Total Cotizado</span>
+                                <span className="font-mono text-slate-800">{financials.totalCotizado.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
+                                <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: '100%' }}></div>
+                              </div>
+                            </div>
+
+                            {/* Bar 2: Facturado */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs font-semibold">
+                                <span className="text-slate-600">Total Facturado</span>
+                                <span className="font-mono text-slate-800">{financials.totalFacturado.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
+                                <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (financials.totalFacturado / (financials.totalCotizado || 1)) * 100)}%` }}></div>
+                              </div>
+                            </div>
+
+                            {/* Bar 3: Recaudado */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs font-semibold">
+                                <span className="text-slate-600">Cobrado / Liquidado</span>
+                                <span className="font-mono text-emerald-700">{financials.totalRecaudado.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
+                                <div className="bg-green-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (financials.totalRecaudado / (financials.totalCotizado || 1)) * 100)}%` }}></div>
+                              </div>
+                            </div>
+
+                            {/* Bar 4: Pendiente */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs font-semibold">
+                                <span className="text-slate-600">Pendiente de Pago</span>
+                                <span className="font-mono text-amber-700">{financials.totalPendiente.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
+                                <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (financials.totalPendiente / (financials.totalCotizado || 1)) * 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex items-center justify-between text-xs text-slate-500 mt-4">
+                            <span>Eficiencia de Cobro: <strong>{Math.round((financials.totalRecaudado / (financials.totalFacturado || 1)) * 100)}%</strong></span>
+                            <span>IVA Recaudado: <strong>{(financials.totalRecaudado * 0.16).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Alertas Críticas de Calibración */}
+                        <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm flex flex-col justify-between space-y-4">
+                          <div>
+                            <div className="flex justify-between items-center">
+                              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Alertas de Calibración</h4>
+                              {stats.vencidos > 0 ? (
+                                <span className="bg-red-100 text-red-800 text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse">
+                                  CRÍTICO
+                                </span>
+                              ) : (
+                                <span className="bg-green-100 text-green-800 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                  OK
+                                </span>
+                              )}
+                            </div>
+
+                            {/* List of Expired or Expiring soon */}
+                            <div className="mt-3 space-y-3 max-h-[180px] overflow-y-auto pr-1">
+                              {instruments.filter(i => {
+                                // check certificates
+                                const latestCert = certificates.filter(c => c.id_instrumento === i.id_instrumento && c.estado_aprobacion === 'Aprobado')[0];
+                                if (!latestCert) return true; // vencido / sin cert
+                                return new Date(latestCert.fecha_vencimiento) < new Date();
+                              }).map(i => (
+                                <div key={i.id_instrumento} className="flex gap-2.5 p-2 bg-red-50 border border-red-100 rounded-lg text-xs">
+                                  <AlertTriangle className="text-red-500 w-4 h-4 shrink-0 mt-0.5" />
+                                  <div className="space-y-0.5">
+                                    <div className="font-bold text-slate-900">{i.codigo_interno} — {i.nombre}</div>
+                                    <div className="text-[10px] text-slate-500 font-semibold uppercase font-mono">Ubicación: {i.ubicacion}</div>
+                                    <div className="text-[10px] text-red-700 font-bold">CALIBRACIÓN EXPIRADA / REQUERIDA</div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {instruments.filter(i => {
+                                // check certificates
+                                const latestCert = certificates.filter(c => c.id_instrumento === i.id_instrumento && c.estado_aprobacion === 'Aprobado')[0];
+                                if (!latestCert) return false;
+                                const diff = new Date(latestCert.fecha_vencimiento).getTime() - Date.now();
+                                const days = Math.ceil(diff / (1000 * 3600 * 24));
+                                return days >= 0 && days <= 30;
+                              }).map(i => (
+                                <div key={i.id_instrumento} className="flex gap-2.5 p-2 bg-amber-50 border border-amber-100 rounded-lg text-xs">
+                                  <AlertCircle className="text-amber-500 w-4 h-4 shrink-0 mt-0.5" />
+                                  <div className="space-y-0.5">
+                                    <div className="font-bold text-slate-900">{i.codigo_interno} — {i.nombre}</div>
+                                    <div className="text-[10px] text-slate-500 font-semibold font-mono">Vence en menos de 30 días</div>
+                                    <div className="text-[10px] text-amber-700 font-semibold">Agendar calibración externa</div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {stats.vencidos === 0 && (
+                                <div className="text-center py-8 text-xs text-slate-400 font-semibold space-y-2">
+                                  <CheckCircle className="w-8 h-8 text-green-500 mx-auto" />
+                                  <p>No hay equipos con vigencias expiradas en el inventario.</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => setActiveTab('equipment')}
+                            className="w-full py-2 bg-slate-950 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold text-center transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <span>Ir a Gestión de Equipos</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ----------------- VISTA 2: COORDINADOR (COORD_OPER) ----------------- */}
+                  {activePersona.id_rol === 'COORD_OPER' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Calendario y Programación */}
+                      <div className="lg:col-span-2 bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4">
+                        <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Planificación de Servicios (Julio 2026)</h4>
+                            <p className="text-[11px] text-slate-400 mt-0.5">Visualización del calendario operativo de levantamientos y mediciones periciales.</p>
+                          </div>
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-mono font-bold border border-blue-200">
+                            COORD PORTAL
+                          </span>
+                        </div>
+
+                        {/* Calendario Grid Mockup */}
+                        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 pb-1">
+                          <span>DO</span><span>LU</span><span>MA</span><span>MI</span><span>JU</span><span>VI</span><span>SA</span>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1.5">
+                          {/* Blank days for start of month - July 2026 starts on Wednesday */}
+                          <div className="aspect-video bg-slate-50/50 rounded flex items-center justify-center text-slate-300">28</div>
+                          <div className="aspect-video bg-slate-50/50 rounded flex items-center justify-center text-slate-300">29</div>
+                          <div className="aspect-video bg-slate-50/50 rounded flex items-center justify-center text-slate-300 font-semibold">30</div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>1</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>2</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>3</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>4</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>5</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>6</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>7</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>8</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>9</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>10</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mx-auto"></span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>11</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>12</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>13</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>14</span>
+                          </div>
+                          {/* Active current day (July 15) */}
+                          <div className="aspect-video bg-blue-50 border border-blue-300 rounded flex flex-col justify-between p-1 text-blue-700 font-bold ring-2 ring-blue-500/20 text-[10px]">
+                            <span>15</span>
+                            <span className="bg-blue-500 text-[6.5px] leading-tight text-white px-1 rounded truncate">Vidriera</span>
+                          </div>
+                          {/* July 16 */}
+                          <div className="aspect-video bg-emerald-50 border border-emerald-300 rounded flex flex-col justify-between p-1 text-slate-700 text-[10px]">
+                            <span>16</span>
+                            <span className={`text-[6.5px] leading-tight text-white px-1 rounded truncate ${
+                              scheduledServices.find(s => s.id === "SERV-102")?.estado === "Asignado" ? "bg-blue-500" : "bg-amber-500"
+                            }`}>
+                              Química
+                            </span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>17</span>
+                          </div>
+                          {/* July 18 */}
+                          <div className="aspect-video bg-slate-50 border border-slate-200 rounded flex flex-col justify-between p-1 text-slate-700 text-[10px]">
+                            <span>18</span>
+                            <span className={`text-[6.5px] leading-tight text-white px-1 rounded truncate ${
+                              scheduledServices.find(s => s.id === "SERV-103")?.estado === "Asignado" ? "bg-blue-500" : "bg-slate-400"
+                            }`}>
+                              Lácteos
+                            </span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>19</span>
+                          </div>
+                          {/* July 20 */}
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 text-[10px]">
+                            <span>20</span>
+                            <span className="bg-blue-500 text-[6.5px] leading-tight text-white px-1 rounded truncate">Monterrey</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>21</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>22</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>23</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>24</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>25</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>26</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>27</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>28</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>29</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>30</span>
+                          </div>
+                          <div className="aspect-video bg-slate-50 border border-slate-100 rounded flex flex-col justify-between p-1 text-slate-700 font-semibold text-[10px]">
+                            <span>31</span>
+                          </div>
+                        </div>
+
+                        {/* List of Scheduled Services */}
+                        <div className="space-y-2 pt-2">
+                          <h5 className="text-[10px] font-bold text-slate-500 uppercase">Detalle del Estatus de Servicios</h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {scheduledServices.map(s => (
+                              <div key={s.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex flex-col justify-between">
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-mono font-bold text-slate-500">{s.id}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                      s.estado === "Asignado" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-amber-100 text-amber-800 border border-amber-200 animate-pulse"
+                                    }`}>
+                                      {s.estado}
+                                    </span>
+                                  </div>
+                                  <div className="font-bold text-slate-800">{s.cliente}</div>
+                                  <div className="text-slate-500 text-[11px]">{s.servicio}</div>
+                                </div>
+                                <div className="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-500">
+                                  <span>Fecha: <strong>{s.fecha}</strong></span>
+                                  <span>Téc: <strong>{s.tecnico}</strong> ({s.instrumento})</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Panel de Asignación con Verificación NMX-17025 */}
+                      <div className="space-y-6">
+                        
+                        {/* Asignador de Recursos */}
+                        <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4">
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Asignación Tecnológica NMX-17025</h4>
+                          
+                          <form onSubmit={handleAssignService} className="space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">1. Seleccionar Servicio</label>
+                              <select 
+                                value={selectedServAssign}
+                                onChange={(e) => setSelectedServAssign(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                              >
+                                <option value="">-- Seleccionar --</option>
+                                {scheduledServices.filter(s => s.estado === "Pendiente Asignación").map(s => (
+                                  <option key={s.id} value={s.id}>{s.id} - {s.cliente} ({s.servicio})</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">2. Técnico Laboratorista Homologado</label>
+                              <select 
+                                value={selectedTechAssign}
+                                onChange={(e) => setSelectedTechAssign(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                              >
+                                <option value="">-- Seleccionar --</option>
+                                {usuarios.filter(u => u.id_rol === 'LAB_TECH').map(u => (
+                                  <option key={u.id_usuario} value={u.id_usuario}>{u.nombre_completo}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">3. Instrumento Operativo</label>
+                              <select 
+                                value={selectedInstAssign}
+                                onChange={(e) => setSelectedInstAssign(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                              >
+                                <option value="">-- Seleccionar --</option>
+                                {instruments.map(i => (
+                                  <option key={i.id_instrumento} value={i.id_instrumento}>{i.codigo_interno} - {i.nombre} ({i.estado_operativo})</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* NMX-17025 Compliance Live Validation Check */}
+                            {selectedInstAssign && (
+                              <div className="p-3 rounded-lg text-xs border transition-colors">
+                                {(() => {
+                                  const selectedInst = instruments.find(i => i.id_instrumento === selectedInstAssign);
+                                  const approvedCerts = certificates.filter(c => c.id_instrumento === selectedInstAssign && c.estado_aprobacion === 'Aprobado');
+                                  const hasVigente = approvedCerts.some(c => new Date(c.fecha_vencimiento) > new Date());
+                                  
+                                  if (hasVigente) {
+                                    return (
+                                      <div className="space-y-1 text-emerald-800 bg-emerald-50/50 border-emerald-100">
+                                        <div className="font-bold flex items-center gap-1">
+                                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                          <span>NMX-17025 CONFORME</span>
+                                        </div>
+                                        <p className="text-[10px] text-emerald-600 leading-relaxed">
+                                          El equipo seleccionado posee calibración vigente aprobada. Trazabilidad metrológica validada.
+                                        </p>
+                                      </div>
+                                    );
+                                  } else {
+                                    return (
+                                      <div className="space-y-1 text-red-800 bg-red-50/50 border-red-100">
+                                        <div className="font-bold flex items-center gap-1">
+                                          <XCircle className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+                                          <span>BLOQUEO DE CALIDAD</span>
+                                        </div>
+                                        <p className="text-[10px] text-red-600 leading-relaxed">
+                                          <strong>BLOQUEO CRÍTICO:</strong> Este instrumento no tiene certificado de calibración vigente aprobado ante la EMA. No puede ser asignado a servicios oficiales.
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            )}
+
+                            <button
+                              type="submit"
+                              disabled={(() => {
+                                if (!selectedInstAssign || !selectedTechAssign || !selectedServAssign) return true;
+                                const approvedCerts = certificates.filter(c => c.id_instrumento === selectedInstAssign && c.estado_aprobacion === 'Aprobado');
+                                return !approvedCerts.some(c => new Date(c.fecha_vencimiento) > new Date());
+                              })()}
+                              className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                            >
+                              Confirmar y Asignar Recursos
+                            </button>
+                          </form>
+                        </div>
+
+                        {/* Reports Queue Alert */}
+                        <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-xl shadow-sm space-y-3 flex flex-col justify-between">
+                          <div className="space-y-1.5">
+                            <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1">
+                              <FileCheck className="w-4 h-4 text-emerald-600" />
+                              Cola de Validación de Informes
+                            </h4>
+                            <p className="text-[11px] text-emerald-700 leading-relaxed">
+                              Tienes <strong>{submittedReports.filter(r => r.estado === 'Pendiente').length} informes</strong> pendientes de firma y validación oficial en la bitácora de campo.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setActiveTab('field_workflow')}
+                            className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold text-center transition-colors"
+                          >
+                            Ir a Validación de Reportes
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ----------------- VISTA 3: TÉCNICO (LAB_TECH) ----------------- */}
+                  {activePersona.id_rol === 'LAB_TECH' && (
+                    <div className="flex justify-center">
+                      {/* Ruggedized Mobile Interface Frame */}
+                      <div className="w-full max-w-md bg-slate-900 text-slate-100 rounded-3xl p-5 border-4 border-slate-700 shadow-2xl relative overflow-hidden space-y-6">
+                        
+                        {/* Speaker & Sensor bar */}
+                        <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 w-28 h-4 bg-slate-950 rounded-full flex items-center justify-center gap-1">
+                          <div className="w-1.5 h-1.5 bg-slate-800 rounded-full"></div>
+                          <div className="w-12 h-1 bg-slate-800 rounded-full"></div>
+                        </div>
+
+                        {/* Mobile Screen Header */}
+                        <div className="flex justify-between items-center pt-2 text-[10px] font-bold font-mono text-slate-400">
+                          <div className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                            <span>LTE / GPS ACTIVADO</span>
+                          </div>
+                          <div>{new Date().toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'})}</div>
+                        </div>
+
+                        {/* Mobile Body Content */}
+                        <div className="space-y-5">
+                          
+                          {/* Control de Jornada */}
+                          <div className="bg-slate-800 rounded-2xl p-4 border border-slate-700 space-y-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Control de Jornada Laboral</h4>
+                                <p className="text-[10px] text-slate-500">Registro oficial de horas y geolocalización en sitio.</p>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${
+                                jornadaIniciada ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"
+                              }`}>
+                                {jornadaIniciada ? "JORNADA ACTIVA" : "SIN INICIAR"}
+                              </span>
+                            </div>
+
+                            {jornadaIniciada && (
+                              <div className="bg-slate-950 p-3 rounded-lg text-[11px] font-mono border border-slate-800 space-y-1">
+                                <div className="text-emerald-400 font-bold">● REGISTRO DE TRABAJO EN CAMPO</div>
+                                <div className="text-slate-400">Hora de Inicio: <span className="text-white">{jornadaStartTime}</span></div>
+                                <div className="text-slate-400">GPS: <span className="text-slate-300">{jornadaGPS}</span></div>
+                                <div className="text-slate-400">Estado: <span className="text-emerald-400 animate-pulse">Transmitiendo telemetría en tiempo real</span></div>
+                              </div>
+                            )}
+
+                            <button
+                              onClick={handleToggleJornada}
+                              className={`w-full py-3 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 ${
+                                jornadaIniciada 
+                                  ? "bg-red-600 hover:bg-red-700 text-white" 
+                                  : "bg-emerald-600 hover:bg-emerald-700 text-white animate-bounce"
+                              }`}
+                            >
+                              <Clock className="w-4 h-4 shrink-0" />
+                              <span>{jornadaIniciada ? "Detener Jornada de Campo" : "Iniciar Jornada en Campo"}</span>
+                            </button>
+                          </div>
+
+                          {/* Mis Visitas Programadas */}
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Mis Visitas Programadas</h4>
+                            
+                            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                              {scheduledServices.filter(s => s.tecnico === "Lucía Juárez").map(s => (
+                                <div key={s.id} className="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 text-xs flex flex-col justify-between gap-3">
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between items-center text-[10px] font-mono">
+                                      <span className="text-emerald-400 font-bold">{s.id}</span>
+                                      <span className="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded uppercase font-semibold text-[8px]">{s.estado}</span>
+                                    </div>
+                                    <div className="font-bold text-white text-sm">{s.cliente}</div>
+                                    <div className="text-slate-400 font-medium text-[11px]">{s.servicio}</div>
+                                    <div className="text-slate-500 text-[10px] flex items-center gap-1">
+                                      <MapPin className="w-3 h-3 text-red-400 shrink-0" />
+                                      <span>Inst: <strong>{s.instrumento}</strong></span>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => {
+                                      if (!jornadaIniciada) {
+                                        alert("Por favor, inicia tu jornada laboral primero con el botón de arriba.");
+                                        return;
+                                      }
+                                      // pre-populate form states
+                                      setFieldArea(`${s.cliente} - Área de Producción`);
+                                      setFieldSonometerId(s.instrumento);
+                                      setFieldTechName("Lucía Juárez");
+                                      setFieldCheckinCoords("25.4382, -100.9734 (Saltillo)");
+                                      setFieldCheckinTime(new Date().toLocaleTimeString('es-MX'));
+                                      setFieldStep(2); // Jump to EPP check directly!
+                                      setActiveTab('field_workflow');
+                                    }}
+                                    className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 font-bold rounded-xl text-center transition-colors text-[11px] flex items-center justify-center gap-1.5"
+                                  >
+                                    <span>Iniciar Levantamiento</span>
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ----------------- VISTA 4: ADMIN / VENTAS (ADMIN_VENTAS) ----------------- */}
+                  {activePersona.id_rol === 'ADMIN_VENTAS' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      
+                      {/* Cotizador Automatizado */}
+                      <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4">
+                        <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Cotizador Automatizado de Servicios</h4>
+                            <p className="text-[11px] text-slate-400 mt-0.5">Calcula precios al instante basados en cantidad de puntos y distancia de traslado.</p>
+                          </div>
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-mono font-bold border border-blue-200">
+                            SALES PORTAL
+                          </span>
+                        </div>
+
+                        <form onSubmit={handleGenerateQuote} className="space-y-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre del Cliente / Planta</label>
+                            <input 
+                              type="text" 
+                              required
+                              value={quoteClient}
+                              onChange={(e) => setQuoteClient(e.target.value)}
+                              placeholder="Ej. Vidriera Monterrey S.A."
+                              className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">Norma Aplicable</label>
+                              <select 
+                                value={quoteType}
+                                onChange={(e) => setQuoteType(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs"
+                              >
+                                <option value="NOM-011-STPS">NOM-011-STPS (Ruido)</option>
+                                <option value="NOM-015-STPS">NOM-015-STPS (Térmicas)</option>
+                                <option value="NOM-025-STPS">NOM-025-STPS (Iluminación)</option>
+                                <option value="NMX-R-046">NMX-R-046 (Perimetral)</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">Puntos de Medición</label>
+                              <input 
+                                type="number" 
+                                min="1" 
+                                max="100"
+                                value={quotePoints}
+                                onChange={(e) => setQuotePoints(Number(e.target.value))}
+                                className="w-full bg-slate-50 border border-slate-200 p-2 rounded-lg text-xs font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase flex justify-between">
+                              <span>Distancia de Traslado (KM)</span>
+                              <span className="font-mono text-emerald-600">{quoteDistance} km</span>
+                            </label>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="300" 
+                              step="5"
+                              value={quoteDistance}
+                              onChange={(e) => setQuoteDistance(Number(e.target.value))}
+                              className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                            />
+                          </div>
+
+                          {/* Dynamic Calculator breakdown */}
+                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">
+                            <div className="font-bold text-slate-700 uppercase text-[10px]">Desglose de Costo Estimado</div>
+                            <div className="flex justify-between text-slate-500">
+                              <span>Base del Servicio:</span>
+                              <span className="font-mono">
+                                {(quoteType === "NOM-011-STPS" ? 3500 : quoteType === "NOM-015-STPS" ? 4200 : quoteType === "NOM-025-STPS" ? 3000 : 5500).toLocaleString('es-MX', {style: 'currency', currency: 'MXN'})}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-slate-500">
+                              <span>Puntos ({quotePoints} x {(quoteType === "NOM-011-STPS" ? 1800 : quoteType === "NOM-015-STPS" ? 2200 : quoteType === "NOM-025-STPS" ? 1500 : 0)}):</span>
+                              <span className="font-mono">
+                                {((quoteType === "NOM-011-STPS" ? 1800 : quoteType === "NOM-015-STPS" ? 2200 : quoteType === "NOM-025-STPS" ? 1500 : 0) * quotePoints).toLocaleString('es-MX', {style: 'currency', currency: 'MXN'})}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-slate-500">
+                              <span>Viáticos de Traslado (KM x $12.50):</span>
+                              <span className="font-mono">
+                                {(quoteDistance * 12.5).toLocaleString('es-MX', {style: 'currency', currency: 'MXN'})}
+                              </span>
+                            </div>
+                            <div className="pt-1.5 border-t border-slate-200 flex justify-between font-bold text-slate-900 text-sm">
+                              <span>Total con IVA (16%):</span>
+                              <span className="font-mono text-emerald-600 font-bold">
+                                {(() => {
+                                  const base = quoteType === "NOM-011-STPS" ? 3500 : quoteType === "NOM-015-STPS" ? 4200 : quoteType === "NOM-025-STPS" ? 3000 : 5500;
+                                  const points = (quoteType === "NOM-011-STPS" ? 1800 : quoteType === "NOM-015-STPS" ? 2200 : quoteType === "NOM-025-STPS" ? 1500 : 0) * quotePoints;
+                                  const viaticos = quoteDistance * 12.5;
+                                  return Math.round((base + points + viaticos) * 1.16).toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
+                                })()}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full py-2 bg-slate-950 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            <span>Registrar y Emitir Cotización</span>
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Control de Facturas Pendientes */}
+                      <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4">
+                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Control de Facturas Pendientes</h4>
+                        
+                        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                          {invoices.map(inv => (
+                            <div key={inv.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex justify-between items-center">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-slate-500">{inv.id}</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase ${
+                                    inv.estado === "Pagado" ? "bg-green-100 text-green-800 border border-green-200" : inv.estado === "Vencido" ? "bg-red-100 text-red-800 border border-red-200" : "bg-amber-100 text-amber-800 border border-amber-200"
+                                  }`}>
+                                    {inv.estado}
+                                  </span>
+                                </div>
+                                <div className="font-bold text-slate-800">{inv.cliente}</div>
+                                <div className="text-[10px] text-slate-400">Vencimiento: {inv.vencimiento}</div>
+                              </div>
+
+                              <div className="text-right space-y-2 shrink-0">
+                                <div className="font-mono font-bold text-slate-900 text-sm">{inv.monto.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'})}</div>
+                                <div className="flex gap-1">
+                                  {inv.estado !== "Pagado" && (
+                                    <button
+                                      onClick={() => handleToggleInvoiceStatus(inv.id, "Pagado")}
+                                      className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-[9px] font-bold transition-colors"
+                                    >
+                                      Cobrar
+                                    </button>
+                                  )}
+                                  {inv.estado === "Pendiente" && (
+                                    <button
+                                      onClick={() => handleToggleInvoiceStatus(inv.id, "Vencido")}
+                                      className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[9px] font-bold transition-colors"
+                                    >
+                                      Vencer
+                                    </button>
+                                  )}
+                                  {inv.estado === "Vencido" && (
+                                    <button
+                                      onClick={() => handleToggleInvoiceStatus(inv.id, "Pendiente")}
+                                      className="px-2 py-1 bg-slate-600 hover:bg-slate-700 text-white rounded text-[9px] font-bold transition-colors"
+                                    >
+                                      Prorrogar
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* Leyenda y Políticas de Calidad */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div className="flex gap-2 text-xs text-slate-500">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-slate-700">Trazabilidad de Procesos y Conectividad Homologada</p>
+                        <p className="text-[11px] leading-relaxed">
+                          La asignación de equipos de medición verifica automáticamente la calibración aprobada ante la EMA (NMX-17025-IMNC-2018), bloqueando levantamientos de campo no trazables.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {/* TAB 1: BASE DE DATOS (SQL) */}
               {activeTab === 'schema' && (
                 <motion.div

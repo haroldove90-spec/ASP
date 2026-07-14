@@ -1,5 +1,5 @@
 {
-  "name": "ASP-EcHS Portal de Operaciones",
+  "name": "ASP/ECH&S",
   "description": "Sistema integral de gestión de operaciones, trazabilidad NMX-17025, control de calibración de equipos y simulador RBAC de base de datos.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
