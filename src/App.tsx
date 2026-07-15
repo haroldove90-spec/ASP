@@ -61,8 +61,12 @@ import DirectorViews from './components/DirectorViews';
 import CoordinatorViews from './components/CoordinatorViews';
 import TechnicianViews from './components/TechnicianViews';
 import AdminViews from './components/AdminViews';
+import HomeSelection from './components/HomeSelection';
 
 export default function App() {
+  // Session / Active Role state for dynamic landing page
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+
   // Tab State
   const [activeTab, setActiveTab] = useState<string>('dir_dashboard');
 
@@ -1170,6 +1174,10 @@ export default function App() {
     return getSidebarItems(activePersona.id_role || activePersona.id_rol);
   }, [activePersona]);
 
+  if (selectedRole === null) {
+    return <HomeSelection onSelectRole={(roleId, personaId) => { setSelectedRole(roleId); setCurrentPersonaId(personaId); }} />;
+  }
+
   return (
     <div className="flex h-screen w-full bg-slate-100 text-slate-800 overflow-hidden font-sans">
       
@@ -1303,35 +1311,47 @@ export default function App() {
           </div>
 
           {/* SIMULADOR DE PERSONA / CAMBIO DE ROL */}
-          <div className="flex items-center gap-3 self-stretch sm:self-auto bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-              <div className="text-left">
-                <div className="text-[10px] font-mono uppercase font-bold text-slate-400 leading-none">Simulador de Roles (RBAC)</div>
-                <div className="text-[11px] font-semibold text-slate-800 leading-tight">{activePersona.nombre_completo}</div>
-              </div>
-            </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-stretch sm:self-auto">
+            {/* Volver a Selección de Roles / Cerrar Sesión */}
+            <button
+              onClick={() => setSelectedRole(null)}
+              className="flex items-center justify-center gap-2 px-3.5 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-sm shrink-0 cursor-pointer hover:shadow-md"
+              title="Volver a la Pantalla de Inicio de Roles"
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span>Cambiar de Rol</span>
+            </button>
 
-            <div className="relative">
-              <select
-                id="role-switcher-select"
-                value={currentPersonaId}
-                onChange={(e) => setCurrentPersonaId(e.target.value)}
-                className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 px-3 py-1 pr-8 appearance-none focus:outline-none focus:ring-1 focus:ring-[#85AA1C] cursor-pointer font-sans"
-              >
-                {usuarios.map(u => {
-                  let roleLabel = "Director";
-                  if (u.id_role === 'LAB_SUP' || u.id_rol === 'LAB_SUP') roleLabel = "Coordinador";
-                  if (u.id_role === 'LAB_TECH' || u.id_rol === 'LAB_TECH') roleLabel = "Técnico";
-                  if (u.id_role === 'SYS_ADMIN' || u.id_rol === 'SYS_ADMIN') roleLabel = "Ventas/Admin";
-                  return (
-                    <option key={u.id_usuario} value={u.id_usuario}>
-                      {roleLabel}: {u.nombre_completo.split(' ')[0]}
-                    </option>
-                  );
-                })}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-2 pointer-events-none" />
+            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                <div className="text-left">
+                  <div className="text-[10px] font-mono uppercase font-bold text-slate-400 leading-none">Simulador de Roles (RBAC)</div>
+                  <div className="text-[11px] font-semibold text-slate-800 leading-tight">{activePersona.nombre_completo}</div>
+                </div>
+              </div>
+
+              <div className="relative flex items-center">
+                <select
+                  id="role-switcher-select"
+                  value={currentPersonaId}
+                  onChange={(e) => setCurrentPersonaId(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 px-3 py-1 pr-8 appearance-none focus:outline-none focus:ring-1 focus:ring-[#85AA1C] cursor-pointer font-sans"
+                >
+                  {usuarios.map(u => {
+                    let roleLabel = "Director";
+                    if (u.id_role === 'LAB_SUP' || u.id_rol === 'LAB_SUP') roleLabel = "Coordinador";
+                    if (u.id_role === 'LAB_TECH' || u.id_rol === 'LAB_TECH') roleLabel = "Técnico";
+                    if (u.id_role === 'SYS_ADMIN' || u.id_rol === 'SYS_ADMIN') roleLabel = "Ventas/Admin";
+                    return (
+                      <option key={u.id_usuario} value={u.id_usuario}>
+                        {roleLabel}: {u.nombre_completo.split(' ')[0]}
+                      </option>
+                    );
+                  })}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-2 pointer-events-none" />
+              </div>
             </div>
           </div>
         </header>
