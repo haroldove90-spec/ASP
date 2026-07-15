@@ -2,6 +2,8 @@ import express, { Request, Response } from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import crypto from "crypto";
+import apiRoutes from "./src/routes";
+
 
 // In-memory relational database tables (simulating PostgreSQL with strict schemas)
 interface Cotizacion {
@@ -280,6 +282,10 @@ async function startServer() {
     console.log(`[HTTP] ${req.method} ${req.url}`);
     next();
   });
+
+  // Mount production-grade RBAC JWT-Protected API routes under /api/v1
+  app.use("/api/v1", apiRoutes);
+
 
   // Seed initial audit trail blockchain log
   addAuditTrailEntry(
