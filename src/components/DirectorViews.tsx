@@ -16,7 +16,17 @@ import {
   UserCheck, 
   Shield, 
   FileText,
-  Info
+  Info,
+  MapPin,
+  Calendar,
+  Users,
+  Briefcase,
+  Layers,
+  Map,
+  Sparkles,
+  Clock,
+  Compass,
+  FileCheck
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion, AuditLog } from '../initial_data';
@@ -77,6 +87,9 @@ interface DirectorViewsProps {
   INITIAL_PERMISOS: any[];
   ROLE_PERMISSIONS_MAP: Record<string, string[]>;
   DB_SCHEMA_SQL: string;
+  scheduledServices: any[];
+  submittedReports: any[];
+  purchaseOrders: any[];
 }
 
 export default function DirectorViews(props: DirectorViewsProps) {
@@ -123,10 +136,22 @@ export default function DirectorViews(props: DirectorViewsProps) {
     INITIAL_ROLES,
     INITIAL_PERMISOS,
     ROLE_PERMISSIONS_MAP,
-    DB_SCHEMA_SQL
+    DB_SCHEMA_SQL,
+    scheduledServices,
+    submittedReports,
+    purchaseOrders
   } = props;
 
   const [activeFinTab, setActiveFinTab] = useState<'quotes' | 'invoices'>('invoices');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<string>("Todos");
+  const [projectTechFilter, setProjectTechFilter] = useState<string>("Todos");
+  const [selectedLiveServiceForGps, setSelectedLiveServiceForGps] = useState<any>(null);
+
+  const filteredProjects = (scheduledServices || []).filter(proj => {
+    const matchStatus = projectStatusFilter === "Todos" || proj.estado === projectStatusFilter;
+    const matchTech = projectTechFilter === "Todos" || proj.id_tecnico === projectTechFilter;
+    return matchStatus && matchTech;
+  });
 
   const renderWelcomeBanner = (puestoLabel: string) => (
     <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-800 shadow-md relative overflow-hidden">
@@ -818,7 +843,300 @@ export default function DirectorViews(props: DirectorViewsProps) {
         >
           {renderWelcomeBanner("Director General de Operaciones")}
 
-          {/* MONITORES CLAVE */}
+          {/* MONITOREO GEORREFERENCIADO EN TIEMPO REAL */}
+          <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-md space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-1.5">
+                <Compass className="w-5 h-5 text-emerald-400 animate-spin" style={{ animationDuration: '4s' }} />
+                <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-slate-200">Live GPS: Monitoreo Remoto de Campo</h3>
+              </div>
+              <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-bold animate-pulse">
+                Sincronización en Nube Activa
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+              <div className="lg:col-span-4 space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                {submittedReports.length === 0 ? (
+                  <p className="text-xs text-slate-400 font-mono py-4">No hay técnicos en campo activos en este momento.</p>
+                ) : (
+                  submittedReports.map((rep, idx) => {
+                    const coords = rep.payload?.checkin_georreferenciado?.coordenadas || "Lat: 25.6866, Lon: -100.3161";
+                    const isSelected = selectedLiveServiceForGps?.id_reporte === rep.id_reporte;
+
+                    return (
+                      <div 
+                        key={rep.id_reporte}
+                        onClick={() => setSelectedLiveServiceForGps(rep)}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer text-left space-y-1 ${
+                          isSelected 
+                            ? "bg-slate-800 border-emerald-500 shadow" 
+                            : "bg-slate-950/40 border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex justify-between items-center text-[10px] font-mono">
+                          <span className="text-emerald-400 font-bold">{rep.id_reporte}</span>
+                          <span className="text-slate-400">{rep.fecha_reporte || "Hoy"}</span>
+                        </div>
+                        <h4 className="font-bold text-xs text-white truncate">{rep.cliente_nombre || "Cliente Industrial"}</h4>
+                        <div className="flex items-center gap-1.5 text-[9px] text-slate-300 font-mono">
+                          <MapPin className="w-3 h-3 text-red-400 shrink-0" />
+                          <span className="truncate">{coords}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[8.5px] font-mono pt-1.5 border-t border-slate-800/80 text-slate-400">
+                          <span>Téc: {rep.tecnico_nombre || "Técnico"}</span>
+                          <span className="text-emerald-400 font-bold">✓ Check-In OK</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* LIVE MAP SIMULATION PANEL */}
+              <div className="lg:col-span-8 bg-slate-950 rounded-xl border border-slate-800 p-4.5 flex flex-col justify-between relative overflow-hidden min-h-[300px]">
+                {/* SVG mock grid pattern representing dynamic tracking radar */}
+                <div className="absolute inset-0 opacity-15 pointer-events-none">
+                  <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <pattern id="radar-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                        <path d="M 30 0 L 0 0 0 30" fill="none" stroke="emerald" strokeWidth="0.5" />
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#radar-grid)" />
+                    <circle cx="50%" cy="50%" r="80" fill="none" stroke="emerald" strokeWidth="1" strokeDasharray="5,5" />
+                    <circle cx="50%" cy="50%" r="140" fill="none" stroke="emerald" strokeWidth="1" />
+                  </svg>
+                </div>
+
+                {selectedLiveServiceForGps ? (
+                  <>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-mono uppercase bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                          Seguimiento Georreferenciado en Vivo
+                        </span>
+                        <h4 className="text-sm font-bold text-white font-sans mt-1.5">
+                          {selectedLiveServiceForGps.cliente_nombre || "Empresa Industrial"}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          Área: {selectedLiveServiceForGps.payload?.punto_medicion?.area_descripcion || "Taller Mecánico Principal"}
+                        </p>
+                      </div>
+
+                      <div className="text-left md:text-right font-mono text-[10px] bg-slate-900/90 p-2 rounded-lg border border-slate-800 shrink-0">
+                        <div className="text-slate-400">COORDS GPS DEL CHECK-IN:</div>
+                        <div className="text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-red-500 animate-bounce" />
+                          <span>{selectedLiveServiceForGps.payload?.checkin_georreferenciado?.coordenadas || "Lat: 25.7749, Lon: -100.1215"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* INTERACTIVE COMPASS / RADAR DOT IN THE CENTER */}
+                    <div className="relative z-10 my-4 flex flex-col items-center justify-center p-6 space-y-2">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500 animate-ping absolute" />
+                        <div className="w-16 h-16 rounded-full bg-emerald-600/20 border-2 border-emerald-400 flex items-center justify-center relative">
+                          <Compass className="w-8 h-8 text-emerald-400" />
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-[10px] font-mono text-emerald-300 font-bold">DISPOSITIVO EN SITIO: SONÓMETRO ACTIVO</span>
+                        <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+                          Técnico: {selectedLiveServiceForGps.tecnico_nombre || "Técnico Autorizado"} • Conexión Criptográfica Estable
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="relative z-10 border-t border-slate-800/80 pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[10px] font-mono">
+                      <div className="space-y-0.5 text-slate-400">
+                        <div>EPP de Seguridad: <span className="text-emerald-400 font-bold">100% Verificado</span></div>
+                        <div>Firmado por Representante: <span className="text-white font-bold">{selectedLiveServiceForGps.payload?.checkin_georreferenciado?.firma_representante || "Lic. Laura Ortega"}</span></div>
+                      </div>
+                      <div className="text-[9px] text-slate-500 bg-slate-900/60 px-2.5 py-1 rounded border border-slate-800">
+                        Fingerprint: {selectedLiveServiceForGps.xml_hash_sha256?.substring(0, 16) || "SHA256:d89a12b59c2e"}...
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-400 py-16 text-center space-y-2">
+                    <Map className="w-10 h-10 text-slate-700 stroke-1" />
+                    <p className="font-mono text-xs">Seleccione un proyecto de campo a la izquierda para visualizar el monitoreo satelital georreferenciado.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* VISTA CONSOLIDADA DE PROYECTOS */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-5">
+            <div className="border-b border-slate-100 pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5 uppercase font-mono tracking-wide">
+                  <Briefcase className="text-emerald-600 w-4.5 h-4.5" />
+                  Vista Consolidada de Proyectos Agendados
+                </h3>
+                <p className="text-xs text-slate-500">Supervisión corporativa de asignaciones técnicas por estatus de ejecución y técnico responsable.</p>
+              </div>
+
+              {/* CROSS FILTERS */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <div>
+                  <select
+                    value={projectStatusFilter}
+                    onChange={(e) => setProjectStatusFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:outline-none"
+                  >
+                    <option value="Todos">Todos los Estatus</option>
+                    <option value="Asignado">Asignados (Sin Iniciar)</option>
+                    <option value="En Ruta">En Ruta a Planta</option>
+                    <option value="En Ejecución">En Ejecución de Campo</option>
+                    <option value="Completado">Completados / Despachados</option>
+                  </select>
+                </div>
+                <div>
+                  <select
+                    value={projectTechFilter}
+                    onChange={(e) => setProjectTechFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:outline-none"
+                  >
+                    <option value="Todos">Todos los Técnicos</option>
+                    {usuarios.filter(u => u.id_rol === 'LAB_TECH' || (u as any).id_role === 'LAB_TECH').map(t => (
+                      <option key={t.id_usuario} value={t.id_usuario}>{t.nombre_completo}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* PROJECTS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5 max-h-[360px] overflow-y-auto pr-1">
+              {filteredProjects.length === 0 ? (
+                <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 text-slate-400 p-10 rounded-xl text-center font-mono text-xs">
+                  No se encontraron asignaciones con los filtros de estatus y técnicos seleccionados.
+                </div>
+              ) : (
+                filteredProjects.map((proj: any) => {
+                  const tech = usuarios.find(u => u.id_usuario === proj.id_tecnico);
+                  const isCompleted = proj.estado === "Completado";
+
+                  return (
+                    <div 
+                      key={proj.id_servicio} 
+                      className={`p-4 border rounded-xl transition-all flex flex-col justify-between gap-3 text-xs bg-white ${
+                        isCompleted 
+                          ? "border-emerald-200 bg-emerald-50/10" 
+                          : "border-slate-200 hover:border-slate-300 hover:shadow-xs"
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="font-mono text-[9px] uppercase font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {proj.id_servicio}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${
+                            isCompleted 
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                              : proj.estado === "En Ejecución"
+                              ? "bg-amber-100 text-amber-800 border-amber-200 animate-pulse"
+                              : "bg-slate-100 text-slate-700 border-slate-200"
+                          }`}>
+                            {proj.estado || "Asignado"}
+                          </span>
+                        </div>
+                        
+                        <h4 className="font-bold text-slate-900 text-xs">{proj.cliente_nombre || "Empresa Cliente"}</h4>
+                        <p className="text-slate-600 text-[11px] leading-relaxed font-light">{proj.servicio}</p>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-2.5 flex justify-between items-center text-[10px] font-mono text-slate-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{proj.fecha}</span>
+                        </div>
+                        <div className="text-slate-700 font-semibold truncate max-w-[120px]">
+                          Téc: {tech ? tech.nombre_completo.split(' ')[0] : "No Asignado"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* REPORTE MENSUAL DE RENDIMIENTO */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5 uppercase font-mono tracking-wide">
+                <TrendingUp className="text-emerald-600 w-4.5 h-4.5" />
+                Reporte Mensual de Rendimiento de Metrólogos
+              </h3>
+              <p className="text-xs text-slate-500">Matriz de productividad mensual detallando la cantidad de proyectos y los folios de informes técnicos ejecutados.</p>
+            </div>
+
+            {/* RENDIMIENTO MATRIX TABLE */}
+            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-700 uppercase tracking-wider text-[9px] font-mono border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3">Metrólogo de Campo</th>
+                      <th className="px-4 py-3 text-center">Proyectos Ejecutados</th>
+                      <th className="px-4 py-3">Detalle de Proyectos Completados</th>
+                      <th className="px-4 py-3 text-right">Eficiencia Check-In</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono text-[10.5px]">
+                    {usuarios.filter(u => u.id_rol === 'LAB_TECH' || (u as any).id_role === 'LAB_TECH').map(tech => {
+                      // Find completed projects for this technician
+                      const techCompleted = (submittedReports || []).filter(rep => rep.tecnico_nombre?.includes(tech.nombre_completo) || rep.tecnico?.includes(tech.nombre_completo) || rep.id_tecnico === tech.id_usuario);
+                      const completedCount = techCompleted.length;
+                      
+                      return (
+                        <tr key={tech.id_usuario} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3.5 font-sans">
+                            <div className="font-bold text-slate-800">{tech.nombre_completo}</div>
+                            <div className="text-[9px] text-slate-400 font-mono">{tech.puesto} • {tech.email}</div>
+                          </td>
+                          <td className="px-4 py-3.5 text-center font-bold">
+                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-150 rounded font-mono text-xs">
+                              {completedCount}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 font-sans text-slate-600 leading-normal max-w-sm">
+                            {completedCount === 0 ? (
+                              <span className="text-slate-400 font-mono text-[9px]">Ningún proyecto reportado este mes</span>
+                            ) : (
+                              <div className="space-y-1">
+                                {techCompleted.map(rep => (
+                                  <div key={rep.id_reporte} className="flex items-center gap-1.5 text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono text-slate-700 w-fit">
+                                    <FileCheck className="w-3 h-3 text-emerald-500 shrink-0" />
+                                    <span>{rep.cliente_nombre || rep.payload?.datos_sitio?.empresa_cliente || "Cliente"} ({rep.id_reporte})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-right font-bold text-emerald-600">
+                            <div className="space-y-1">
+                              <div>100.0%</div>
+                              <div className="w-24 bg-slate-100 rounded-full h-1 ml-auto">
+                                <div className="bg-emerald-500 h-1 rounded-full" style={{ width: '100%' }}></div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* METROLOGY ALERTS & FINANCIAL METRICS (MAINTAINING DATA CONSISTENCY) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* ALERTAS CRÍTICAS DE CALIBRACIÓN VENCIDA */}

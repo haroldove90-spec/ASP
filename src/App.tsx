@@ -295,6 +295,48 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
   });
 
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_purchase_orders');
+    return saved ? JSON.parse(saved) : [
+      {
+        id_po: "PO-982110",
+        id_cotizacion: "COT-002",
+        cliente: "Papelera de Occidente",
+        costo_final: 15200,
+        fecha_compromiso: "2026-07-28",
+        estatus_cliente: "Firmada por Compras",
+        archivo_po: "PO-Occidente-Firmado.pdf",
+        fecha_registro: "2026-07-12"
+      }
+    ];
+  });
+
+  const [reportTemplates, setReportTemplates] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_report_templates');
+    return saved ? JSON.parse(saved) : [
+      {
+        id_plantilla: 'temp-011',
+        nombre: 'Cascarón Oficial NOM-011-STPS 2026 (Ruido)',
+        codigo_documento: 'FOR-MET-011-REV4',
+        descripcion: 'Estructura oficial para informes técnicos de medición de ruido y dosimetrías bajo la norma oficial mexicana de la STPS.',
+        estructura: {
+          encabezado: 'LABORATORIO DE METROLOGÍA AMBIENTAL Y OCUPACIONAL ASP S.A. DE C.V.',
+          seccion_cliente: 'Cliente de Ensayo: {{CLIENTE}} | Ubicación Georreferenciada: {{COORDENADAS}} | Hora de Check-In: {{CHECKIN}}',
+          seccion_instrumentos: 'Sonómetro de Precisión Integrador: {{SONOMETRO}} | Certificado de Trazabilidad Nacional EMA: {{CERTIFICADO}}',
+          seccion_firmas: 'Responsable Técnico: {{FIRMAS}} | Firma de Conformidad de Planta: Autorizado en Sitio | Sello de Tiempo Criptográfico NOM-151: {{NOM151_HASH}} / Constancia: {{CONSTANCIA_NOM151}}'
+        }
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_purchase_orders', JSON.stringify(purchaseOrders));
+  }, [purchaseOrders]);
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_report_templates', JSON.stringify(reportTemplates));
+  }, [reportTemplates]);
+
   const [searchQuery, setSearchQuery] = useState("");
 
   // New Equipment Modal / State
@@ -1307,6 +1349,9 @@ export default function App() {
                 INITIAL_PERMISOS={INITIAL_PERMISOS}
                 ROLE_PERMISSIONS_MAP={ROLE_PERMISSIONS_MAP}
                 DB_SCHEMA_SQL={DB_SCHEMA_SQL}
+                scheduledServices={scheduledServices}
+                submittedReports={submittedReports}
+                purchaseOrders={purchaseOrders}
               />
             )}
 
@@ -1349,6 +1394,8 @@ export default function App() {
                 
                 submittedReports={submittedReports}
                 handleCoordinatorReviewReport={handleCoordinatorReviewReport}
+                purchaseOrders={purchaseOrders}
+                setPurchaseOrders={setPurchaseOrders}
               />
             )}
 
@@ -1392,6 +1439,7 @@ export default function App() {
                 isJornadaIniciada={jornadaIniciada}
                 horaInicioJornada={jornadaStartTime}
                 handleToggleJornada={handleToggleJornada}
+                submittedReports={submittedReports}
               />
             )}
 
@@ -1409,6 +1457,11 @@ export default function App() {
                 handleToggleInvoiceStatus={handleToggleInvoiceStatus}
                 financials={financials}
                 DB_SCHEMA_SQL={DB_SCHEMA_SQL}
+                purchaseOrders={purchaseOrders}
+                setPurchaseOrders={setPurchaseOrders}
+                reportTemplates={reportTemplates}
+                setReportTemplates={setReportTemplates}
+                submittedReports={submittedReports}
               />
             )}
 
