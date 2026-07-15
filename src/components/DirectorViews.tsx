@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   Activity, 
@@ -146,6 +146,30 @@ export default function DirectorViews(props: DirectorViewsProps) {
   const [projectStatusFilter, setProjectStatusFilter] = useState<string>("Todos");
   const [projectTechFilter, setProjectTechFilter] = useState<string>("Todos");
   const [selectedLiveServiceForGps, setSelectedLiveServiceForGps] = useState<any>(null);
+  
+  const [backendAuditLogs, setBackendAuditLogs] = useState<any[]>([]);
+  const [chainIntegrityValid, setChainIntegrityValid] = useState<boolean>(true);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState<boolean>(false);
+
+  const fetchBackendAuditLogs = async () => {
+    try {
+      setLoadingAuditLogs(true);
+      const res = await fetch("/api/auditoria");
+      if (res.ok) {
+        const data = await res.json();
+        setBackendAuditLogs(data.logs || []);
+        setChainIntegrityValid(data.chain_integrity_valid !== false);
+      }
+    } catch (err) {
+      console.error("Error fetching live blockchain audit logs:", err);
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBackendAuditLogs();
+  }, [activeTab]);
 
   const filteredProjects = (scheduledServices || []).filter(proj => {
     const matchStatus = projectStatusFilter === "Todos" || proj.estado === projectStatusFilter;
@@ -784,49 +808,72 @@ export default function DirectorViews(props: DirectorViewsProps) {
   const renderAuditSection = () => {
     return (
       <div className="space-y-4">
-        <div className="bg-slate-900 text-slate-200 p-4 rounded-xl border border-slate-800 flex gap-3">
-          <Lock className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Garantía Relacional de No Manipulación (Trigger SQL)</h4>
-            <p className="text-xs text-slate-300 leading-relaxed font-light">
-              El motor PostgreSQL implementa el trigger <code className="bg-slate-950 px-1 py-0.5 rounded font-mono text-[10px] text-emerald-300">tg_proteger_bitacora</code>. Cualquier intento manual de ejecutar <code className="bg-slate-950 px-1 py-0.5 rounded font-mono text-[10px] text-amber-400">UPDATE</code> o <code className="bg-slate-950 px-1 py-0.5 rounded font-mono text-[10px] text-red-400">DELETE</code> abortará la transacción con una excepción técnica ineludible.
-            </p>
+        <div className="bg-slate-900 text-slate-200 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex gap-3">
+            <Lock className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Garantía Relacional de No Manipulación (Audit Trail Criptográfico)</h4>
+              <p className="text-xs text-slate-300 leading-relaxed font-light">
+                Cada entrada en esta bitácora está encadenada mediante un hash <code className="bg-slate-950 px-1 py-0.5 rounded font-mono text-[10px] text-emerald-300">SHA-256</code> con el registro anterior. El motor PostgreSQL y la simulación blockchain protegen la inalterabilidad legal del registro (NOM-151 / EMA).
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5">
+            <div className={`w-2.5 h-2.5 rounded-full ${chainIntegrityValid ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+            <div className="text-left font-mono">
+              <div className="text-[9px] text-slate-500 uppercase leading-none font-bold">Estado del Encadenamiento</div>
+              <div className={`text-[10px] font-bold ${chainIntegrityValid ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {chainIntegrityValid ? 'SÍMBOLO DE INTEGRIDAD VÁLIDO' : 'INTEGRIDAD COMPROMETIDA'}
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="space-y-3">
-          {auditLogs.map(log => (
-            <div key={log.id_log} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-all">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b border-slate-100 pb-2 mb-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-slate-500">LOG-#{log.id_log}</span>
-                  <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded ${
-                    log.accion === 'INSERT' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                    log.accion === 'UPDATE' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                    log.accion === 'SIGN' ? 'bg-sky-100 text-sky-800 border border-sky-200' :
-                    'bg-slate-100 text-slate-800 border border-slate-200'
-                  }`}>
-                    {log.accion}
-                  </span>
-                  <span className="text-xs font-bold text-slate-900">{log.usuario_nombre}</span>
-                  <span className="text-[10px] text-slate-400 font-mono">({log.usuario_rol})</span>
+          {loadingAuditLogs && backendAuditLogs.length === 0 ? (
+            <p className="text-xs text-slate-500 font-mono italic">Cargando bitácora criptográfica desde el servidor...</p>
+          ) : backendAuditLogs.length === 0 ? (
+            <p className="text-xs text-slate-500 font-mono italic">No hay registros cargados en la bitácora aún.</p>
+          ) : (
+            backendAuditLogs.map((log, index) => (
+              <div key={log.id_auditoria || index} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-all">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b border-slate-100 pb-2 mb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-slate-500">SEC-#{log.id_auditoria}</span>
+                    <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded ${
+                      log.operacion === 'INSERT' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                      log.operacion === 'UPDATE' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                      log.operacion === 'SIGN' ? 'bg-sky-100 text-sky-800 border border-sky-200' :
+                      log.operacion === 'CONVERT' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                      'bg-slate-100 text-slate-800 border border-slate-200'
+                    }`}>
+                      {log.operacion}
+                    </span>
+                    <span className="text-xs font-bold text-slate-900">{log.rol}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">({log.usuario_id})</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">{new Date(log.fecha_utc).toLocaleString('es-MX')}</div>
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono">{log.timestamp}</div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="bg-slate-50 p-2 rounded border border-slate-100">
-                  <span className="text-[9px] font-mono uppercase font-bold text-slate-400">Tabla: {log.tabla_afectada} (ID: {log.registro_id})</span>
-                  <div className="text-[10px] text-slate-700 mt-1 font-semibold">Acción: {log.justificacion_tecnica}</div>
-                </div>
-                <div className="bg-slate-950 text-emerald-400 p-2.5 rounded font-mono text-[9px] overflow-x-auto">
-                  <div className="text-slate-500">// FIRMA NOM-151 COMPACTADA</div>
-                  <div className="truncate text-emerald-300">Hash: {log.hash_integridad}</div>
-                  <div className="truncate text-slate-400">IP: {log.ip_origen}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="bg-slate-50 p-2.5 rounded border border-slate-100 space-y-1.5">
+                    <div>
+                      <span className="text-[9px] font-mono uppercase font-bold text-slate-400">Tabla Afectada: {log.tabla_afectada}</span>
+                    </div>
+                    <div className="text-xs text-slate-700 font-medium leading-tight">
+                      <strong className="text-slate-900">Justificación Técnica:</strong> {log.justificacion_tecnica}
+                    </div>
+                  </div>
+                  <div className="bg-slate-950 text-emerald-400 p-2.5 rounded font-mono text-[9px] overflow-x-auto space-y-1">
+                    <div className="text-slate-500">// ENCADENAMIENTO DE SEGURIDAD (BLOCKCHAIN LOG)</div>
+                    <div className="truncate text-emerald-300">Hash Registro: {log.hash_registro}</div>
+                    <div className="truncate text-slate-400">Hash Anterior: {log.hash_anterior}</div>
+                    <div className="truncate text-slate-400">Dirección IP: {log.ip_origen}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     );

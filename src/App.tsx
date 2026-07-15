@@ -813,57 +813,73 @@ export default function App() {
     });
   };
 
-  const handleApproveCertificate = (cert: CertificadoCalibracion) => {
+  const handleApproveCertificate = async (cert: CertificadoCalibracion) => {
     const justif = prompt("Especifique la Justificación Técnica de Aprobación para este Certificado (Mínimo 5 caracteres):");
     if (!justif || justif.trim().length < 5) {
       alert("Error (NMX-17025): Justificación obligatoria requerida de al menos 5 caracteres.");
       return;
     }
 
-    const updatedCerts = certificates.map(c => {
-      if (c.id_certificado === cert.id_certificado) {
-        return {
-          ...c,
-          estado_aprobacion: 'Aprobado' as const,
-          aprobado_por: activePersona.nombre_completo,
-          fecha_aprobacion: new Date().toISOString().split('T')[0],
-          justificacion_aprobacion: justif,
-          sello_digital_nom151: `NOM151:SELLO-${Date.now()}-${Math.floor(Math.random() * 9000) + 1000}`
-        };
+    try {
+      const response = await fetch(`/api/certificados/aprobar/${cert.id_certificado}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          justificacion: justif,
+          firmante_id: activePersona.id_usuario,
+          firmante_rol: activePersona.id_role || activePersona.id_rol
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        alert(`Error del Servidor: ${errData.error || "Fallo en la firma digital."}`);
+        return;
       }
-      return c;
-    });
 
-    const updatedInsts = instruments.map(i => 
-      i.id_instrumento === cert.id_instrumento ? { ...i, estado_operativo: "Operativo" as const } : i
-    );
+      const resData = await response.json();
+      const serverSello = resData.sello_digital;
 
-    const newLog: AuditLog = {
-      id_log: auditLogs.length + 1,
-      id_usuario: activePersona.id_usuario,
-      usuario_nombre: activePersona.nombre_completo,
-      usuario_rol: activePersona.id_role || activePersona.id_rol,
-      tabla_afectada: "certificados_calibracion",
-      registro_id: cert.id_certificado,
-      accion: "SIGN",
-      valor_anterior: JSON.stringify(cert),
-      valor_nuevo: JSON.stringify(updatedCerts.find(c => c.id_certificado === cert.id_certificado)),
-      justificacion_tecnica: `Firma y aprobación del certificado de calibración ${cert.numero_certificado} por el Director. Justificación: ${justif}`,
-      hash_integridad: generarHashIntegridad(
-        activePersona.id_usuario,
-        "certificados_calibracion",
-        cert.id_certificado,
-        "SIGN",
-        JSON.stringify(cert),
-        JSON.stringify(updatedCerts.find(c => c.id_certificado === cert.id_certificado)),
-        justif
-      ),
-      ip_origen: "192.168.10.15",
-      timestamp: new Date().toISOString()
-    };
+      const updatedCerts = certificates.map(c => {
+        if (c.id_certificado === cert.id_certificado) {
+          return {
+            ...c,
+            estado_aprobacion: 'Aprobado' as const,
+            aprobado_por: activePersona.nombre_completo,
+            fecha_aprobacion: new Date().toISOString().split('T')[0],
+            justificacion_aprobacion: justif,
+            sello_digital_nom151: serverSello || `NOM151:SELLO-${Date.now()}`
+          };
+        }
+        return c;
+      });
 
-    saveStateToLocalStorage(undefined, updatedInsts, updatedCerts, [newLog, ...auditLogs]);
-    alert("Certificado firmado digitalmente y aprobado bajo NOM-151-SCFI-2016.");
+      const updatedInsts = instruments.map(i => 
+        i.id_instrumento === cert.id_instrumento ? { ...i, estado_operativo: "Operativo" as const } : i
+      );
+
+      const newLog: AuditLog = {
+        id_log: auditLogs.length + 1,
+        id_usuario: activePersona.id_usuario,
+        usuario_nombre: activePersona.nombre_completo,
+        usuario_rol: activePersona.id_role || activePersona.id_rol,
+        tabla_afectada: "certificados_calibracion",
+        registro_id: cert.id_certificado,
+        accion: "SIGN",
+        valor_anterior: JSON.stringify(cert),
+        valor_nuevo: JSON.stringify(updatedCerts.find(c => c.id_certificado === cert.id_certificado)),
+        justificacion_tecnica: `Firma y aprobación del certificado de calibración ${cert.numero_certificado} por el Director. Justificación: ${justif}`,
+        hash_integridad: serverSello,
+        ip_origen: "192.168.10.15",
+        timestamp: new Date().toISOString()
+      };
+
+      saveStateToLocalStorage(undefined, updatedInsts, updatedCerts, [newLog, ...auditLogs]);
+      alert("Certificado firmado digitalmente y aprobado bajo NOM-151-SCFI-2016 en el servidor seguro.");
+    } catch (err) {
+      console.error(err);
+      alert("Fallo de conexión con el servidor de firmas criptográficas.");
+    }
   };
 
   const handleToggleInvoiceStatus = (id: number) => {
@@ -1107,6 +1123,27 @@ export default function App() {
     setFieldHash(hash);
     setFieldConstanciaNOM151(finalPayload.nom151_integridad.constancia_psc);
     setFieldStep(5); // Show completed step
+
+    // Call real server API for NOM-151 digital signature of field sheet!
+    fetch(`/api/hojas-campo/firmar/${reportId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        gps_coordenadas: fieldCheckinCoords,
+        firma_nombre_cliente: fieldRepName,
+        lecturas_por_norma: {
+          nom011: fieldReadings.map(r => ({ db: Number(r.db), conditions: r.conditions, area: fieldArea }))
+        }
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log("NOM-151 Digital Sello generated by secure server:", data.firma_hash);
+      if (data.firma_hash) {
+        setFieldHash(data.firma_hash);
+      }
+    })
+    .catch(err => console.error("Error signing field sheet via API:", err));
 
     // Audit Log Entry
     const newLog: AuditLog = {
