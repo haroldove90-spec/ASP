@@ -95,6 +95,7 @@ export default function AdminViews(props: AdminViewsProps) {
 
   const [selectedReportToFeed, setSelectedReportToFeed] = useState<any | null>(null);
   const [compiledDossier, setCompiledDossier] = useState<any | null>(null);
+  const [serverDossier, setServerDossier] = useState<any | null>(null);
 
   const handleSaveTemplate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1475,6 +1476,7 @@ export default function AdminViews(props: AdminViewsProps) {
               onClick={() => {
                 setCompiledDossier(null);
                 setSelectedReportToFeed(null);
+                setServerDossier(null);
               }}
               className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs"
             />
@@ -1503,6 +1505,7 @@ export default function AdminViews(props: AdminViewsProps) {
                   onClick={() => {
                     setCompiledDossier(null);
                     setSelectedReportToFeed(null);
+                    setServerDossier(null);
                   }}
                   className="text-slate-400 hover:text-white font-bold font-mono text-sm px-2 py-1"
                 >
@@ -1584,33 +1587,90 @@ export default function AdminViews(props: AdminViewsProps) {
                     </div>
                   </div>
                 </div>
+
+                {/* Live serverDossier preview if available */}
+                {serverDossier && (
+                  <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2 text-left font-mono text-[9px] text-emerald-400 mt-4">
+                    <div className="flex justify-between items-center text-[10px] text-white border-b border-slate-800 pb-1.5 font-sans font-bold">
+                      <span className="flex items-center gap-1">🛡️ EXPEDIENTE DIGITAL CONSOLIDADO (JSON DE DESPACHO)</span>
+                      <span className="text-emerald-400 text-[8.5px] font-mono">ESTADO: COMPILADO Y SELLADO</span>
+                    </div>
+                    <pre className="overflow-x-auto p-2 bg-slate-950 text-emerald-300 rounded max-h-[160px] leading-relaxed select-all">
+                      {JSON.stringify(serverDossier, null, 2)}
+                    </pre>
+                    <div className="text-[8.5px] text-slate-400 font-sans leading-normal">
+                      Este paquete digital consolida el informe de ensayo inyectado ("El Cascarón"), las firmas de conformidad georreferenciadas con sello NOM-151, y la trazabilidad metrológica del sonómetro de patrón con acreditación vigente.
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ACTIONS */}
-              <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between items-center shrink-0">
-                <span className="text-[9px] font-mono text-slate-400 max-w-sm">
-                  Al descargar este expediente se empaquetan las constancias originales de metrología y el XML sellado por el PSC acreditado.
-                </span>
+              <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap gap-2 justify-between items-center shrink-0">
+                <div className="flex gap-2">
+                  {/* Real Live Endpoint 1: Ver Reporte Oficial in New Tab */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const otId = selectedReportToFeed.payload?.id_ot || "OT-2026-001";
+                      window.open(`/api/reportes/generar/${otId}`, "_blank");
+                    }}
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition-colors flex items-center gap-1 text-[11px]"
+                    title="Inyectar datos de campo en plantilla base HTML"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-slate-300" />
+                    <span>Ver Reporte ("Cascarón")</span>
+                  </button>
+
+                  {/* Real Live Endpoint 2: Exportar Hoja de Campo CSV */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const otId = selectedReportToFeed.payload?.id_ot || "OT-2026-001";
+                      window.open(`/api/hojas-campo/exportar/${otId}`, "_blank");
+                    }}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex items-center gap-1 text-[11px]"
+                    title="Descargar raw data tabular en formato CSV"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-200" />
+                    <span>Exportar CSV</span>
+                  </button>
+                </div>
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
                       setCompiledDossier(null);
                       setSelectedReportToFeed(null);
+                      setServerDossier(null);
                     }}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition-colors"
+                    className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition-colors text-[11px]"
                   >
-                    Cerrar Vista
+                    Cerrar
                   </button>
+
+                  {/* Real Live Endpoint 3: Consolidar & Despachar Expediente */}
                   <button
-                    onClick={() => {
-                      alert(`¡Expediente Técnico ${compiledDossier.id_expediente} Despachado con Éxito!\nSe ha generado el archivo ZIP firmado conteniendo:\n- Informe de Ensayo de Metrología (PDF)\n- XML de Sello de Tiempo NOM-151\n- Reporte de Calibración EMA del Sonómetro Patrón.`);
-                      setCompiledDossier(null);
-                      setSelectedReportToFeed(null);
+                    onClick={async () => {
+                      const otId = selectedReportToFeed.payload?.id_ot || "OT-2026-001";
+                      try {
+                        const response = await fetch(`/api/expedientes/despacho/${otId}`);
+                        if (!response.ok) {
+                          alert("Error al consolidar el expediente digital.");
+                          return;
+                        }
+                        const data = await response.json();
+                        setServerDossier(data);
+                        alert(`¡Expediente consolidado con éxito! Se ha generado e integrado la trazabilidad de instrumentos, firmas criptográficas y el reporte técnico final en un único paquete oficial.`);
+                      } catch (err) {
+                        console.error(err);
+                        alert("Fallo al conectar con el servidor de despacho.");
+                      }
                     }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors flex items-center gap-1 text-[11px] shadow-sm font-sans"
                   >
-                    <Download className="w-4 h-4 text-emerald-200" />
-                    <span>Despachar Expediente (ZIP)</span>
+                    <Sparkles className="w-4 h-4 text-emerald-200" />
+                    <span>Consolidar Expediente</span>
                   </button>
                 </div>
               </div>
