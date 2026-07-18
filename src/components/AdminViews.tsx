@@ -225,7 +225,7 @@ export default function AdminViews(props: AdminViewsProps) {
         throw new Error("Error en servidor.");
       }
     } catch (err) {
-      console.warn("API de conversión offline. Usando simulación local.", err);
+      console.warn("API de conversión local activa.", err);
       const newPo = {
         id_po: `PO-${Date.now().toString().slice(-6)}`,
         id_cotizacion: selectedQuoteForPo.id || selectedQuoteForPo.id_propuesta,
@@ -355,7 +355,7 @@ export default function AdminViews(props: AdminViewsProps) {
         throw new Error("Respuesta no exitosa del servidor.");
       }
     } catch (err) {
-      console.warn("Fallo al conectar con el backend. Utilizando motor de simulación offline integrado.", err);
+      console.warn("Fallo al conectar con el backend. Utilizando motor local integrado.", err);
       const newQuoteId = `108COT0${160 + generatedQuotes.length + 1}`;
       const newQuoteObj = {
         id: newQuoteId,

@@ -12,7 +12,8 @@ import {
   ArrowRight,
   Hash,
   FileSignature,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Info
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, generarHashIntegridad } from '../initial_data';
@@ -505,6 +506,99 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {fieldStep === 1 && (
+            <div className="bg-slate-900 p-5 border border-slate-800 rounded-xl space-y-4">
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1 font-mono">
+                  <MapPin className="text-blue-400 w-4 h-4 animate-bounce" />
+                  Paso 1: Validación GPS Obligatoria (Check-In)
+                </h4>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-light">
+                  De acuerdo con las regulaciones de la STPS y la NMX-17025, el técnico debe verificar geolocalizadamente su presencia en la planta antes de poder registrar cualquier dato metrológico.
+                </p>
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded border border-slate-800 font-mono text-[11px] space-y-2 text-slate-300">
+                <div>Coordenadas GPS: <span className="text-blue-400 font-bold">{fieldCheckinCoords || "Pendiente GPS Check-In..."}</span></div>
+                <div>Hora de Registro: <span className="text-blue-400 font-bold">{fieldCheckinTime || "Pendiente..."}</span></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleFieldGPSCheckIn}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/20"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Ejecutar Geolocalización GPS por Satélite</span>
+              </button>
+
+              {fieldCheckinCoords && (
+                <div className="flex justify-end pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setFieldStep(2)}
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs transition-colors flex items-center gap-1"
+                  >
+                    <span>Proceder al Checklist de EPP</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {fieldStep === 2 && (
+            <div className="bg-slate-900 p-5 border border-slate-800 rounded-xl space-y-4">
+              <div className="space-y-1 border-b border-slate-800 pb-3">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1 font-mono">
+                  <ShieldCheck className="text-emerald-400 w-4 h-4" />
+                  Paso 2: Checklist Obligatorio de Seguridad (EPP)
+                </h4>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-light">
+                  En cumplimiento estricto con las directrices de la NOM-011-STPS, el consultor declara bajo protesta de decir verdad que porta el equipo de protección personal adecuado antes de entrar a zonas de ruido industrial extremo.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
+                {[
+                  { key: 'casco', label: 'Casco de Seguridad de Polietileno (Dieléctrico)' },
+                  { key: 'tapones', label: 'Protectores Auditivos de Copa (Nivel Atenuación > 25dB)' },
+                  { key: 'calzado', label: 'Calzado Industrial con Puntera de Protección' },
+                  { key: 'chaleco', label: 'Chaleco de Alta Visibilidad Reflejante' }
+                ].map((item) => (
+                  <label key={item.key} className="flex items-center gap-3 p-3 bg-slate-950 rounded border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={(fieldEppChecked as any)[item.key]}
+                      onChange={(e) => setFieldEppChecked({ ...fieldEppChecked, [item.key]: e.target.checked })}
+                      className="rounded text-emerald-600 border-slate-700 bg-slate-900 focus:ring-0"
+                    />
+                    <span className="text-[11.5px] text-slate-300 font-light">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex justify-between border-t border-slate-800 pt-4">
+                <button type="button" onClick={() => setFieldStep(1)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono">Regresar</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allChecked = Object.values(fieldEppChecked).every(v => v);
+                    if (!allChecked) {
+                      alert("Error (NOM-011): Debe portar y marcar obligatoriamente la totalidad del Equipo de Protección Personal antes de capturar lecturas metrológicas.");
+                      return;
+                    }
+                    setFieldStep(3);
+                  }}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs flex items-center gap-1"
+                >
+                  <span>Proceder a Captura de Mediciones</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {fieldStep === 3 && (
             <div className="bg-slate-900 p-5 border border-slate-800 rounded-xl space-y-4">
               <div className="space-y-1 border-b border-slate-800 pb-3">
@@ -665,7 +759,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
                     }
                     const checklistComplete = Object.values(techChecklist).every(v => v);
                     if (!checklistComplete) {
-                      alert("Error (Validación Metrológica): Para garantizar la validez técnica bajo la NMX-EC-17025 y la NOM-011, debe realizar y marcar obligatoriamente todos los puntos del checklist de verificación del sonómetro en sitio antes de proceder.");
+                      alert("Error (Validación Metrológica): Para garantizar la validez técnica bajo la NMX-EC-17025 and la NOM-011, debe realizar y marcar obligatoriamente todos los puntos del checklist de verificación del sonómetro en sitio antes de proceder.");
                       return;
                     }
                     setFieldStep(4);
@@ -675,6 +769,56 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
                 >
                   <span>Proceder a Firmas de Conformidad</span>
                   <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {fieldStep >= 4 && (
+            <div className="bg-slate-900 p-6 border border-slate-800 rounded-xl space-y-4 text-xs">
+              <div className="space-y-1 border-b border-slate-800 pb-3">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <CheckCircle className="text-emerald-400 w-4.5 h-4.5" />
+                  Captura Completada Exitosamente
+                </h4>
+                <p className="text-[11px] text-slate-400 font-light">
+                  Las lecturas acústicas del área han sido capturadas y validadas con el sonómetro seleccionado.
+                </p>
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-3 font-mono text-[11px] text-slate-300">
+                <div>Área Evaluada: <span className="text-white font-bold">{fieldArea}</span></div>
+                <div>Sonómetro Patrón: <span className="text-white">{fieldSonometerId}</span></div>
+                <div>Horario del Levantamiento: <span className="text-slate-400">{fieldStartTime} - {fieldEndTime}</span></div>
+                <div className="border-t border-slate-850 pt-2 space-y-1">
+                  <div className="text-slate-400 uppercase text-[9px] font-bold">Lecturas Metrológicas:</div>
+                  {fieldReadings.map((r, i) => (
+                    <div key={i} className="flex justify-between border-b border-slate-900/50 pb-1">
+                      <span>Lectura #{i + 1}: <strong className="text-blue-400">{r.db} dB(A)</strong></span>
+                      <span className="text-slate-500 truncate max-w-xs">{r.conditions}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-blue-950/20 border border-blue-500/20 text-blue-300 p-4 rounded-lg flex items-start gap-3">
+                <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <h5 className="font-bold text-[10px] uppercase font-mono tracking-wide">Paso Siguiente Obligatorio</h5>
+                  <p className="text-[11px] text-blue-200/90 mt-1 leading-relaxed">
+                    Proceda a la pestaña <strong>"Firmas y Sello (Historial)"</strong> para registrar las rúbricas de conformidad de la planta y asentar el sello criptográfico inalterable bajo la norma <strong>NOM-151</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('tech_muestras')}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10"
+                >
+                  <span>Proceder a Firmas y Sello (Paso 4)</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -689,6 +833,89 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {fieldStep < 4 && (
+            <div className="space-y-6">
+              <div className="bg-slate-900 p-5 border border-slate-800 rounded-xl space-y-4">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                    <Lock className="text-amber-400 w-4.5 h-4.5 animate-pulse" />
+                    Sección Bloqueada: Pendiente de Captura de Mediciones
+                  </h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed font-light">
+                    Esta pestaña contiene el módulo de asentar Firmas de Conformidad y sellado criptográfico de la norma <strong>NOM-151</strong>. Estará disponible una vez que asiente y valide las lecturas acústicas del levantamiento actual.
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 flex items-center justify-between text-xs font-sans">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-mono">Estatus actual del flujo:</span>
+                    <div className="text-slate-200 font-bold flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                      {fieldStep === 1 ? "Paso 1: Pendiente Geolocalización GPS" : "Paso 2: Pendiente Validación de EPP"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('tech_mediciones')}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10"
+                  >
+                    <span>Ir a Captura de Campo</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* PANEL DE CONSULTA DE HISTORIAL DIRECTO */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-3">
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                      <FileSpreadsheet className="text-emerald-400 w-4.5 h-4.5" />
+                      Registros de Trazabilidad y Sello Digital NOM-151
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Historial de levantamientos bloqueados criptográficamente y aprobados.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+                  {(() => {
+                    const list = [
+                      { id_reporte: "REP-NOM011-2026-001", cliente_nombre: "Vidriera del Norte S.A. de C.V.", fecha: "2026-07-10", area: "Área de Hornos (Taller 2)", gps: "25.6865, -100.3161", hash: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", constancia: "NOM151:CONSTANCIA-2026-F10495" },
+                      { id_reporte: "REP-NOM011-2026-002", cliente_nombre: "Papelera de Occidente S.A.", fecha: "2026-07-12", area: "Nave de Prensas 1", gps: "25.7231, -100.3015", hash: "a3f5b72cd9138406fbf4225b12850983c27eef0984cfb7cf7a9d3eefdfb99ab8", constancia: "NOM151:CONSTANCIA-2026-F98302" }
+                    ];
+
+                    return list.map((rep) => (
+                      <div key={rep.id_reporte} className="bg-slate-950 border border-slate-800 rounded-lg p-3.5 flex flex-col gap-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[9px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/20">
+                              {rep.id_reporte}
+                            </span>
+                            <strong className="text-white text-xs">{rep.cliente_nombre}</strong>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-900/30 text-emerald-300 border border-emerald-500/20 font-mono">
+                            Sello NOM-151 Activo
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-400 font-mono border-t border-slate-900 pt-2">
+                          <div>
+                            <div>Área: <span className="text-slate-200">{rep.area}</span></div>
+                            <div>Coordenadas: <span className="text-slate-200">{rep.gps}</span></div>
+                          </div>
+                          <div>
+                            <div className="truncate">Constancia PSC: <span className="text-blue-400 font-bold">{rep.constancia}</span></div>
+                            <div className="truncate">SHA256 Hash: <span className="text-emerald-500">{rep.hash}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
           {fieldStep === 4 && (
             <div className="bg-slate-900 p-5 border border-slate-800 rounded-xl space-y-4 animate-fade-in">
               <div className="space-y-1 border-b border-slate-800 pb-3">
@@ -848,7 +1075,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
                       className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded text-xs transition-colors flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Simular Nuevo Levantamiento (Reiniciar)</span>
+                      <span>Nuevo Levantamiento (Limpiar Formulario)</span>
                     </button>
                   </div>
                 </div>

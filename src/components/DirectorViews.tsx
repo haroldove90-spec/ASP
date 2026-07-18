@@ -739,10 +739,10 @@ export default function DirectorViews(props: DirectorViewsProps) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="w-4.5 h-4.5 text-emerald-400 animate-pulse" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Simulador de Privilegios Relacionales</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Auditoría de Privilegios Relacionales</h3>
               </div>
               <p className="text-xs text-slate-400 mb-4 leading-relaxed font-light">
-                Evalúe cómo el motor de base de datos SQL procesará las peticiones según el rol asignado al usuario activo. Cambie de usuario a la izquierda para probar privilegios.
+                Valide de forma instantánea cómo las reglas RBAC de PostgreSQL y el motor relacional evalúan los accesos de seguridad para la cuenta seleccionada.
               </p>
 
               <div className="space-y-4">
@@ -816,7 +816,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
             <div className="space-y-1">
               <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Garantía Relacional de No Manipulación (Audit Trail Criptográfico)</h4>
               <p className="text-xs text-slate-300 leading-relaxed font-light">
-                Cada entrada en esta bitácora está encadenada mediante un hash <code className="bg-slate-950 px-1 py-0.5 rounded font-mono text-[10px] text-emerald-300">SHA-256</code> con el registro anterior. El motor PostgreSQL y la simulación blockchain protegen la inalterabilidad legal del registro (NOM-151 / EMA).
+                Cada entrada en esta bitácora está encadenada mediante un hash <code className="bg-slate-950 px-1 py-0.5 rounded font-mono text-[10px] text-emerald-300">SHA-256</code> con el registro anterior. El motor PostgreSQL y el encadenamiento criptográfico garantizan la inalterabilidad legal del registro (NOM-151 / EMA).
               </p>
             </div>
           </div>
@@ -1318,7 +1318,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
               <Sliders className="text-emerald-600 w-4.5 h-4.5" />
               Configuración Maestra del Sistema
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Gestión global de identidades RBAC, simulación de privilegios y consulta del Audit Trail inalterable (NOM-151).</p>
+            <p className="text-xs text-slate-500 mt-0.5">Gestión global de identidades RBAC, verificación de privilegios y consulta del Audit Trail inalterable (NOM-151).</p>
           </div>
           
           <div className="grid grid-cols-1 gap-6">

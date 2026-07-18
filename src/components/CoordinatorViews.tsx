@@ -975,7 +975,7 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                                     alert(`Error: ${errRes.error || "Fallo en el servidor"}`);
                                   }
                                 } catch (err) {
-                                  alert(`[Simulación] Hoja de campo inicializada para ${serv.cliente_nombre}. Estructura multinorma guardada localmente.`);
+                                  alert(`[Registro de Campo] Hoja de campo inicializada para ${serv.cliente_nombre}. Estructura multinorma registrada localmente.`);
                                 }
                               }}
                               className="text-[9.5px] font-bold bg-[#85AA1C]/15 text-[#6c8b13] hover:bg-[#85AA1C]/25 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"

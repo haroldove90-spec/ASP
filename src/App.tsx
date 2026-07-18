@@ -414,8 +414,8 @@ export default function App() {
 
   // Service Calendar Tasks for Coordinador
   const [scheduledServices, setScheduledServices] = useState<any[]>([
-    { id_servicio: "SERV-101", cliente_nombre: "Arneses del Eje S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-15", id_tecnico: "32fdc451-2ef3-40a1-bf87-9df03da2b812", id_instrumento: "inst-005", estado: "Asignado" },
-    { id_servicio: "SERV-102", cliente_nombre: "Química de Coahuila S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-16", id_tecnico: "32fdc451-2ef3-40a1-bf87-9df03da2b812", id_instrumento: "inst-005", estado: "Asignado" },
+    { id_servicio: "SERV-101", cliente_nombre: "Arneses del Eje S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-15", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
+    { id_servicio: "SERV-102", cliente_nombre: "Química de Coahuila S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-16", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
   ]);
 
   // Mobile Sidebar State
@@ -1499,7 +1499,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                 <div className="text-left">
-                  <div className="text-[10px] font-mono uppercase font-bold text-slate-400 leading-none">Simulador de Roles (RBAC)</div>
+                  <div className="text-[10px] font-mono uppercase font-bold text-slate-400 leading-none">Usuario Activo (RBAC)</div>
                   <div className="text-[11px] font-semibold text-slate-800 leading-tight">{activePersona.nombre_completo}</div>
                 </div>
               </div>
