@@ -117,9 +117,7 @@ export default function App() {
       case 'dir_at_cl':
         return tabId;
       case 'ger_tec':
-        if (tabId === 'gt_services' || tabId === 'gt_norms') return 'coord_inventory';
-        if (tabId === 'gt_odt' || tabId === 'gt_hojas_campo') return 'coord_validation';
-        break;
+        return tabId;
       case 'ger_cal':
         if (tabId === 'gc_hojas_campo' || tabId === 'gc_reports') return 'coord_validation';
         break;
@@ -129,12 +127,9 @@ export default function App() {
         if (tabId === 'cl_lab') return 'coord_inventory';
         break;
       case 'ger_lab':
-        if (tabId === 'gl_lab') return 'coord_inventory';
-        if (tabId === 'gl_hojas_campo' || tabId === 'gl_estudios') return 'coord_validation';
-        break;
+        return tabId;
       case 'contabilidad':
-        if (tabId === 'cont_billing' || tabId === 'cont_collection' || tabId === 'cont_reports') return 'admin_finance';
-        break;
+        return tabId;
       case 'jefe_rep':
         if (tabId === 'jr_reports') return 'admin_results';
         break;

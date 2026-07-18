@@ -14,7 +14,19 @@ import {
   MapPin, 
   Lock, 
   XCircle,
-  Check
+  Check,
+  Wrench,
+  Sliders,
+  Activity,
+  FileText,
+  Microscope,
+  Settings,
+  ShieldCheck,
+  BookOpen,
+  Award,
+  TrendingUp,
+  ClipboardList,
+  CheckSquare
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion } from '../initial_data';
@@ -121,6 +133,109 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
   const [poInputCode, setPoInputCode] = useState("");
   const [poInputCost, setPoInputCost] = useState(0);
   const [poInputDate, setPoInputDate] = useState("");
+
+  // Initial Services List
+  const [servicesList, setServicesList] = useState([
+    { id: "SRV-NOM011", name: "Estudio de Ruido Ocupacional (NOM-011)", norm: "NOM-011-STPS-2001", price: 12500, desc: "Evaluación de niveles máximos de ruido ocupacional y dosimetrías por jornada.", method: "Método de dosimetría de ruido integrado", equip: "Sonómetro Integrador Clase 1", duration: "3 días" },
+    { id: "SRV-NOM025", name: "Evaluación de Niveles de Iluminación (NOM-025)", norm: "NOM-025-STPS-2008", price: 8500, desc: "Determinación de los niveles de iluminación en áreas de trabajo y puestos individuales.", method: "Método de malla de luxometría digital", equip: "Luxómetro de Precisión", duration: "2 días" },
+    { id: "SRV-NOM015", name: "Condiciones Térmicas Extremas (NOM-015)", norm: "NOM-015-STPS-2001", price: 14000, desc: "Medición de índice de temperatura de globo bulbo húmedo (TGBH) en fuentes de calor.", method: "Método de índice de estrés térmico TGBH", equip: "Monitor de Estrés Térmico", duration: "4 días" },
+    { id: "SRV-NOM024", name: "Medición de Vibraciones (NOM-024)", norm: "NOM-024-STPS-1993", price: 18000, desc: "Evaluación de vibraciones en cuerpo entero y de extremidades superiores de operadores.", method: "Análisis espectral con acelerómetros de contacto", equip: "Vibrómetro de Cuerpo Entero", duration: "5 días" },
+  ]);
+
+  // Initial Norms List
+  const [normsList] = useState([
+    { id: "NOM-011-STPS-2001", title: "NOM-011-STPS-2001", name: "Condiciones de Seguridad e Higiene en Centros de Trabajo donde se genere Ruido", status: "Vigente", limit: "90 dB(A) para una jornada de 8 horas", equip: "Sonómetros Tipo 1 o 2 calibrados EMA", period: "Cada 2 años obligatoriamente", detail: "Establece las condiciones de seguridad e higiene en los centros de trabajo donde se genere ruido que por sus características, niveles y tiempo de acción, sea capaz de alterar la salud de los trabajadores." },
+    { id: "NOM-025-STPS-2008", title: "NOM-025-STPS-2008", name: "Condiciones de Iluminación en los Centros de Trabajo", status: "Vigente", limit: "De 20 luxes (tránsito) hasta 2000 luxes (alta precisión)", equip: "Luxómetros calibrados EMA con corrección de coseno", period: "Anualmente o al modificar distribución", detail: "Su propósito es proveer un ambiente de iluminación seguro y adecuado para las actividades laborales, previniendo accidentes y fatiga visual." },
+    { id: "NOM-015-STPS-2001", title: "NOM-015-STPS-2001", name: "Condiciones Térmicas Elevadas o Abatidas - Condiciones de Seguridad e Higiene", status: "Vigente", limit: "Régimen de trabajo/recuperación según TGBH", equip: "Monitor de estrés térmico con esferas húmeda/seca/globo", period: "Anualmente", detail: "Define límites de exposición a temperaturas extremas para prevenir afecciones a la salud de los colaboradores expuestos a fuentes térmicas directas." },
+    { id: "NMX-EC-17025-IMNC-2018", title: "NMX-EC-17025-IMNC-2018", name: "Requisitos Generales para la Competencia de Laboratorios de Ensayo y Calibración", status: "Vigente / Internacional", limit: "Incertidumbre declarada y trazabilidad metrológica inalterable", equip: "Patrones de calibración de alta precisión", period: "Auditorías de vigilancia anuales de la EMA", detail: "Norma internacional adoptada en México que rige el sistema de gestión de calidad, imparcialidad y competencia técnica de laboratorios metrológicos." }
+  ]);
+
+  // Work Orders List
+  const [odtList, setOdtList] = useState([
+    { id: "ODT-2026-101", client: "Metalúrgica del Norte S.A.", service: "Estudio de Ruido (NOM-011)", tech: "Lucía Juárez", date: "2026-07-20", status: "Pendiente Revisión Técnica", notes: "Requiere calibración de sonómetro antes de salir." },
+    { id: "ODT-2026-102", client: "Plásticos Globales de México", service: "Evaluación Iluminación (NOM-025)", tech: "Ing. Juan Pérez", date: "2026-07-22", status: "Pendiente Revisión Técnica", notes: "Áreas de alta precisión en almacén y empaque." },
+    { id: "ODT-2026-103", client: "Extractora de Minerales S.A.", service: "Estrés Térmico (NOM-015)", tech: "Lucía Juárez", date: "2026-07-25", status: "Pre-Aprobada", notes: "Trabajos en cercanías de calderas de vapor.", signedBy: "Ing. Carlos Slim Jr." }
+  ]);
+
+  // Laboratory Studies List
+  const [studiesList, setStudiesList] = useState([
+    { id: "EST-2026-901", client: "Metalúrgica del Norte S.A.", studyType: "Dosimetría de Ruido NOM-011", date: "2026-07-14", analyst: "Lucía Juárez", readings: "85.2 dB, 88.7 dB, 90.1 dB", status: "Pendiente Validación", metrologicalTraceability: "Sonómetro EQ-SON-055 calibrado EMA con vigencia hasta Nov 2026", hash: "SHA256:d82e11...9f8a", temperature: "24.5 °C", humidity: "45%" },
+    { id: "EST-2026-902", client: "Alimentos Congelados del Centro", studyType: "Presión Sonora de Bandas de Octava", date: "2026-07-15", analyst: "Lucía Juárez", readings: "74.1 dB, 79.5 dB, 81.3 dB", status: "Pendiente Validación", metrologicalTraceability: "Sonómetro EQ-SON-091 calibrado EMA con vigencia hasta Dic 2026", hash: "SHA256:f12a88...c774", temperature: "22.1 °C", humidity: "40%" },
+    { id: "EST-2026-903", client: "Cemex Planta Monterrey", studyType: "Evaluación de Ruido de Impacto", date: "2026-07-16", analyst: "Lucía Juárez", readings: "112.5 dB, 114.2 dB", status: "Validado", metrologicalTraceability: "Sonómetro EQ-SON-055 calibrado EMA", hash: "SHA256:9cb812...0df6", validator: "Ing. Carlos Slim Jr.", signature: "e.firma SAT SHA256:a215fe...338eaef4" }
+  ]);
+
+  // State for Service Creation
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newServiceNorm, setNewServiceNorm] = useState("NOM-011-STPS-2001");
+  const [newServicePrice, setNewServicePrice] = useState(10000);
+  const [newServiceDesc, setNewServiceDesc] = useState("");
+  const [newServiceMethod, setNewServiceMethod] = useState("");
+  const [newServiceEquip, setNewServiceEquip] = useState("");
+  const [newServiceDuration, setNewServiceDuration] = useState("2 días");
+
+  // State for ODT actions
+  const [odtApproveNotes, setOdtApproveNotes] = useState<Record<string, string>>({});
+  
+  // State for Lab Studies validation
+  const [studyValidationNotes, setStudyValidationNotes] = useState<Record<string, string>>({});
+
+  const handleRegisterService = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newServiceName || !newServiceDesc) {
+      alert("Por favor complete todos los campos obligatorios.");
+      return;
+    }
+    const newSrv = {
+      id: `SRV-NEW-${Date.now().toString().slice(-4)}`,
+      name: newServiceName,
+      norm: newServiceNorm,
+      price: Number(newServicePrice),
+      desc: newServiceDesc,
+      method: newServiceMethod || "Método estándar de evaluación",
+      equip: newServiceEquip || "Equipo calibrado EMA",
+      duration: newServiceDuration
+    };
+    setServicesList([newSrv, ...servicesList]);
+    setIsAddServiceOpen(false);
+    // Clear inputs
+    setNewServiceName("");
+    setNewServiceDesc("");
+    setNewServiceMethod("");
+    setNewServiceEquip("");
+    alert("Servicio registrado exitosamente en el catálogo técnico.");
+  };
+
+  const handleApproveOdt = (odtId: string) => {
+    setOdtList(odtList.map(o => {
+      if (o.id === odtId) {
+        return { 
+          ...o, 
+          status: "Pre-Aprobada", 
+          signedBy: activePersona.nombre_completo,
+          notes: o.notes + (odtApproveNotes[odtId] ? ` | Obs: ${odtApproveNotes[odtId]}` : "")
+        };
+      }
+      return o;
+    }));
+    alert("Orden de Trabajo (ODT) revisada y pre-aprobada técnicamente con e.firma SAT.");
+  };
+
+  const handleValidateStudy = (studyId: string, approve: boolean) => {
+    setStudiesList(studiesList.map(s => {
+      if (s.id === studyId) {
+        return {
+          ...s,
+          status: approve ? "Validado" : "Rechazado",
+          validator: activePersona.nombre_completo,
+          signature: approve ? `e.firma SAT SHA256:${Date.now().toString(16)}...9f1a` : undefined,
+          validationComment: studyValidationNotes[studyId] || "Validación conforme metrología."
+        };
+      }
+      return s;
+    }));
+    alert(approve ? "Resultado de estudio de laboratorio validado y sellado digitalmente (NOM-151) con éxito." : "Estudio retornado para corrección y calibración.");
+  };
 
   const handleLinkPoDirectly = (service: any) => {
     if (!poInputCode || !poInputCost || !poInputDate) {
@@ -1149,6 +1264,569 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                 );
               })
             )}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'gt_services' && (
+        <motion.div
+          key="gt_services"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Wrench className="text-emerald-600 w-4.5 h-4.5" />
+                Catálogo de Servicios de Ensayos y Metrología
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Definición de metodologías, costos y normativas aplicables para servicios en sitio.</p>
+            </div>
+            <button
+              onClick={() => setIsAddServiceOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Registrar Nuevo Servicio
+            </button>
+          </div>
+
+          {isAddServiceOpen && (
+            <form onSubmit={handleRegisterService} className="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-slate-100 pb-2">Creación de Nuevo Servicio Técnico</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre del Servicio *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Estudio de Presión Acústica en Oficinas"
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Norma Aplicable *</label>
+                  <select
+                    value={newServiceNorm}
+                    onChange={(e) => setNewServiceNorm(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
+                  >
+                    {normsList.map(n => (
+                      <option key={n.id} value={n.id}>{n.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Costo Unitario (MXN) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newServicePrice}
+                    onChange={(e) => setNewServicePrice(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Duración Estimada *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newServiceDuration}
+                    onChange={(e) => setNewServiceDuration(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Descripción General *</label>
+                  <textarea
+                    required
+                    placeholder="Detalle el alcance y objetivo del servicio..."
+                    value={newServiceDesc}
+                    onChange={(e) => setNewServiceDesc(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 h-20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metodología de Medición</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Medición de campo continuo o dosimetría individual"
+                    value={newServiceMethod}
+                    onChange={(e) => setNewServiceMethod(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Equipo Metrológico Requerido</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Sonómetro clase 1 calibrado EMA"
+                    value={newServiceEquip}
+                    onChange={(e) => setNewServiceEquip(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 text-xs pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddServiceOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#85AA1C] hover:bg-[#739418] text-white rounded-lg font-bold"
+                >
+                  Guardar en Catálogo
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {servicesList.map((service) => (
+              <div key={service.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 hover:shadow-md transition-all">
+                <div className="flex justify-between items-start gap-2 border-b border-slate-100 pb-2">
+                  <div>
+                    <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{service.id}</span>
+                    <h4 className="text-xs font-bold text-slate-900 mt-1.5">{service.name}</h4>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-mono font-bold text-slate-900">${service.price.toLocaleString()} MXN</span>
+                    <div className="text-[9px] text-slate-400 font-medium">Costo unitario sugerido</div>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed font-light">{service.desc}</p>
+                <div className="grid grid-cols-2 gap-4 text-[11px] pt-1">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Normativa de Referencia</span>
+                    <strong className="text-slate-700 font-sans font-semibold">{service.norm}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Duración Estimada</span>
+                    <strong className="text-slate-700 font-sans font-semibold">{service.duration}</strong>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Metodología Autorizada</span>
+                    <span className="text-slate-600 font-light">{service.method}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Equipo e Instrumentación Requerida</span>
+                    <span className="text-slate-600 font-mono text-[10.5px] font-semibold">{service.equip}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'gt_norms' && (
+        <motion.div
+          key="gt_norms"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Sliders className="text-emerald-600 w-4.5 h-4.5" />
+              Normas STPS & EMA - Fichas Técnicas Metrológicas
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Límites permisibles de exposición laboral y requisitos obligatorios de acreditación NMX-EC-17025.</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            {normsList.map((norm) => (
+              <div key={norm.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded">{norm.title}</span>
+                      <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                        {norm.status}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-800 mt-2">{norm.name}</h4>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono text-left sm:text-right">
+                    Vigilancia obligatoria: <strong>{norm.period}</strong>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1">
+                    <span className="text-[9px] font-bold uppercase text-slate-400 font-mono">Límite de Exposición Permisible</span>
+                    <p className="font-sans font-bold text-red-700">{norm.limit}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1">
+                    <span className="text-[9px] font-bold uppercase text-slate-400 font-mono">Instrumento Requerido</span>
+                    <p className="font-mono font-bold text-slate-800 text-[11px]">{norm.equip}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1">
+                    <span className="text-[9px] font-bold uppercase text-slate-400 font-mono">Marco Metrológico</span>
+                    <p className="font-sans text-slate-600">{norm.status === "Vigente" ? "Acreditación EMA NOM-151" : "Acreditación Directa"}</p>
+                  </div>
+                </div>
+
+                <div className="text-xs">
+                  <span className="text-[9px] font-bold uppercase text-slate-400 block font-mono mb-1">Descripción e Interpretación Legal</span>
+                  <p className="text-slate-600 font-light leading-relaxed">{norm.detail}</p>
+                </div>
+
+                <div className="bg-[#85AA1C]/5 border border-[#85AA1C]/15 p-3 rounded-xl flex items-start gap-3">
+                  <ShieldCheck className="w-5 h-5 text-[#85AA1C] shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-slate-600">
+                    <strong className="text-slate-800 font-bold">Lista de Verificación de Auditoría para Liberación:</strong>
+                    <ul className="list-disc list-inside mt-1 space-y-0.5 font-light">
+                      <li>Sonómetros integradores verificados con calibración acústica antes y después de mediciones.</li>
+                      <li>Georreferenciación (GPS) en tiempo real con firma digital obligatoria de la e.firma SAT.</li>
+                      <li>Acreditación metrológica vigente del patrón en el catálogo del sistema.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'gt_odt' && (
+        <motion.div
+          key="gt_odt"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Activity className="text-emerald-600 w-4.5 h-4.5" />
+              Revisión Metrológica y Aseguramiento Técnico de ODT
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Validación de viabilidad metrológica antes de la ejecución de servicios en campo.</p>
+          </div>
+
+          <div className="space-y-4">
+            {odtList.map((odt) => (
+              <div key={odt.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 hover:border-slate-300 transition-all">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-2.5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <strong className="font-mono text-xs text-slate-900">{odt.id}</strong>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        odt.status === 'Pre-Aprobada' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                      }`}>
+                        {odt.status}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-700 mt-1">Cliente: {odt.client}</p>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Fecha de Ejecución: <strong>{odt.date}</strong>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Servicio Solicitado</span>
+                    <strong className="text-slate-800">{odt.service}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Ingeniero Técnico Asignado</span>
+                    <strong className="text-slate-800">{odt.tech}</strong>
+                  </div>
+                  <div className="sm:col-span-2 bg-slate-50 p-2.5 rounded border border-slate-100 text-[11px] text-slate-600 font-light">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono font-bold mb-0.5">Instrucciones y Notas Técnicas</span>
+                    {odt.notes}
+                  </div>
+                </div>
+
+                {odt.status !== 'Pre-Aprobada' ? (
+                  <div className="border-t border-slate-100 pt-4 space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1 font-mono">Observaciones Metrológicas del Gerente Técnico</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Sonómetro clase 1 calibración vigente verificada. Viable para ejecución."
+                        value={odtApproveNotes[odt.id] || ""}
+                        onChange={(e) => setOdtApproveNotes({ ...odtApproveNotes, [odt.id]: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => handleApproveOdt(odt.id)}
+                        className="w-full sm:w-auto px-4 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Lock className="w-3.5 h-3.5" /> Firmar Pre-Aprobación e.firma
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg text-[10.5px] text-emerald-800 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-emerald-600" />
+                    <span>Liberado técnicamente por <strong className="font-bold">{odt.signedBy}</strong> con firma digital autenticada SAT.</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'gt_hojas_campo' && (
+        <motion.div
+          key="gt_hojas_campo"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <FileText className="text-[#85AA1C] w-4.5 h-4.5" />
+              Auditoría Técnica NMX-17025 de Hojas de Campo
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Revisión de custodia legal bajo NOM-151, verificación de EPP, coordenadas GPS de levantamiento y calibraciones.</p>
+          </div>
+
+          <div className="space-y-4">
+            {submittedReports.map((report) => {
+              const isPending = report.estado === 'Pendiente';
+              return (
+                <div key={report.id_reporte} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-slate-900">{report.id_reporte}</span>
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                          report.estado === 'Aprobado' ? 'bg-emerald-100 text-emerald-800' :
+                          report.estado === 'Rechazado' ? 'bg-red-100 text-red-800' :
+                          'bg-amber-100 text-amber-800 animate-pulse'
+                        }`}>
+                          {report.estado}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1 font-semibold">Cliente: {report.cliente_nombre}</p>
+                    </div>
+                    <div className="text-left sm:text-right text-[10px] text-slate-500 font-mono">
+                      <div>Técnico: {report.tecnico_nombre}</div>
+                      <div>Fecha: {report.fecha_reporte}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1">
+                      <strong className="text-[10px] uppercase font-bold text-slate-500 block font-mono">Parámetros de Medición</strong>
+                      <div>Área: <strong className="text-slate-900">{report.payload?.area_evaluada || "Calderas"}</strong></div>
+                      <div>Equipo: <strong className="text-slate-900 font-mono">{report.payload?.sonometro_id || "EQ-SON-055"}</strong></div>
+                      <div>Máximo detectado: <strong className="text-red-700">{report.payload?.readings?.[0]?.db || "87.2"} dB(A)</strong></div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1">
+                      <strong className="text-[10px] uppercase font-bold text-slate-500 block font-mono">Validación de Custodia (NOM-151)</strong>
+                      <div className="truncate font-mono text-[9px] text-slate-500">SHA256: {report.xml_hash_sha256}</div>
+                      <div className="truncate font-mono text-[9px] text-slate-500">Sello Digital: {report.sello_digital_nom151}</div>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.2 border border-emerald-200 rounded">GPS Verificado</span>
+                        <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.2 border border-emerald-200 rounded">EPP Aprobado</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isPending ? (
+                    <div className="border-t border-slate-100 pt-4 space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1 font-mono">Dictamen Metrológico de Aseguramiento *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Reporte verificado bajo NMX-17025. Cumple con trazabilidad de calibración EMA y posicionamiento."
+                          value={coordinatorJustifications[report.id_reporte] || ""}
+                          onChange={(e) => setCoordinatorJustifications({ ...coordinatorJustifications, [report.id_reporte]: e.target.value })}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleCoordinatorReviewReport(report.id_reporte, false, coordinatorJustifications[report.id_reporte] || "")}
+                          className="flex-1 py-1.5 bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-200 rounded font-semibold text-xs transition-colors cursor-pointer"
+                        >
+                          Rechazar por Desviación
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCoordinatorReviewReport(report.id_reporte, true, coordinatorJustifications[report.id_reporte] || "")}
+                          className="flex-1 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded font-bold text-xs transition-colors shadow-sm cursor-pointer"
+                        >
+                          Firmar Dictamen de Aprobación
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-[11px] text-slate-700 space-y-1">
+                      <div>Aprobador Técnico: <strong className="text-slate-900">{report.aprobado_por}</strong> ({report.timestamp_revision})</div>
+                      <div>Sello de Liberación Técnico: <span className="font-semibold text-slate-600">{report.justificacion_coordinador}</span></div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'gl_lab' && (
+        <motion.div
+          key="gl_lab"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Microscope className="text-emerald-600 w-4.5 h-4.5" />
+              Supervisión de Instrumentación Metrológica de Laboratorio
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Control de calibración EMA, vigencias de trazabilidad metrológica y estatus de equipos.</p>
+          </div>
+          {renderMetrologyControl('coordinator')}
+        </motion.div>
+      )}
+
+      {activeTab === 'gl_hojas_campo' && (
+        <motion.div
+          key="gl_hojas_campo"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <FileSpreadsheet className="text-emerald-600 w-4.5 h-4.5" />
+              Consulta Histórica de Hojas de Campo
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Listado histórico de reportes cargados para auditoría rápida.</p>
+          </div>
+
+          <div className="space-y-4">
+            {submittedReports.map((report) => (
+              <div key={report.id_reporte} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between border-b border-slate-100 pb-2">
+                  <div>
+                    <span className="font-mono font-bold text-xs text-slate-900">{report.id_reporte}</span>
+                    <h4 className="text-xs font-bold text-slate-700 mt-1">Cliente: {report.cliente_nombre}</h4>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">{report.fecha_reporte}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs text-slate-600">
+                  <div>Analista de Campo: <strong className="text-slate-800">{report.tecnico_nombre}</strong></div>
+                  <div>Sello Metrológico: <span className="font-mono text-[10px] bg-slate-50 px-1 py-0.2 rounded border border-slate-150">{report.xml_hash_sha256 ? "Firmado" : "Pendiente"}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'gl_estudios' && (
+        <motion.div
+          key="gl_estudios"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <ShieldCheck className="text-emerald-600 w-4.5 h-4.5" />
+              Validación y Dictamen Técnico de Resultados de Estudios
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Aprobación metrológica NMX-17025 de calibración y firmas con e.firma SAT.</p>
+          </div>
+
+          <div className="space-y-4">
+            {studiesList.map((study) => (
+              <div key={study.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-2.5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <strong className="font-mono text-xs text-slate-950">{study.id}</strong>
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                        study.status === 'Validado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        study.status === 'Rechazado' ? 'bg-red-50 text-red-700 border-red-200' :
+                        'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                      }`}>
+                        {study.status}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 mt-1">Estudio: {study.studyType}</p>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    Fecha de Ensayo: <strong>{study.date}</strong>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Datos del Ensayo</span>
+                    <div className="space-y-1 text-[11px] text-slate-700">
+                      <div>Cliente: <strong className="text-slate-900">{study.client}</strong></div>
+                      <div>Analista Responsable: <span className="text-slate-800">{study.analyst}</span></div>
+                      <div>Mediciones Reportadas: <strong className="text-red-700 font-mono">{study.readings}</strong></div>
+                      <div>Condiciones Ambientales: <span className="text-slate-600">{study.temperature} / {study.humidity}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Trazabilidad de Instrumentos (NMX-17025)</span>
+                    <div className="space-y-1 text-[11px] text-slate-700">
+                      <div>Tracecode: <span className="font-mono text-emerald-700 font-semibold">{study.metrologicalTraceability}</span></div>
+                      <div className="truncate text-[9.5px] text-slate-500 font-mono">SHA256 Resultados: {study.hash}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {study.status === 'Pendiente Validación' ? (
+                  <div className="border-t border-slate-100 pt-4 space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1 font-mono">Justificación Metrológica del Dictamen</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Verificado contra patrones vigentes EMA. Errores máximos permitidos dentro de tolerancia."
+                        value={studyValidationNotes[study.id] || ""}
+                        onChange={(e) => setStudyValidationNotes({ ...studyValidationNotes, [study.id]: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
+                      />
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => handleValidateStudy(study.id, false)}
+                        className="flex-1 py-1.5 bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-200 rounded font-semibold text-xs transition-colors cursor-pointer text-center"
+                      >
+                        Retornar por Desviación
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleValidateStudy(study.id, true)}
+                        className="flex-1 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                      >
+                        <Lock className="w-3.5 h-3.5" /> Validar y Sellar Estudio
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg text-[11px] text-emerald-800 space-y-1">
+                    <div>Validador Técnico: <strong className="text-slate-900">{study.validator}</strong></div>
+                    <div>Sello Digital (NOM-151): <span className="font-mono text-[9.5px] text-slate-500">{study.signature}</span></div>
+                    <div>Comentarios del Dictamen: <span className="font-light text-slate-600 italic">"{study.validationComment || "Validado conforme."}"</span></div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </motion.div>
       )}
