@@ -115,8 +115,7 @@ export default function App() {
       case 'dir_op':
         return tabId;
       case 'dir_at_cl':
-        if (tabId === 'dac_clients' || tabId === 'dac_quotes' || tabId === 'dac_tracking') return 'admin_crm';
-        break;
+        return tabId;
       case 'ger_tec':
         if (tabId === 'gt_services' || tabId === 'gt_norms') return 'coord_inventory';
         if (tabId === 'gt_odt' || tabId === 'gt_hojas_campo') return 'coord_validation';

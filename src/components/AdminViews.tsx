@@ -24,7 +24,16 @@ import {
   FileCheck,
   Sparkles,
   Layers,
-  Settings
+  Settings,
+  Users,
+  Building2,
+  Search,
+  Plus,
+  Trash,
+  MessageSquare,
+  Edit,
+  Briefcase,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Usuario } from '../initial_data';
@@ -98,6 +107,198 @@ export default function AdminViews(props: AdminViewsProps) {
   const [selectedReportToFeed, setSelectedReportToFeed] = useState<any | null>(null);
   const [compiledDossier, setCompiledDossier] = useState<any | null>(null);
   const [serverDossier, setServerDossier] = useState<any | null>(null);
+
+  // --- CRM & CLIENTS ADVANCED STATES ---
+  const [clientsList, setClientsList] = useState<any[]>([
+    {
+      id: "CLI-001",
+      razon_social: "Aceros de México S.A. de C.V.",
+      rfc: "AME841012TS9",
+      direccion: "Av. Constitución 400, Monterrey, NL",
+      contacto_nombre: "Ing. Juan Gómez",
+      contacto_email: "compras@acerosmex.com",
+      contacto_telefono: "811-555-0199",
+      sector: "Metalúrgico",
+      estado: "Activo",
+      pipeline_stage: "negotiation",
+      fecha_registro: "2026-01-15"
+    },
+    {
+      id: "CLI-002",
+      razon_social: "Farmacéutica del Norte S.A. de C.V.",
+      rfc: "FNO981105RE4",
+      direccion: "Paseo de la Reforma 1200, Ciudad de México",
+      contacto_nombre: "Dra. Sofía Méndez",
+      contacto_email: "s.mendez@farnorte.com",
+      contacto_telefono: "555-123-4567",
+      sector: "Farmacéutico",
+      estado: "Activo",
+      pipeline_stage: "quoted",
+      fecha_registro: "2026-02-20"
+    },
+    {
+      id: "CLI-003",
+      razon_social: "Alimentos Procesados Bajío S.A.",
+      rfc: "APB100220UY3",
+      direccion: "Blvd. Adolfo López Mateos 15, León, Gto",
+      contacto_nombre: "Lic. Pedro Torres",
+      contacto_email: "ptorres@alimentosbajio.mx",
+      contacto_telefono: "477-987-6543",
+      sector: "Alimentos",
+      estado: "Prospecto",
+      pipeline_stage: "lead",
+      fecha_registro: "2026-04-10"
+    },
+    {
+      id: "CLI-004",
+      razon_social: "Refinería Tuxpan S.A. de C.V.",
+      rfc: "RTU750403KL8",
+      direccion: "Zona Industrial Lote 4, Tuxpan, Ver",
+      contacto_nombre: "Ing. Carlos Ruiz",
+      contacto_email: "cruiz@refineriatuxpan.com",
+      contacto_telefono: "783-111-2233",
+      sector: "Petroquímico",
+      estado: "Activo",
+      pipeline_stage: "won",
+      fecha_registro: "2026-05-02"
+    }
+  ]);
+
+  const [clientsSearchQuery, setClientsSearchQuery] = useState("");
+  const [editingClient, setEditingClient] = useState<any | null>(null);
+  const [newClientForm, setNewClientForm] = useState({
+    razon_social: "",
+    rfc: "",
+    direccion: "",
+    contacto_nombre: "",
+    contacto_email: "",
+    contacto_telefono: "",
+    sector: "Industrial",
+    estado: "Activo",
+    pipeline_stage: "lead"
+  });
+
+  const [trackingNotes, setTrackingNotes] = useState<any[]>([
+    {
+      id: "TRK-001",
+      cliente_id: "CLI-001",
+      cliente_nombre: "Aceros de México S.A. de C.V.",
+      fecha: "2026-07-10T14:30:00Z",
+      tipo: "Llamada",
+      comentario: "Se contactó al Ing. Gómez para revisar la cotización de ruido de la NOM-011. Comenta que el departamento de compras está revisando el presupuesto final.",
+      usuario: "Sofía Méndez"
+    },
+    {
+      id: "TRK-002",
+      cliente_id: "CLI-002",
+      cliente_nombre: "Farmacéutica del Norte S.A. de C.V.",
+      fecha: "2026-07-12T11:00:00Z",
+      tipo: "Reunión",
+      comentario: "Reunión técnica virtual de alineación sobre los puntos de medición de la NOM-025. Se validó que el laboratorio de metrología cuenta con calibración vigente de luxómetros ante EMA.",
+      usuario: "Sofía Méndez"
+    },
+    {
+      id: "TRK-003",
+      cliente_id: "CLI-003",
+      cliente_nombre: "Alimentos Procesados Bajío S.A.",
+      fecha: "2026-07-15T09:45:00Z",
+      tipo: "Correo",
+      comentario: "Se envió la cotización formal con el desglose de IVA y viáticos estimados. Quedaron de enviar comentarios antes del fin de semana.",
+      usuario: "Sofía Méndez"
+    }
+  ]);
+
+  const [selectedClientForTracking, setSelectedClientForTracking] = useState<string>("all");
+  const [newTrackingNote, setNewTrackingNote] = useState({
+    cliente_id: "",
+    tipo: "Llamada",
+    comentario: ""
+  });
+
+  const handleSaveClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientForm.razon_social.trim() || !newClientForm.contacto_nombre.trim()) {
+      alert("Por favor, rellene los campos obligatorios.");
+      return;
+    }
+
+    if (editingClient) {
+      const updated = clientsList.map(c => c.id === editingClient.id ? { ...c, ...newClientForm } : c);
+      setClientsList(updated);
+      setEditingClient(null);
+      alert("Cliente actualizado exitosamente.");
+    } else {
+      const newClient = {
+        ...newClientForm,
+        id: `CLI-00${clientsList.length + 1}`,
+        fecha_registro: new Date().toISOString().split('T')[0]
+      };
+      setClientsList([...clientsList, newClient]);
+      alert("Cliente registrado exitosamente en el sistema CRM.");
+    }
+
+    setNewClientForm({
+      razon_social: "",
+      rfc: "",
+      direccion: "",
+      contacto_nombre: "",
+      contacto_email: "",
+      contacto_telefono: "",
+      sector: "Industrial",
+      estado: "Activo",
+      pipeline_stage: "lead"
+    });
+  };
+
+  const handleStartEditClient = (client: any) => {
+    setEditingClient(client);
+    setNewClientForm({
+      razon_social: client.razon_social,
+      rfc: client.rfc,
+      direccion: client.direccion,
+      contacto_nombre: client.contacto_nombre,
+      contacto_email: client.contacto_email,
+      contacto_telefono: client.contacto_telefono,
+      sector: client.sector,
+      estado: client.estado,
+      pipeline_stage: client.pipeline_stage || "lead"
+    });
+  };
+
+  const handleAddTrackingNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTrackingNote.cliente_id) {
+      alert("Por favor, seleccione un cliente.");
+      return;
+    }
+    if (!newTrackingNote.comentario.trim()) {
+      alert("Por favor, escriba un comentario.");
+      return;
+    }
+
+    const targetClient = clientsList.find(c => c.id === newTrackingNote.cliente_id);
+    const newNote = {
+      id: `TRK-00${trackingNotes.length + 1}`,
+      cliente_id: newTrackingNote.cliente_id,
+      cliente_nombre: targetClient ? targetClient.razon_social : "Cliente",
+      fecha: new Date().toISOString(),
+      tipo: newTrackingNote.tipo,
+      comentario: newTrackingNote.comentario,
+      usuario: activePersona.nombre_completo
+    };
+
+    setTrackingNotes([newNote, ...trackingNotes]);
+    setNewTrackingNote({
+      cliente_id: "",
+      tipo: "Llamada",
+      comentario: ""
+    });
+    alert("Nota de seguimiento registrada correctamente.");
+  };
+
+  const handleMovePipelineStage = (clientId: string, nextStage: string) => {
+    setClientsList(prev => prev.map(c => c.id === clientId ? { ...c, pipeline_stage: nextStage } : c));
+  };
 
   const handleSaveTemplate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -509,7 +710,7 @@ export default function AdminViews(props: AdminViewsProps) {
     <div className="space-y-6 animate-fade-in text-slate-800">
       {renderWelcomeBanner(getAdminRoleLabel(selectedRole))}
 
-      {activeTab === 'admin_crm' && (
+      {(activeTab === 'admin_crm' || activeTab === 'dac_quotes') && (
         <motion.div
           key="admin_crm"
           initial={{ opacity: 0, y: 10 }}
@@ -813,6 +1014,616 @@ export default function AdminViews(props: AdminViewsProps) {
                 )}
               </div>
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* TABS ESPECIALES PARA EL ROL DIRECTOR DE ATENCIÓN A CLIENTES (DAC) */}
+      {activeTab === 'dac_clients' && (
+        <motion.div
+          key="dac_clients"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Users className="text-[#85AA1C] w-4.5 h-4.5" />
+                Directorio y Registro de Clientes
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Registre nuevas razones sociales, asigne contactos principales y edite perfiles de clientes para propuestas comerciales.</p>
+            </div>
+            {editingClient && (
+              <button
+                onClick={() => {
+                  setEditingClient(null);
+                  setNewClientForm({
+                    razon_social: "",
+                    rfc: "",
+                    direccion: "",
+                    contacto_nombre: "",
+                    contacto_email: "",
+                    contacto_telefono: "",
+                    sector: "Industrial",
+                    estado: "Activo",
+                    pipeline_stage: "lead"
+                  });
+                }}
+                className="text-xs px-3 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+              >
+                Cancelar Edición
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* FORMULARIO: ALTA / EDICIÓN */}
+            <div className="lg:col-span-4 bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-4">
+              <div className="border-b border-slate-100 pb-2">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <UserPlus className="w-4 h-4 text-[#85AA1C]" />
+                  {editingClient ? "Editar Cliente Autorizado" : "Alta de Nuevo Cliente"}
+                </h4>
+                <p className="text-[10px] text-slate-400">Ingrese los datos fiscales y de contacto comercial.</p>
+              </div>
+
+              <form onSubmit={handleSaveClient} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Razón Social *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Aceros de México S.A. de C.V."
+                    value={newClientForm.razon_social}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, razon_social: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">RFC (SAT)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. AME841012TS9"
+                      value={newClientForm.rfc}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, rfc: e.target.value.toUpperCase() })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Sector Industrial</label>
+                    <select
+                      value={newClientForm.sector}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, sector: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                    >
+                      <option value="Industrial">Industrial</option>
+                      <option value="Metalúrgico">Metalúrgico</option>
+                      <option value="Farmacéutico">Farmacéutico</option>
+                      <option value="Alimentos">Alimentos</option>
+                      <option value="Petroquímico">Petroquímico</option>
+                      <option value="Automotriz">Automotriz</option>
+                      <option value="Químico">Químico</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Domicilio Fiscal</label>
+                  <input
+                    type="text"
+                    placeholder="Calle, Número, Colonia, CP, Ciudad"
+                    value={newClientForm.direccion}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, direccion: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                  />
+                </div>
+
+                <div className="border-t border-slate-100 pt-3 space-y-3.5">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Contacto Principal</span>
+                  
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Nombre del Contacto *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Ing. Juan Gómez"
+                      value={newClientForm.contacto_nombre}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, contacto_nombre: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">Email</label>
+                      <input
+                        type="email"
+                        placeholder="ejemplo@cliente.com"
+                        value={newClientForm.contacto_email}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, contacto_email: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">Teléfono Móvil</label>
+                      <input
+                        type="tel"
+                        placeholder="811-555-0199"
+                        value={newClientForm.contacto_telefono}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, contacto_telefono: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Estado de Relación</label>
+                    <select
+                      value={newClientForm.estado}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, estado: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                    >
+                      <option value="Activo">Activo</option>
+                      <option value="Prospecto">Prospecto / Lead</option>
+                      <option value="Inactivo">Inactivo</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Fase del Pipeline</label>
+                    <select
+                      value={newClientForm.pipeline_stage}
+                      onChange={(e) => setNewClientForm({ ...newClientForm, pipeline_stage: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                    >
+                      <option value="lead">Prospecto (Lead)</option>
+                      <option value="quoted">Cotizado</option>
+                      <option value="negotiation">Negociación</option>
+                      <option value="won">Ganado / Cerrado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-xl text-xs transition duration-200 shadow-sm flex items-center justify-center gap-1.5 mt-3 cursor-pointer"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{editingClient ? "Guardar Cambios" : "Registrar Cliente"}</span>
+                </button>
+              </form>
+            </div>
+
+            {/* TABLA / DIRECTORIO DE CLIENTES */}
+            <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider font-mono flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                  Clientes Registrados y Cartera Comercial
+                </h4>
+                
+                {/* Buscador */}
+                <div className="relative w-full sm:w-64 text-xs">
+                  <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Filtrar por Razón Social o RFC..."
+                    value={clientsSearchQuery}
+                    onChange={(e) => setClientsSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50/50 focus:outline-none focus:bg-white text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 font-mono text-[10px] uppercase">
+                      <th className="py-2.5 px-3">Cliente / RFC</th>
+                      <th className="py-2.5 px-3">Sector</th>
+                      <th className="py-2.5 px-3">Contacto Principal</th>
+                      <th className="py-2.5 px-3">Estado</th>
+                      <th className="py-2.5 px-3 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(() => {
+                      const filtered = clientsList.filter(c => 
+                        c.razon_social.toLowerCase().includes(clientsSearchQuery.toLowerCase()) ||
+                        c.rfc.toLowerCase().includes(clientsSearchQuery.toLowerCase()) ||
+                        c.contacto_nombre.toLowerCase().includes(clientsSearchQuery.toLowerCase())
+                      );
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-slate-400">
+                              No se encontraron clientes que coincidan con la búsqueda.
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return filtered.map(c => (
+                        <tr key={c.id} className="hover:bg-slate-50/60 transition duration-150">
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-slate-800">{c.razon_social}</div>
+                            <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                              <span>ID: {c.id}</span>
+                              <span className="text-slate-300">|</span>
+                              <span>RFC: {c.rfc || "N/A"}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded-full text-[10px]">
+                              {c.sector}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 space-y-0.5">
+                            <div className="font-medium text-slate-700 flex items-center gap-1">
+                              <User className="w-3.5 h-3.5 text-slate-400" />
+                              {c.contacto_nombre}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono flex flex-col gap-0.5">
+                              <span className="flex items-center gap-1">
+                                <Mail className="w-3 h-3 text-slate-300" /> {c.contacto_email}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-3 h-3 text-slate-300" /> {c.contacto_telefono}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 font-bold rounded-full text-[9px] uppercase font-mono ${
+                              c.estado === "Activo" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                              c.estado === "Prospecto" ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                              "bg-slate-100 text-slate-600"
+                            }`}>
+                              {c.estado}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => handleStartEditClient(c)}
+                                className="p-1.5 bg-slate-100 hover:bg-[#85AA1C]/10 text-slate-600 hover:text-[#85AA1C] rounded-lg transition cursor-pointer"
+                                title="Editar Perfil"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`¿Desea eliminar a ${c.razon_social} del CRM?`)) {
+                                    setClientsList(clientsList.filter(item => item.id !== c.id));
+                                  }
+                                }}
+                                className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-lg transition cursor-pointer"
+                                title="Eliminar Cliente"
+                              >
+                                <Trash className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'dac_tracking' && (
+        <motion.div
+          key="dac_tracking"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Briefcase className="text-[#85AA1C] w-4.5 h-4.5" />
+              Seguimiento de Ventas, Pipeline y Bitácora de Interacciones
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Gestione el progreso de prospectos a través del embudo de ventas y registre minutas de llamadas, correos y acuerdos comerciales.</p>
+          </div>
+
+          {/* PIPELINE / EMBADO INTERACTIVO (BENTO STYLE) */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider font-mono flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-[#85AA1C]" />
+              Embudo de Ventas Comercial (Sales Pipeline)
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              
+              {/* COL 1: LEAD */}
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 space-y-3">
+                <div className="flex justify-between items-center border-b border-slate-200/85 pb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono">1. Prospecto / Lead</span>
+                  <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">
+                    {clientsList.filter(c => c.pipeline_stage === "lead").length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {clientsList.filter(c => c.pipeline_stage === "lead").map(c => (
+                    <div key={c.id} className="bg-white p-3 border border-slate-200 rounded-lg shadow-sm space-y-2 text-xs">
+                      <div className="font-bold text-slate-800 leading-tight">{c.razon_social}</div>
+                      <div className="text-[10px] text-slate-500 font-medium">Contacto: {c.contacto_nombre}</div>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                        <span className="text-[9px] text-slate-400 font-mono">{c.id}</span>
+                        <button
+                          onClick={() => handleMovePipelineStage(c.id, "quoted")}
+                          className="px-2 py-1 bg-[#85AA1C]/10 text-[#85AA1C] hover:bg-[#85AA1C] hover:text-white font-bold rounded text-[9px] transition flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span>Cotizar</span>
+                          <ArrowRight className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {clientsList.filter(c => c.pipeline_stage === "lead").length === 0 && (
+                    <div className="text-center py-4 text-[11px] text-slate-400 italic">Sin prospectos activos</div>
+                  )}
+                </div>
+              </div>
+
+              {/* COL 2: QUOTED */}
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 space-y-3">
+                <div className="flex justify-between items-center border-b border-slate-200/85 pb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 font-mono">2. Propuesta Enviada</span>
+                  <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">
+                    {clientsList.filter(c => c.pipeline_stage === "quoted").length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {clientsList.filter(c => c.pipeline_stage === "quoted").map(c => (
+                    <div key={c.id} className="bg-white p-3 border border-slate-200 rounded-lg shadow-sm space-y-2 text-xs">
+                      <div className="font-bold text-slate-800 leading-tight">{c.razon_social}</div>
+                      <div className="text-[10px] text-slate-500 font-medium">Contacto: {c.contacto_nombre}</div>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                        <button
+                          onClick={() => handleMovePipelineStage(c.id, "lead")}
+                          className="text-[9px] text-slate-400 hover:text-slate-600 underline font-medium cursor-pointer"
+                        >
+                          Regresar
+                        </button>
+                        <button
+                          onClick={() => handleMovePipelineStage(c.id, "negotiation")}
+                          className="px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-bold rounded text-[9px] transition flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span>Negociar</span>
+                          <ArrowRight className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {clientsList.filter(c => c.pipeline_stage === "quoted").length === 0 && (
+                    <div className="text-center py-4 text-[11px] text-slate-400 italic">Ninguna propuesta enviada</div>
+                  )}
+                </div>
+              </div>
+
+              {/* COL 3: NEGOTIATION */}
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 space-y-3">
+                <div className="flex justify-between items-center border-b border-slate-200/85 pb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 font-mono">3. Negociación / PO</span>
+                  <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+                    {clientsList.filter(c => c.pipeline_stage === "negotiation").length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {clientsList.filter(c => c.pipeline_stage === "negotiation").map(c => (
+                    <div key={c.id} className="bg-white p-3 border border-slate-200 rounded-lg shadow-sm space-y-2 text-xs">
+                      <div className="font-bold text-slate-800 leading-tight">{c.razon_social}</div>
+                      <div className="text-[10px] text-slate-500 font-medium">Contacto: {c.contacto_nombre}</div>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                        <button
+                          onClick={() => handleMovePipelineStage(c.id, "quoted")}
+                          className="text-[9px] text-slate-400 hover:text-slate-600 underline font-medium cursor-pointer"
+                        >
+                          Regresar
+                        </button>
+                        <button
+                          onClick={() => handleMovePipelineStage(c.id, "won")}
+                          className="px-2 py-1 bg-emerald-600 text-white hover:bg-emerald-700 font-bold rounded text-[9px] transition flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span>Cerrar Ganada</span>
+                          <Check className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {clientsList.filter(c => c.pipeline_stage === "negotiation").length === 0 && (
+                    <div className="text-center py-4 text-[11px] text-slate-400 italic">Sin negociaciones de PO</div>
+                  )}
+                </div>
+              </div>
+
+              {/* COL 4: WON */}
+              <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 space-y-3">
+                <div className="flex justify-between items-center border-b border-emerald-200 pb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 font-mono">4. Ganada (Cerrada)</span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
+                    {clientsList.filter(c => c.pipeline_stage === "won").length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {clientsList.filter(c => c.pipeline_stage === "won").map(c => (
+                    <div key={c.id} className="bg-white p-3 border border-emerald-200 rounded-lg shadow-sm space-y-2 text-xs">
+                      <div className="font-bold text-slate-800 leading-tight flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>{c.razon_social}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium">Contacto: {c.contacto_nombre}</div>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                        <span className="text-[9px] text-emerald-600 font-bold uppercase font-mono">Venta Cerrada</span>
+                        <button
+                          onClick={() => handleMovePipelineStage(c.id, "negotiation")}
+                          className="text-[9px] text-slate-400 hover:text-slate-600 underline font-medium cursor-pointer"
+                        >
+                          Reabrir
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {clientsList.filter(c => c.pipeline_stage === "won").length === 0 && (
+                    <div className="text-center py-4 text-[11px] text-slate-400 italic">Ninguna cuenta ganada aún</div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-6">
+            
+            {/* AGREGAR INTERACCIÓN */}
+            <div className="lg:col-span-4 bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-4">
+              <div className="border-b border-slate-100 pb-2">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <MessageSquare className="w-4 h-4 text-[#85AA1C]" />
+                  Registrar Bitácora de Minuta
+                </h4>
+                <p className="text-[10px] text-slate-400">Agregue notas de reuniones telefónicas o acuerdos técnicos con el cliente.</p>
+              </div>
+
+              <form onSubmit={handleAddTrackingNote} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Seleccionar Cliente Comercial *</label>
+                  <select
+                    required
+                    value={newTrackingNote.cliente_id}
+                    onChange={(e) => setNewTrackingNote({ ...newTrackingNote, cliente_id: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs cursor-pointer"
+                  >
+                    <option value="">-- Elija un cliente --</option>
+                    {clientsList.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.razon_social} ({c.contacto_nombre})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Vía de Interacción *</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["Llamada", "Correo", "Reunión"].map(tipo => (
+                      <button
+                        key={tipo}
+                        type="button"
+                        onClick={() => setNewTrackingNote({ ...newTrackingNote, tipo })}
+                        className={`py-1.5 border rounded-lg text-xs font-bold transition duration-150 cursor-pointer text-center ${
+                          newTrackingNote.tipo === tipo
+                            ? "bg-[#85AA1C] text-white border-[#85AA1C]"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
+                        }`}
+                      >
+                        {tipo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Minuta / Acuerdo Detallado *</label>
+                  <textarea
+                    required
+                    rows={4}
+                    placeholder="Escriba los comentarios del cliente, necesidades del servicio, fecha de propuesta o fecha pactada para llamada técnica posterior..."
+                    value={newTrackingNote.comentario}
+                    onChange={(e) => setNewTrackingNote({ ...newTrackingNote, comentario: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-xl text-xs transition duration-200 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Guardar Nota en Bitácora</span>
+                </button>
+              </form>
+            </div>
+
+            {/* HISTORIAL / TIMELINE */}
+            <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider font-mono flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  Historial Cronológico de Interacciones
+                </h4>
+
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <span>Filtrar por Cliente:</span>
+                  <select
+                    value={selectedClientForTracking}
+                    onChange={(e) => setSelectedClientForTracking(e.target.value)}
+                    className="border border-slate-200 rounded bg-slate-50 px-2 py-1 text-xs"
+                  >
+                    <option value="all">Todos los Clientes</option>
+                    {clientsList.map(c => (
+                      <option key={c.id} value={c.id}>{c.razon_social}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="relative border-l border-slate-200 pl-4 ml-2.5 space-y-5 py-2 text-xs">
+                {(() => {
+                  const filtered = trackingNotes.filter(n => selectedClientForTracking === "all" || n.cliente_id === selectedClientForTracking);
+                  if (filtered.length === 0) {
+                    return <p className="text-xs text-slate-400 italic py-4">No hay notas de seguimiento registradas para este cliente.</p>;
+                  }
+                  return filtered.map(n => (
+                    <div key={n.id} className="relative text-xs">
+                      {/* Timeline Dot with Color Tag */}
+                      <span className={`absolute -left-[24.5px] top-1.5 w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center ${
+                        n.tipo === "Llamada" ? "bg-amber-500" :
+                        n.tipo === "Correo" ? "bg-blue-500" :
+                        "bg-purple-500"
+                      }`} />
+                      
+                      <div className="space-y-1 bg-slate-50/60 hover:bg-slate-50 border border-slate-100 rounded-xl p-3 transition duration-150">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-slate-400 text-[10px]">
+                          <span className="font-bold text-slate-700 text-xs font-sans">
+                            {n.cliente_nombre}
+                          </span>
+                          <span className="font-mono">
+                            {new Date(n.fecha).toLocaleString("es-MX")}
+                          </span>
+                        </div>
+                        
+                        <p className="text-[11px] text-slate-600 leading-relaxed py-1">
+                          {n.comentario}
+                        </p>
+
+                        <div className="flex items-center gap-2 text-[9px] uppercase font-bold tracking-wider font-mono pt-1 text-slate-400 border-t border-slate-200/50">
+                          <span className={`px-1.5 py-0.5 rounded ${
+                            n.tipo === "Llamada" ? "bg-amber-50 text-amber-700" :
+                            n.tipo === "Correo" ? "bg-blue-50 text-blue-700" :
+                            "bg-purple-50 text-purple-700"
+                          }`}>
+                            {n.tipo}
+                          </span>
+                          <span>•</span>
+                          <span>Registrado por: {n.usuario}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
           </div>
         </motion.div>
       )}
