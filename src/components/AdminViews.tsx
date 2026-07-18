@@ -496,9 +496,18 @@ export default function AdminViews(props: AdminViewsProps) {
     </div>
   );
 
+  const getAdminRoleLabel = (roleId?: string) => {
+    switch (roleId) {
+      case 'dir_at_cl': return "Director de Atención a Clientes";
+      case 'contabilidad': return "Ejecutivo de Finanzas y Contabilidad";
+      case 'jefe_rep': return "Jefe de Reportes y Validación";
+      default: return "Ejecutivo de Ventas y Administración";
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in text-slate-800">
-      {renderWelcomeBanner("Ejecutivo de Ventas y Administración")}
+      {renderWelcomeBanner(getAdminRoleLabel(selectedRole))}
 
       {activeTab === 'admin_crm' && (
         <motion.div

@@ -44,8 +44,8 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ceo",
     name: "CEO / Alta Dirección",
     icon: Briefcase,
-    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Sofía Méndez
-    defaultEmail: "sofia.mendez@aspechs.com.mx",
+    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Alejandro Torres
+    defaultEmail: "alejandro.torres@aspechs.com.mx",
     puesto: "Coordinador de Ciberseguridad y TI"
   },
   {
@@ -60,8 +60,8 @@ const ROLES_LIST: RoleConfig[] = [
     id: "dir_at_cl",
     name: "Director de Atención a Clientes",
     icon: HeartHandshake,
-    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Sofía Méndez
-    defaultEmail: "sofia.mendez@aspechs.com.mx",
+    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Alejandro Torres
+    defaultEmail: "alejandro.torres@aspechs.com.mx",
     puesto: "Coordinador de Ciberseguridad y TI"
   },
   {
@@ -100,8 +100,8 @@ const ROLES_LIST: RoleConfig[] = [
     id: "contabilidad",
     name: "Contabilidad",
     icon: DollarSign,
-    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Sofía Méndez
-    defaultEmail: "sofia.mendez@aspechs.com.mx",
+    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Alejandro Torres
+    defaultEmail: "alejandro.torres@aspechs.com.mx",
     puesto: "Coordinador de Ciberseguridad y TI"
   },
   {
@@ -157,8 +157,8 @@ const PREDEFINED_USERS_MAPPING = [
   },
   {
     id: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59",
-    nombre: "Sofía Méndez",
-    email: "sofia.mendez@aspechs.com.mx",
+    nombre: "Alejandro Torres",
+    email: "alejandro.torres@aspechs.com.mx",
     rol: "SYS_ADMIN",
     puesto: "Coordinador de Ciberseguridad y TI",
     firma: "SHA256:d89a12...931cb921 (e.firma SAT)"
@@ -195,6 +195,98 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showSqlViewer, setShowSqlViewer] = useState(false);
+
+  // User Registration State
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registerNombre, setRegisterNombre] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("ASPPass2026!");
+  const [registerPuesto, setRegisterPuesto] = useState("");
+  const [registerRole, setRegisterRole] = useState("ing_campo");
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registerNombre.trim()) {
+      setErrorMessage("Por favor, ingrese su nombre completo.");
+      return;
+    }
+    if (!registerEmail.trim()) {
+      setErrorMessage("Por favor, ingrese su correo electrónico.");
+      return;
+    }
+    if (!registerPuesto.trim()) {
+      setErrorMessage("Por favor, ingrese su cargo o puesto.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const newUserId = `usr-reg-${Date.now()}`;
+    const newUser: Usuario = {
+      id_usuario: newUserId,
+      nombre_completo: registerNombre.trim(),
+      email: registerEmail.trim().toLowerCase(),
+      id_rol: registerRole,
+      puesto: registerPuesto.trim(),
+      firma_electronica_fingerprint: `SHA256:REG_${Math.random().toString(16).slice(2, 10).toUpperCase()} (e.firma SAT)`,
+      esta_activo: true,
+      ultimo_acceso: new Date().toISOString()
+    };
+
+    if (connectionMode === "local") {
+      setTimeout(() => {
+        setIsLoading(false);
+        setSuccessMessage("¡Usuario registrado con éxito localmente!");
+        setTimeout(() => {
+          onSelectRole(registerRole, newUserId, newUser);
+        }, 1000);
+      }, 800);
+      return;
+    }
+
+    try {
+      // If we attempt Supabase registration
+      const roleObj = ROLES_LIST.find(r => r.id === registerRole);
+      try {
+        await supabase.from("roles").upsert({
+          id_rol: registerRole,
+          nombre: roleObj?.name || "Rol Personalizado",
+          descripcion: "Rol registrado dinámicamente."
+        });
+      } catch (rErr) {
+        console.warn("Could not upsert role to Supabase:", rErr);
+      }
+
+      const { error: insertErr } = await supabase.from("usuarios").insert({
+        id_usuario: newUserId,
+        nombre_completo: newUser.nombre_completo,
+        email: newUser.email,
+        password_hash: registerPassword,
+        id_rol: registerRole,
+        puesto: newUser.puesto,
+        firma_electronica_fingerprint: newUser.firma_electronica_fingerprint,
+        esta_activo: true,
+        ultimo_acceso: new Date().toISOString()
+      });
+
+      if (insertErr) throw insertErr;
+
+      setSuccessMessage("¡Usuario registrado con éxito en Supabase!");
+      setTimeout(() => {
+        onSelectRole(registerRole, newUserId, newUser);
+      }, 1000);
+    } catch (err: any) {
+      console.error("Error registering in Supabase:", err);
+      setSuccessMessage("¡Registrado localmente (Supabase no configurado o sin tabla)!");
+      setTimeout(() => {
+        onSelectRole(registerRole, newUserId, newUser);
+      }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getSuggestedUserForRole = (roleId: string) => {
     if (["ceo", "sys_admin", "dir_at_cl", "contabilidad"].includes(roleId)) {
@@ -441,7 +533,7 @@ INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol,
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
-('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Sofía Méndez', 'sofia.mendez@aspechs.com.mx', 'ASPPass2026!', 'SYS_ADMIN', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true)
+('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Alejandro Torres', 'alejandro.torres@aspechs.com.mx', 'ASPPass2026!', 'SYS_ADMIN', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true)
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
@@ -543,7 +635,7 @@ ON CONFLICT (email) DO NOTHING;
           ) : (
             // FORM VIEW: PORTAL ACCESS CARD
             <motion.div
-              key="access-form"
+              key={isRegistering ? "register-form" : "access-form"}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -552,7 +644,15 @@ ON CONFLICT (email) DO NOTHING;
             >
               {/* Back button */}
               <button
-                onClick={() => setSelectedRoleConfig(null)}
+                onClick={() => {
+                  if (isRegistering) {
+                    setIsRegistering(false);
+                    setErrorMessage(null);
+                    setSuccessMessage(null);
+                  } else {
+                    setSelectedRoleConfig(null);
+                  }
+                }}
                 className="absolute top-6 left-6 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors duration-200 text-slate-600 cursor-pointer"
                 title="Volver"
               >
@@ -564,159 +664,298 @@ ON CONFLICT (email) DO NOTHING;
                   {React.createElement(selectedRoleConfig.icon, { className: "w-6 h-6" })}
                 </div>
                 <h2 className="text-lg font-bold text-slate-800 text-center uppercase tracking-tight">
-                  Formulario de Acceso
+                  {isRegistering ? "Registro de Usuario" : "Formulario de Acceso"}
                 </h2>
                 <span className="text-xs text-slate-500 font-medium px-3 py-1 bg-slate-50 border border-slate-100 rounded-full mt-1.5 font-mono">
                   {selectedRoleConfig.name}
                 </span>
               </div>
 
-              {/* Connection Mode Selector */}
-              <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl mb-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConnectionMode("local");
-                    setErrorMessage(null);
-                  }}
-                  className={`py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
-                    connectionMode === "local"
-                      ? "bg-white text-slate-800 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <Server className="w-3.5 h-3.5 inline mr-1.5" />
-                  Modo Local (Demo)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConnectionMode("supabase");
-                    setErrorMessage(null);
-                  }}
-                  className={`py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
-                    connectionMode === "supabase"
-                      ? "bg-white text-[#85AA1C] shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <CloudLightning className="w-3.5 h-3.5 inline mr-1.5" />
-                  Supabase (Producción)
-                </button>
-              </div>
-
-              {/* Suggestion User Section */}
-              <div className="mb-6 bg-slate-50 border border-slate-200/60 rounded-2xl p-4">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono tracking-wider mb-2">
-                  Usuario Oficial Sugerido para esta función:
-                </span>
-                {(() => {
-                  const suggested = getSuggestedUserForRole(selectedRoleConfig.id);
-                  if (!suggested) return <p className="text-xs text-slate-500">Ningún usuario configurado.</p>;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => selectSuggestedUser(suggested)}
-                      className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-[#85AA1C]/40 rounded-xl hover:bg-[#85AA1C]/5 transition-all text-left group cursor-pointer"
-                    >
-                      <div>
-                        <div className="text-xs font-bold text-slate-700 group-hover:text-slate-900">{suggested.nombre}</div>
-                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">{suggested.email}</div>
-                      </div>
-                      <span className="text-[9px] bg-slate-100 group-hover:bg-[#85AA1C]/20 group-hover:text-[#85AA1C] text-slate-600 font-bold px-2 py-0.5 rounded-md font-mono">
-                        Usar
-                      </span>
-                    </button>
-                  );
-                })()}
-              </div>
-
-              {/* Login form */}
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Correo Electrónico Oficial:
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="ejemplo@aspechs.com.mx"
-                      required
-                      className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Contraseña de Acceso:
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Error Banner */}
-                {errorMessage && (
-                  <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex gap-2.5 items-start text-xs text-red-600 leading-normal">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
-                    <div className="space-y-2">
-                      <p>{errorMessage}</p>
-                      {connectionMode === "supabase" && !errorMessage.includes("Este correo no") && (
+              {!isRegistering ? (
+                // 1. LOGIN VIEW
+                <>
+                  {/* Suggestion User Section */}
+                  <div className="mb-6 bg-slate-50 border border-slate-200/60 rounded-2xl p-4">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono tracking-wider mb-2">
+                      Usuario Oficial Sugerido para esta función:
+                    </span>
+                    {(() => {
+                      const suggested = getSuggestedUserForRole(selectedRoleConfig.id);
+                      if (!suggested) return <p className="text-xs text-slate-500">Ningún usuario configurado.</p>;
+                      return (
                         <button
                           type="button"
-                          onClick={handleBootstrapUserInSupabase}
-                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow"
+                          onClick={() => selectSuggestedUser(suggested)}
+                          className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-[#85AA1C]/40 rounded-xl hover:bg-[#85AA1C]/5 transition-all text-left group cursor-pointer"
                         >
-                          <Database className="w-3 h-3" />
-                          <span>Crear este perfil sugerido en mi Supabase ahora</span>
+                          <div>
+                            <div className="text-xs font-bold text-slate-700 group-hover:text-slate-900">{suggested.nombre}</div>
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">{suggested.email}</div>
+                          </div>
+                          <span className="text-[9px] bg-slate-100 group-hover:bg-[#85AA1C]/20 group-hover:text-[#85AA1C] text-slate-600 font-bold px-2 py-0.5 rounded-md font-mono">
+                            Usar
+                          </span>
                         </button>
-                      )}
+                      );
+                    })()}
+                  </div>
+
+                  {/* Login form */}
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Correo Electrónico Oficial:
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="ejemplo@aspechs.com.mx"
+                          required
+                          className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
 
-                {/* Success Banner */}
-                {successMessage && (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex gap-2.5 items-center text-xs text-emerald-700 font-medium">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
-                    <p>{successMessage}</p>
-                  </div>
-                )}
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Contraseña de Acceso:
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3 bg-[#85AA1C] hover:bg-[#739418] disabled:bg-slate-300 text-white font-bold rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-2 mt-4"
-                >
-                  {isLoading ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>Iniciar Sesión en el Portal</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
+                    {/* Error Banner */}
+                    {errorMessage && (
+                      <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex gap-2.5 items-start text-xs text-red-600 leading-normal">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                        <div className="space-y-2">
+                          <p>{errorMessage}</p>
+                          {connectionMode === "supabase" && !errorMessage.includes("Este correo no") && (
+                            <button
+                              type="button"
+                              onClick={handleBootstrapUserInSupabase}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow"
+                            >
+                              <Database className="w-3 h-3" />
+                              <span>Crear este perfil sugerido en mi Supabase ahora</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Success Banner */}
+                    {successMessage && (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex gap-2.5 items-center text-xs text-emerald-700 font-medium">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                        <p>{successMessage}</p>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full py-3 bg-[#85AA1C] hover:bg-[#739418] disabled:bg-slate-300 text-white font-bold rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-2 mt-4"
+                    >
+                      {isLoading ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>Iniciar Sesión en el Portal</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  {/* Register link */}
+                  <div className="text-center mt-5 pt-4 border-t border-slate-100">
+                    <p className="text-xs text-slate-500">
+                      ¿No tienes una cuenta?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRegistering(true);
+                          setRegisterNombre("");
+                          setRegisterEmail("");
+                          setRegisterPuesto(selectedRoleConfig.puesto || "");
+                          setRegisterRole(selectedRoleConfig.id);
+                          setErrorMessage(null);
+                          setSuccessMessage(null);
+                        }}
+                        className="text-[#85AA1C] hover:text-[#739418] font-bold underline focus:outline-none cursor-pointer"
+                      >
+                        Regístrate aquí
+                      </button>
+                    </p>
+                  </div>
+                </>
+              ) : (
+                // 2. REGISTRATION VIEW
+                <>
+                  <form onSubmit={handleRegister} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Nombre Completo:
+                      </label>
+                      <input
+                        type="text"
+                        value={registerNombre}
+                        onChange={(e) => setRegisterNombre(e.target.value)}
+                        placeholder="Ej. Juan Pérez López"
+                        required
+                        className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Correo Electrónico Oficial:
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type="email"
+                          value={registerEmail}
+                          onChange={(e) => setRegisterEmail(e.target.value)}
+                          placeholder="ejemplo@aspechs.com.mx"
+                          required
+                          className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Cargo / Puesto de Trabajo:
+                      </label>
+                      <input
+                        type="text"
+                        value={registerPuesto}
+                        onChange={(e) => setRegisterPuesto(e.target.value)}
+                        placeholder="Ej. Coordinador Senior"
+                        required
+                        className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Función / Rol en el Portal:
+                      </label>
+                      <select
+                        value={registerRole}
+                        onChange={(e) => {
+                          setRegisterRole(e.target.value);
+                          const rObj = ROLES_LIST.find(r => r.id === e.target.value);
+                          if (rObj) {
+                            setRegisterPuesto(rObj.puesto);
+                          }
+                        }}
+                        className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all cursor-pointer"
+                      >
+                        {ROLES_LIST.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {role.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Contraseña de Acceso:
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={registerPassword}
+                          onChange={(e) => setRegisterPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] focus:border-[#85AA1C] transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Error Banner */}
+                    {errorMessage && (
+                      <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex gap-2.5 items-start text-xs text-red-600 leading-normal">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                        <p>{errorMessage}</p>
+                      </div>
+                    )}
+
+                    {/* Success Banner */}
+                    {successMessage && (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex gap-2.5 items-center text-xs text-emerald-700 font-medium">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                        <p>{successMessage}</p>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full py-3 bg-[#85AA1C] hover:bg-[#739418] disabled:bg-slate-300 text-white font-bold rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-2 mt-4"
+                    >
+                      {isLoading ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>Registrar y Acceder al Sistema</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  {/* Back to login link */}
+                  <div className="text-center mt-5 pt-4 border-t border-slate-100">
+                    <p className="text-xs text-slate-500">
+                      ¿Ya tienes una cuenta?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRegistering(false);
+                          setErrorMessage(null);
+                          setSuccessMessage(null);
+                        }}
+                        className="text-[#85AA1C] hover:text-[#739418] font-bold underline focus:outline-none cursor-pointer"
+                      >
+                        Inicia Sesión aquí
+                      </button>
+                    </p>
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

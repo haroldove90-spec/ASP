@@ -135,8 +135,8 @@ export const INITIAL_USUARIOS: Usuario[] = [
   },
   {
     id_usuario: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59",
-    nombre_completo: "Sofía Méndez",
-    email: "sofia.mendez@aspechs.com.mx",
+    nombre_completo: "Alejandro Torres",
+    email: "alejandro.torres@aspechs.com.mx",
     id_rol: "SYS_ADMIN",
     puesto: "Coordinador de Ciberseguridad y TI",
     firma_electronica_fingerprint: "SHA256:d89a12...931cb921 (e.firma SAT)",
