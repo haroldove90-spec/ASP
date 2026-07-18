@@ -98,6 +98,7 @@ export default function App() {
     if (!roleId) return tabId;
     if ([
       'dir_dashboard', 'dir_calibration', 'dir_config',
+      'dir_quotes', 'dir_odt', 'dir_agenda', 'dir_engineers',
       'coord_agenda', 'coord_inventory', 'coord_validation',
       'tech_agenda', 'tech_epp', 'tech_mediciones', 'tech_muestras',
       'admin_crm', 'admin_finance', 'admin_results'
@@ -112,10 +113,7 @@ export default function App() {
         if (tabId === 'ceo_admin') return 'dir_config';
         break;
       case 'dir_op':
-        if (tabId === 'dir_dashboard') return 'dir_dashboard';
-        if (tabId === 'dir_quotes' || tabId === 'dir_odt') return 'dir_calibration';
-        if (tabId === 'dir_agenda' || tabId === 'dir_engineers') return 'dir_dashboard';
-        break;
+        return tabId;
       case 'dir_at_cl':
         if (tabId === 'dac_clients' || tabId === 'dac_quotes' || tabId === 'dac_tracking') return 'admin_crm';
         break;
@@ -1320,15 +1318,51 @@ export default function App() {
     return getSidebarItems(selectedRole);
   }, [selectedRole]);
 
-  if (selectedRole === null) {
-    return <HomeSelection onSelectRole={(roleId, personaId) => { 
-      setSelectedRole(roleId); 
-      setCurrentPersonaId(personaId); 
-      const items = getSidebarItems(roleId);
-      if (items.length > 0) {
-        setActiveTab(items[0].id);
+  const handleOnLogin = (roleId: string, personaId: string, loggedInUser?: Usuario) => {
+    setSelectedRole(roleId);
+    
+    let activeUserList = [...usuarios];
+    if (loggedInUser) {
+      const exists = usuarios.some(u => u.id_usuario === loggedInUser.id_usuario || u.email.toLowerCase() === loggedInUser.email.toLowerCase());
+      if (!exists) {
+        activeUserList = [loggedInUser, ...usuarios];
+        setUsuarios(activeUserList);
+        saveStateToLocalStorage(activeUserList, undefined, undefined, undefined);
       }
-    }} />;
+      setCurrentPersonaId(loggedInUser.id_usuario);
+    } else {
+      setCurrentPersonaId(personaId);
+    }
+
+    // Identify logging user
+    const targetUser = loggedInUser || usuarios.find(u => u.id_usuario === personaId) || usuarios[0];
+
+    // Audit Log Entry
+    const newLog: AuditLog = {
+      id_log: auditLogs.length + 1,
+      id_usuario: targetUser.id_usuario,
+      usuario_nombre: targetUser.nombre_completo,
+      usuario_rol: targetUser.id_role || targetUser.id_rol,
+      tabla_afectada: "usuarios",
+      registro_id: targetUser.id_usuario,
+      accion: "LOGIN",
+      valor_anterior: null,
+      valor_nuevo: JSON.stringify({ email: targetUser.email, login_timestamp: new Date().toISOString() }),
+      justificacion_tecnica: `Inicio de sesión exitoso en el portal ASP/EcH&S bajo rol autorizado: ${targetUser.id_role || targetUser.id_rol}.`,
+      hash_integridad: generarHashIntegridad(targetUser.id_usuario, "usuarios", targetUser.id_usuario, "LOGIN", null, null, "User Login"),
+      ip_origen: "192.168.10.12",
+      timestamp: new Date().toISOString()
+    };
+    saveStateToLocalStorage(undefined, undefined, undefined, [newLog, ...auditLogs]);
+
+    const items = getSidebarItems(roleId);
+    if (items.length > 0) {
+      setActiveTab(items[0].id);
+    }
+  };
+
+  if (selectedRole === null) {
+    return <HomeSelection onSelectRole={handleOnLogin} />;
   }
 
   return (
@@ -1581,8 +1615,14 @@ export default function App() {
                 ROLE_PERMISSIONS_MAP={ROLE_PERMISSIONS_MAP}
                 DB_SCHEMA_SQL={DB_SCHEMA_SQL}
                 scheduledServices={scheduledServices}
+                setScheduledServices={setScheduledServices}
                 submittedReports={submittedReports}
                 purchaseOrders={purchaseOrders}
+                generatedQuotes={generatedQuotes}
+                setGeneratedQuotes={setGeneratedQuotes}
+                invoices={invoices}
+                setInvoices={setInvoices}
+                setUsuarios={setUsuarios}
               />
             )}
 

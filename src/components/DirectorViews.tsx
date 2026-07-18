@@ -88,8 +88,14 @@ interface DirectorViewsProps {
   ROLE_PERMISSIONS_MAP: Record<string, string[]>;
   DB_SCHEMA_SQL: string;
   scheduledServices: any[];
+  setScheduledServices: React.Dispatch<React.SetStateAction<any[]>>;
   submittedReports: any[];
   purchaseOrders: any[];
+  generatedQuotes: any[];
+  setGeneratedQuotes: React.Dispatch<React.SetStateAction<any[]>>;
+  invoices: any[];
+  setInvoices: React.Dispatch<React.SetStateAction<any[]>>;
+  setUsuarios: React.Dispatch<React.SetStateAction<Usuario[]>>;
   selectedRole?: string;
 }
 
@@ -140,12 +146,185 @@ export default function DirectorViews(props: DirectorViewsProps) {
     ROLE_PERMISSIONS_MAP,
     DB_SCHEMA_SQL,
     scheduledServices,
+    setScheduledServices,
     submittedReports,
-    purchaseOrders
+    purchaseOrders,
+    generatedQuotes,
+    setGeneratedQuotes,
+    invoices,
+    setInvoices,
+    setUsuarios
   } = props;
 
   const [activeFinTab, setActiveFinTab] = useState<'quotes' | 'invoices'>('invoices');
   const [projectStatusFilter, setProjectStatusFilter] = useState<string>("Todos");
+
+  // --- LOCAL STATES FOR DIRECTOR OF OPERATIONS INTERACTION ---
+  const [isAddQuoteOpen, setIsAddQuoteOpen] = useState(false);
+  const [newQuoteForm, setNewQuoteForm] = useState({
+    cliente: '',
+    servicio: 'Mapeo de Ruido NOM-011-STPS',
+    puntos: 5,
+    viaticos: 1500
+  });
+
+  const [isAddOdtOpen, setIsAddOdtOpen] = useState(false);
+  const [newOdtForm, setNewOdtForm] = useState({
+    cliente_nombre: '',
+    servicio: 'Mapeo de Ruido NOM-011',
+    fecha: '2026-07-20',
+    id_tecnico: '',
+    id_instrumento: '',
+    estado: 'Asignado'
+  });
+
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [newScheduleForm, setNewScheduleForm] = useState({
+    cliente_nombre: '',
+    servicio: 'Mapeo de Ruido NOM-011',
+    id_tecnico: '',
+    id_instrumento: '',
+  });
+
+  const [isAddEngineerOpen, setIsAddEngineerOpen] = useState(false);
+  const [newEngineerForm, setNewEngineerForm] = useState({
+    nombre_completo: '',
+    email: '',
+    cedula: '',
+    especialidad: 'Especialista en Acústica NOM-011'
+  });
+
+  // --- SUBMISSION HANDLERS ---
+  const handleCreateQuote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newQuoteForm.cliente) {
+      alert("Por favor ingrese el nombre del cliente.");
+      return;
+    }
+    const computedCosto = (newQuoteForm.puntos * 2500) + Number(newQuoteForm.viaticos);
+    const newQuote = {
+      id: `COT-00${generatedQuotes.length + 1}`,
+      cliente: newQuoteForm.cliente,
+      servicio: newQuoteForm.servicio,
+      puntos: Number(newQuoteForm.puntos),
+      costo: computedCosto,
+      fecha: new Date().toISOString().split('T')[0],
+      estado: "Enviado"
+    };
+
+    setGeneratedQuotes([newQuote, ...generatedQuotes]);
+
+    // Create corresponding invoice
+    const newInvoice = {
+      id_factura: invoices.length + 1,
+      cliente: newQuoteForm.cliente,
+      monto: computedCosto,
+      estado: "Pendiente",
+      vencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    };
+    setInvoices([newInvoice, ...invoices]);
+
+    setIsAddQuoteOpen(false);
+    setNewQuoteForm({
+      cliente: '',
+      servicio: 'Mapeo de Ruido NOM-011-STPS',
+      puntos: 5,
+      viaticos: 1500
+    });
+    alert(`Cotización ${newQuote.id} generada y registrada con éxito para ${newQuote.cliente} por un monto total de $${newQuote.costo.toLocaleString()} MXN.`);
+  };
+
+  const handleCreateOdt = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOdtForm.cliente_nombre || !newOdtForm.fecha || !newOdtForm.id_tecnico || !newOdtForm.id_instrumento) {
+      alert("Por favor complete todos los campos obligatorios.");
+      return;
+    }
+    const newOdt = {
+      id_servicio: `SERV-${100 + scheduledServices.length + 1}`,
+      cliente_nombre: newOdtForm.cliente_nombre,
+      servicio: newOdtForm.servicio,
+      fecha: newOdtForm.fecha,
+      id_tecnico: newOdtForm.id_tecnico,
+      id_instrumento: newOdtForm.id_instrumento,
+      estado: newOdtForm.estado
+    };
+
+    setScheduledServices([newOdt, ...scheduledServices]);
+    setIsAddOdtOpen(false);
+    setNewOdtForm({
+      cliente_nombre: '',
+      servicio: 'Mapeo de Ruido NOM-011',
+      fecha: '2026-07-20',
+      id_tecnico: '',
+      id_instrumento: '',
+      estado: 'Asignado'
+    });
+    alert(`Orden de Trabajo ${newOdt.id_servicio} creada y programada correctamente para el ${newOdt.fecha}.`);
+  };
+
+  const handleScheduleDayEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCalendarDay) return;
+    if (!newScheduleForm.cliente_nombre || !newScheduleForm.id_tecnico || !newScheduleForm.id_instrumento) {
+      alert("Por favor complete todos los campos obligatorios.");
+      return;
+    }
+
+    const newOdt = {
+      id_servicio: `SERV-${100 + scheduledServices.length + 1}`,
+      cliente_nombre: newScheduleForm.cliente_nombre,
+      servicio: newScheduleForm.servicio,
+      fecha: selectedCalendarDay,
+      id_tecnico: newScheduleForm.id_tecnico,
+      id_instrumento: newScheduleForm.id_instrumento,
+      estado: 'Asignado'
+    };
+
+    setScheduledServices([newOdt, ...scheduledServices]);
+    setIsScheduleModalOpen(false);
+    setNewScheduleForm({
+      cliente_nombre: '',
+      servicio: 'Mapeo de Ruido NOM-011',
+      id_tecnico: '',
+      id_instrumento: '',
+    });
+    alert(`Servicio agendado con éxito para el día ${selectedCalendarDay}.`);
+  };
+
+  const handleCreateEngineer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEngineerForm.nombre_completo || !newEngineerForm.email || !newEngineerForm.cedula) {
+      alert("Por favor complete todos los campos obligatorios.");
+      return;
+    }
+
+    const newEng: Usuario = {
+      id_usuario: `usr-${100 + usuarios.length + 1}`,
+      nombre_completo: newEngineerForm.nombre_completo,
+      email: newEngineerForm.email,
+      id_rol: 'LAB_TECH',
+      puesto: `Ingeniero de Campo - ${newEngineerForm.especialidad}`,
+      firma_electronica_fingerprint: `SHA256:${newEngineerForm.cedula.toUpperCase()}`,
+      esta_activo: true,
+      ultimo_acceso: new Date().toISOString()
+    };
+
+    // Store custom fields as dynamic properties
+    (newEng as any).cedula_profesional = newEngineerForm.cedula;
+    (newEng as any).firma_electronica = `FIRMA:${newEngineerForm.nombre_completo.toUpperCase().replace(/\s/g, '_')}_${newEngineerForm.cedula}`;
+
+    setUsuarios([...usuarios, newEng]);
+    setIsAddEngineerOpen(false);
+    setNewEngineerForm({
+      nombre_completo: '',
+      email: '',
+      cedula: '',
+      especialidad: 'Especialista en Acústica NOM-011'
+    });
+    alert(`Ingeniero de Campo ${newEng.nombre_completo} registrado de alta en el sistema exitosamente.`);
+  };
   const [projectTechFilter, setProjectTechFilter] = useState<string>("Todos");
   const [selectedLiveServiceForGps, setSelectedLiveServiceForGps] = useState<any>(null);
   
@@ -1331,6 +1510,727 @@ export default function DirectorViews(props: DirectorViewsProps) {
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 font-mono">Bitácora de Sucesos de Calidad (Audit Trail)</h4>
               {renderAuditSection()}
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'dir_quotes' && (
+        <motion.div
+          key="dir_quotes"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <FileText className="text-emerald-600 w-4.5 h-4.5" />
+                Gestión e Historial de Cotizaciones
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Módulo interactivo de costeo, emisión de cotizaciones y automatización de facturación.</p>
+            </div>
+            <button
+              onClick={() => setIsAddQuoteOpen(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nueva Cotización</span>
+            </button>
+          </div>
+
+          {/* Form Modal for Creating Quote */}
+          {isAddQuoteOpen && (
+            <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-xl space-y-4">
+              <div className="border-b border-emerald-150 pb-2 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-mono">
+                  Generar Nueva Cotización Comercial
+                </h4>
+                <button 
+                  onClick={() => setIsAddQuoteOpen(false)} 
+                  className="text-slate-400 hover:text-slate-600 text-xs font-bold font-mono"
+                >
+                  [Cancelar]
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateQuote} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+                <div className="space-y-1 md:col-span-2">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Cliente Industrial *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Siderúrgica de Monterrey S.A."
+                    value={newQuoteForm.cliente}
+                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, cliente: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Servicio / Normativa *</label>
+                  <select
+                    value={newQuoteForm.servicio}
+                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, servicio: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  >
+                    <option value="Mapeo de Ruido NOM-011-STPS">Mapeo de Ruido NOM-011-STPS</option>
+                    <option value="Estudio de Iluminación NOM-025-STPS">Estudio de Iluminación NOM-025-STPS</option>
+                    <option value="Dosimetrías de Ruido NOM-011-STPS">Dosimetrías de Ruido NOM-011-STPS</option>
+                    <option value="Evaluación de Vibraciones NOM-024-STPS">Evaluación de Vibraciones NOM-024-STPS</option>
+                    <option value="Estudio de Presiones NOM-016-STPS">Estudio de Presiones NOM-016-STPS</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Puntos de Medición / Muestras</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={newQuoteForm.puntos}
+                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, puntos: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Viáticos Estimados ($ MXN)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={newQuoteForm.viaticos}
+                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, viaticos: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 font-mono text-[10.5px] space-y-1 flex flex-col justify-center">
+                  <div className="text-slate-500 uppercase text-[9px] font-bold">Costo Computado Estimado:</div>
+                  <div className="text-sm font-bold text-slate-900">
+                    ${((newQuoteForm.puntos * 2500) + Number(newQuoteForm.viaticos)).toLocaleString()} MXN
+                  </div>
+                  <div className="text-[9px] text-slate-400">Tarifa base: $2,500 por punto metrológico.</div>
+                </div>
+
+                <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddQuoteOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
+                  >
+                    Cerrar Formulario
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Emitir y Enviar Cotización</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* List of Quotes */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <span className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-wider">Bitácora de Cotizaciones</span>
+              <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">
+                {generatedQuotes.length} Cotizaciones Emitidas
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] text-slate-400 font-mono uppercase">
+                    <th className="px-5 py-3 font-semibold">Código</th>
+                    <th className="px-5 py-3 font-semibold">Cliente</th>
+                    <th className="px-5 py-3 font-semibold">Servicio Norma</th>
+                    <th className="px-5 py-3 font-semibold text-center">Puntos</th>
+                    <th className="px-5 py-3 font-semibold">Costo Total</th>
+                    <th className="px-5 py-3 font-semibold">Fecha de Emisión</th>
+                    <th className="px-5 py-3 font-semibold text-right">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                  {generatedQuotes.map((q) => (
+                    <tr key={q.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-5 py-4 font-mono font-bold text-emerald-600">{q.id}</td>
+                      <td className="px-5 py-4 font-bold text-slate-800">{q.cliente}</td>
+                      <td className="px-5 py-4 text-slate-500">{q.servicio}</td>
+                      <td className="px-5 py-4 text-center font-mono">{q.puntos}</td>
+                      <td className="px-5 py-4 font-mono font-bold text-slate-900">${q.costo.toLocaleString()} MXN</td>
+                      <td className="px-5 py-4 font-mono text-slate-400">{q.fecha}</td>
+                      <td className="px-5 py-4 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 font-mono">
+                          {q.estado}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'dir_odt' && (
+        <motion.div
+          key="dir_odt"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Briefcase className="text-emerald-600 w-4.5 h-4.5" />
+                Órdenes de Trabajo (ODT) Metrológicas
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Control, asignación y seguimiento de servicios técnicos y de levantamiento físico de campo.</p>
+            </div>
+            <button
+              onClick={() => setIsAddOdtOpen(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nueva ODT</span>
+            </button>
+          </div>
+
+          {/* Add ODT Form */}
+          {isAddOdtOpen && (
+            <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-xl space-y-4">
+              <div className="border-b border-emerald-150 pb-2 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-mono">
+                  Registrar y Programar Nueva ODT
+                </h4>
+                <button 
+                  onClick={() => setIsAddOdtOpen(false)} 
+                  className="text-slate-400 hover:text-slate-600 text-xs font-bold font-mono"
+                >
+                  [Cancelar]
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateOdt} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Cliente de Ensayos *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nombre de la planta o empresa"
+                    value={newOdtForm.cliente_nombre}
+                    onChange={(e) => setNewOdtForm({ ...newOdtForm, cliente_nombre: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Servicio Metrológico *</label>
+                  <select
+                    value={newOdtForm.servicio}
+                    onChange={(e) => setNewOdtForm({ ...newOdtForm, servicio: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  >
+                    <option value="Mapeo de Ruido NOM-011">Mapeo de Ruido NOM-011</option>
+                    <option value="Dosimetría de Ruido NOM-011">Dosimetría de Ruido NOM-011</option>
+                    <option value="Estudio de Iluminación NOM-025">Estudio de Iluminación NOM-025</option>
+                    <option value="Pruebas de Vibraciones NOM-024">Pruebas de Vibraciones NOM-024</option>
+                    <option value="Presión Ambiental NOM-016">Presión Ambiental NOM-016</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Fecha Programada *</label>
+                  <input
+                    type="date"
+                    required
+                    value={newOdtForm.fecha}
+                    onChange={(e) => setNewOdtForm({ ...newOdtForm, fecha: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Ingeniero de Campo Asignado *</label>
+                  <select
+                    required
+                    value={newOdtForm.id_tecnico}
+                    onChange={(e) => setNewOdtForm({ ...newOdtForm, id_tecnico: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  >
+                    <option value="">Seleccione Ingeniero...</option>
+                    {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero')).map(eng => (
+                      <option key={eng.id_usuario} value={eng.id_usuario}>{eng.nombre_completo}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Sonómetro Patrón Autorizado *</label>
+                  <select
+                    required
+                    value={newOdtForm.id_instrumento}
+                    onChange={(e) => setNewOdtForm({ ...newOdtForm, id_instrumento: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  >
+                    <option value="">Seleccione Instrumento...</option>
+                    {instruments.map(inst => (
+                      <option key={inst.id_instrumento} value={inst.id_instrumento}>
+                        {inst.nombre} ({inst.marca} Mod. {inst.modelo}, S/N: {inst.numero_serie})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Estatus de ODT *</label>
+                  <select
+                    value={newOdtForm.estado}
+                    onChange={(e) => setNewOdtForm({ ...newOdtForm, estado: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  >
+                    <option value="Asignado">Asignado</option>
+                    <option value="En Proceso">En Proceso</option>
+                    <option value="Completado">Completado</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddOdtOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
+                  >
+                    Cerrar Formulario
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Habilitar y Programar ODT</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* List of ODTs */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <span className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-wider">Tablero General de Órdenes de Trabajo</span>
+              <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">
+                {scheduledServices.length} ODT Activas
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] text-slate-400 font-mono uppercase">
+                    <th className="px-5 py-3 font-semibold">ID Servicio</th>
+                    <th className="px-5 py-3 font-semibold">Cliente</th>
+                    <th className="px-5 py-3 font-semibold">Servicio Metrológico</th>
+                    <th className="px-5 py-3 font-semibold">Técnico Asignado</th>
+                    <th className="px-5 py-3 font-semibold">Instrumento Autorizado</th>
+                    <th className="px-5 py-3 font-semibold">Fecha Programada</th>
+                    <th className="px-5 py-3 font-semibold text-right">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                  {scheduledServices.map((service) => {
+                    const tech = usuarios.find(u => u.id_usuario === service.id_tecnico);
+                    const inst = instruments.find(i => i.id_instrumento === service.id_instrumento);
+                    return (
+                      <tr key={service.id_servicio} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-emerald-600">{service.id_servicio}</td>
+                        <td className="px-5 py-4 font-bold text-slate-800">{service.cliente_nombre}</td>
+                        <td className="px-5 py-4 text-slate-500 font-semibold">{service.servicio}</td>
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-slate-700">{tech ? tech.nombre_completo : "Sin Asignar"}</div>
+                          <div className="text-[9px] text-slate-400 font-mono">{tech ? tech.email : ""}</div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="text-slate-800 text-[11px]">{inst ? inst.nombre : "Sin Instrumento"}</div>
+                          <div className="text-[9px] text-slate-400 font-mono">{inst ? `${inst.marca} Mod. ${inst.modelo}` : ""}</div>
+                        </td>
+                        <td className="px-5 py-4 font-mono text-slate-500 font-bold">{service.fecha}</td>
+                        <td className="px-5 py-4 text-right">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
+                            service.estado === 'Completado' 
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                              : service.estado === 'En Proceso'
+                              ? 'bg-blue-50 text-blue-600 border-blue-100'
+                              : 'bg-amber-50 text-amber-600 border-amber-100'
+                          }`}>
+                            {service.estado}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'dir_agenda' && (
+        <motion.div
+          key="dir_agenda"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Calendar className="text-emerald-600 w-4.5 h-4.5" />
+              Agenda y Calendario de Servicios
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Control visual e interactivo de asignaciones de campo de todo el personal metrológico. Haga clic en un día del calendario para programar.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* The interactive Calendar component */}
+            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-150">
+                <span className="text-xs font-bold text-slate-800 font-mono">Julio 2026</span>
+                <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider">Haga clic en un día para programar</span>
+              </div>
+
+              {/* Monthly calendar grid for July 2026 */}
+              <div className="grid grid-cols-7 gap-1 bg-slate-100 p-1.5 rounded-lg text-center font-mono text-[10px]">
+                {/* Headers */}
+                {['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'].map(day => (
+                  <div key={day} className="py-1 font-bold text-slate-400 uppercase text-[9px]">{day}</div>
+                ))}
+
+                {/* Grid cells: July 2026 starts on Wednesday (which means 3 empty days at start) */}
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={`empty-${i}`} className="bg-slate-50/50 min-h-[70px] rounded p-1"></div>
+                ))}
+
+                {/* Days of July 2026: 1 to 31 */}
+                {Array.from({ length: 31 }).map((_, idx) => {
+                  const dayNum = idx + 1;
+                  const dateStr = `2026-07-${dayNum.toString().padStart(2, '0')}`;
+                  
+                  // Find services for this day
+                  const dayServices = scheduledServices.filter(s => s.fecha === dateStr);
+
+                  return (
+                    <button
+                      key={dayNum}
+                      onClick={() => {
+                        setSelectedCalendarDay(dateStr);
+                        setIsScheduleModalOpen(true);
+                      }}
+                      className={`min-h-[70px] rounded p-1 text-left flex flex-col justify-between transition-colors relative hover:bg-slate-100 ${
+                        selectedCalendarDay === dateStr 
+                          ? 'bg-emerald-50 border border-emerald-500/30' 
+                          : 'bg-white border border-slate-150'
+                      }`}
+                    >
+                      <span className="text-slate-500 font-bold text-[9px]">{dayNum}</span>
+                      <div className="space-y-0.5 mt-1 overflow-hidden w-full">
+                        {dayServices.slice(0, 2).map(ds => (
+                          <div 
+                            key={ds.id_servicio} 
+                            className="bg-emerald-500 text-white text-[7px] p-0.5 rounded leading-none font-sans font-bold truncate max-w-full"
+                            title={`${ds.cliente_nombre}: ${ds.servicio}`}
+                          >
+                            {ds.id_servicio}: {ds.cliente_nombre.split(' ')[0]}
+                          </div>
+                        ))}
+                        {dayServices.length > 2 && (
+                          <div className="text-[7px] text-emerald-600 font-bold font-sans text-center mt-0.5">
+                            +{dayServices.length - 2} más
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sidebar detailing selected day and program scheduling */}
+            <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                Programador Rápido de Campo
+              </h4>
+
+              {selectedCalendarDay ? (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 border border-emerald-200/50 p-3 rounded-lg text-xs font-mono text-emerald-800 flex items-center justify-between">
+                    <div>
+                      <span>Día Seleccionado:</span>
+                      <strong className="block text-sm text-emerald-900 font-bold">{selectedCalendarDay}</strong>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedCalendarDay(null)} 
+                      className="text-[10px] text-emerald-700 font-bold"
+                    >
+                      [Desmarcar]
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleScheduleDayEvent} className="space-y-3.5 text-xs">
+                    <div className="space-y-1">
+                      <label className="block text-slate-500 font-bold uppercase text-[9px]">Cliente Industrial *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Nombre de la planta"
+                        value={newScheduleForm.cliente_nombre}
+                        onChange={(e) => setNewScheduleForm({ ...newScheduleForm, cliente_nombre: e.target.value })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-slate-500 font-bold uppercase text-[9px]">Servicio Norma *</label>
+                      <select
+                        value={newScheduleForm.servicio}
+                        onChange={(e) => setNewScheduleForm({ ...newScheduleForm, servicio: e.target.value })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                      >
+                        <option value="Mapeo de Ruido NOM-011">Mapeo de Ruido NOM-011</option>
+                        <option value="Dosimetría de Ruido NOM-011">Dosimetría de Ruido NOM-011</option>
+                        <option value="Estudio de Iluminación NOM-025">Estudio de Iluminación NOM-025</option>
+                        <option value="Evaluación de Vibraciones NOM-024">Evaluación de Vibraciones NOM-024</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-slate-500 font-bold uppercase text-[9px]">Técnico de Ensayo *</label>
+                      <select
+                        required
+                        value={newScheduleForm.id_tecnico}
+                        onChange={(e) => setNewScheduleForm({ ...newScheduleForm, id_tecnico: e.target.value })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                      >
+                        <option value="">Seleccione Técnico...</option>
+                        {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero')).map(eng => (
+                          <option key={eng.id_usuario} value={eng.id_usuario}>{eng.nombre_completo}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-slate-500 font-bold uppercase text-[9px]">Sonómetro Autorizado *</label>
+                      <select
+                        required
+                        value={newScheduleForm.id_instrumento}
+                        onChange={(e) => setNewScheduleForm({ ...newScheduleForm, id_instrumento: e.target.value })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                      >
+                        <option value="">Seleccione Instrumento...</option>
+                        {instruments.map(inst => (
+                          <option key={inst.id_instrumento} value={inst.id_instrumento}>
+                            {inst.nombre} ({inst.marca} Mod. {inst.modelo})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Agendar Evento de Campo</span>
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="text-center p-8 bg-white border border-dashed border-slate-200 rounded-xl text-slate-400 space-y-2">
+                  <Calendar className="w-8 h-8 text-slate-300 mx-auto animate-pulse" />
+                  <p className="text-[11px] leading-relaxed">No ha seleccionado ningún día del calendario.</p>
+                  <p className="text-[10px] text-slate-400 font-light">Para agendar un servicio en sitio, haga clic en el día deseado en la cuadrícula mensual.</p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'dir_engineers' && (
+        <motion.div
+          key="dir_engineers"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Users className="text-emerald-600 w-4.5 h-4.5" />
+                Carga de Trabajo y Alta de Ingenieros
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Monitoreo de disponibilidad, ubicación y registro formal de ingenieros de campo acreditados.</p>
+            </div>
+            <button
+              onClick={() => setIsAddEngineerOpen(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Dar de Alta Ingeniero</span>
+            </button>
+          </div>
+
+          {/* Form Modal for Creating Engineer */}
+          {isAddEngineerOpen && (
+            <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-xl space-y-4">
+              <div className="border-b border-emerald-150 pb-2 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-mono">
+                  Registrar de Alta Nuevo Ingeniero de Campo
+                </h4>
+                <button 
+                  onClick={() => setIsAddEngineerOpen(false)} 
+                  className="text-slate-400 hover:text-slate-600 text-xs font-bold font-mono"
+                >
+                  [Cancelar]
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateEngineer} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Nombre Completo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Ing. Daniel Ortiz Salazar"
+                    value={newEngineerForm.nombre_completo}
+                    onChange={(e) => setNewEngineerForm({ ...newEngineerForm, nombre_completo: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Correo Electrónico *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Ej. daniel.ortiz@aspechs.com"
+                    value={newEngineerForm.email}
+                    onChange={(e) => setNewEngineerForm({ ...newEngineerForm, email: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Cédula Profesional Metrólogo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Número de Cédula de la SEP / STPS"
+                    value={newEngineerForm.cedula}
+                    onChange={(e) => setNewEngineerForm({ ...newEngineerForm, cedula: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Especialidad Técnica Metrológica *</label>
+                  <select
+                    value={newEngineerForm.especialidad}
+                    onChange={(e) => setNewEngineerForm({ ...newEngineerForm, especialidad: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  >
+                    <option value="Especialista en Acústica NOM-011">Especialista en Acústica NOM-011</option>
+                    <option value="Especialista en Ergonomía e Iluminación NOM-025">Especialista en Ergonomía e Iluminación NOM-025</option>
+                    <option value="Experto Metrólogo NMX-EC-17025">Experto Metrólogo NMX-EC-17025</option>
+                    <option value="Ingeniero en Vibraciones Industriales NOM-024">Ingeniero en Vibraciones Industriales NOM-024</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddEngineerOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
+                  >
+                    Cerrar Formulario
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Habilitar Firma y Crear Ingeniero</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* List of Engineers with Workloads */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero')).map((eng) => {
+              // Calculate active services/workload
+              const engServices = scheduledServices.filter(s => s.id_tecnico === eng.id_usuario);
+              const activeCount = engServices.length;
+
+              return (
+                <div key={eng.id_usuario} className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-0.5">
+                        <h4 className="text-sm font-bold text-slate-800">{eng.nombre_completo}</h4>
+                        <p className="text-[10px] text-slate-400 font-mono leading-none">{eng.email}</p>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold font-mono border ${
+                        activeCount > 0 
+                          ? 'bg-amber-50 text-amber-600 border-amber-100' 
+                          : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                      }`}>
+                        {activeCount > 0 ? "EN CAMPO" : "DISPONIBLE"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      <div>
+                        <span className="text-[8px] text-slate-400 block uppercase font-bold">Cédula Profesional:</span>
+                        <span className="text-slate-700 font-bold">{(eng as any).cedula_profesional || "EMA-NMX-98432"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-400 block uppercase font-bold">Carga de Trabajo:</span>
+                        <span className="text-slate-700 font-bold">{activeCount} ODT {activeCount === 1 ? 'Activa' : 'Activas'}</span>
+                      </div>
+                    </div>
+
+                    {activeCount > 0 && (
+                      <div className="space-y-1 bg-blue-50/40 border border-blue-100/50 p-3 rounded-lg text-[10.5px]">
+                        <span className="text-[8px] font-bold text-blue-500 uppercase tracking-wider block font-mono">Servicios Programados:</span>
+                        {engServices.map(srv => (
+                          <div key={srv.id_servicio} className="flex justify-between items-center text-slate-700">
+                            <span className="font-bold truncate max-w-[150px]">{srv.cliente_nombre}</span>
+                            <span className="text-[9px] font-mono text-slate-400 font-bold">{srv.fecha}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                    <span className="truncate max-w-[200px]" title={(eng as any).firma_electronica || eng.firma_electronica_fingerprint}>
+                      SHA256 Firma: <span className="text-emerald-500 font-bold">{((eng as any).firma_electronica || eng.firma_electronica_fingerprint) ? "Acreditado" : "Pendiente"}</span>
+                    </span>
+                    <span className="text-slate-400">ID: {eng.id_usuario}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </motion.div>
       )}
