@@ -90,11 +90,13 @@ interface DirectorViewsProps {
   scheduledServices: any[];
   submittedReports: any[];
   purchaseOrders: any[];
+  selectedRole?: string;
 }
 
 export default function DirectorViews(props: DirectorViewsProps) {
   const {
     activePersona,
+    selectedRole,
     stats,
     financials,
     instruments,
@@ -888,7 +890,11 @@ export default function DirectorViews(props: DirectorViewsProps) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          {renderWelcomeBanner("Director General de Operaciones")}
+          {renderWelcomeBanner(
+            selectedRole === 'ceo' ? "👑 CEO - Dashboard Ejecutivo" :
+            selectedRole === 'sys_admin' ? "🛠️ Administrador del Sistema" :
+            "Director General de Operaciones"
+          )}
 
           {/* MONITOREO GEORREFERENCIADO EN TIEMPO REAL */}
           <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-md space-y-4">

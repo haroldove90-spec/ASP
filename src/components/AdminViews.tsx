@@ -58,11 +58,13 @@ interface AdminViewsProps {
   setPurchaseOrders?: (pos: any[]) => void;
   reportTemplates: any[];
   setReportTemplates?: (templates: any[]) => void;
+  selectedRole?: string;
 }
 
 export default function AdminViews(props: AdminViewsProps) {
   const {
     activePersona,
+    selectedRole,
     activeTab,
     usuarios,
     leadFormData,

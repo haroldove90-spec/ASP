@@ -36,7 +36,14 @@ import {
   MapPin,
   UserPlus,
   FileCheck,
-  ChevronDown
+  ChevronDown,
+  Users,
+  Wrench,
+  Microscope,
+  ClipboardList,
+  Settings,
+  Package,
+  Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -70,32 +77,171 @@ export default function App() {
   // Tab State
   const [activeTab, setActiveTab] = useState<string>('dir_dashboard');
 
-  const getSidebarItems = (role: string) => {
-    switch (role) {
-      case 'DIR_OP':
+  const getRoleCategory = (roleId: string | null) => {
+    if (!roleId) return 'director';
+    if (['ceo', 'dir_op', 'sys_admin'].includes(roleId)) {
+      return 'director';
+    }
+    if (['ger_tec', 'ger_cal', 'coord_lab', 'ger_lab', 'jefe_op', 'jefe_alm'].includes(roleId)) {
+      return 'coordinator';
+    }
+    if (['ing_campo'].includes(roleId)) {
+      return 'technician';
+    }
+    if (['dir_at_cl', 'contabilidad', 'jefe_rep'].includes(roleId)) {
+      return 'admin';
+    }
+    return 'director';
+  };
+
+  const mapActiveTabToInternal = (roleId: string | null, tabId: string): string => {
+    if (!roleId) return tabId;
+    if ([
+      'dir_dashboard', 'dir_calibration', 'dir_config',
+      'coord_agenda', 'coord_inventory', 'coord_validation',
+      'tech_agenda', 'tech_epp', 'tech_mediciones', 'tech_muestras',
+      'admin_crm', 'admin_finance', 'admin_results'
+    ].includes(tabId)) {
+      return tabId;
+    }
+
+    switch (roleId) {
+      case 'ceo':
+        if (tabId === 'ceo_dashboard') return 'dir_dashboard';
+        if (tabId === 'ceo_reports') return 'dir_calibration';
+        if (tabId === 'ceo_admin') return 'dir_config';
+        break;
+      case 'dir_op':
+        if (tabId === 'dir_dashboard') return 'dir_dashboard';
+        if (tabId === 'dir_quotes' || tabId === 'dir_odt') return 'dir_calibration';
+        if (tabId === 'dir_agenda' || tabId === 'dir_engineers') return 'dir_dashboard';
+        break;
+      case 'dir_at_cl':
+        if (tabId === 'dac_clients' || tabId === 'dac_quotes' || tabId === 'dac_tracking') return 'admin_crm';
+        break;
+      case 'ger_tec':
+        if (tabId === 'gt_services' || tabId === 'gt_norms') return 'coord_inventory';
+        if (tabId === 'gt_odt' || tabId === 'gt_hojas_campo') return 'coord_validation';
+        break;
+      case 'ger_cal':
+        if (tabId === 'gc_hojas_campo' || tabId === 'gc_reports') return 'coord_validation';
+        break;
+      case 'coord_lab':
+        if (tabId === 'cl_agenda') return 'coord_agenda';
+        if (tabId === 'cl_hojas_campo') return 'coord_validation';
+        if (tabId === 'cl_lab') return 'coord_inventory';
+        break;
+      case 'ger_lab':
+        if (tabId === 'gl_lab') return 'coord_inventory';
+        if (tabId === 'gl_hojas_campo' || tabId === 'gl_estudios') return 'coord_validation';
+        break;
+      case 'contabilidad':
+        if (tabId === 'cont_billing' || tabId === 'cont_collection' || tabId === 'cont_reports') return 'admin_finance';
+        break;
+      case 'jefe_rep':
+        if (tabId === 'jr_reports') return 'admin_results';
+        break;
+      case 'jefe_op':
+        if (tabId === 'jo_odt') return 'coord_validation';
+        if (tabId === 'jo_agenda' || tabId === 'jo_engineers' || tabId === 'jo_tracking') return 'coord_agenda';
+        break;
+      case 'jefe_alm':
+        if (tabId === 'ja_inventory' || tabId === 'ja_equip') return 'coord_inventory';
+        break;
+      case 'ing_campo':
+        if (tabId === 'ic_agenda' || tabId === 'ic_odt') return 'tech_agenda';
+        if (tabId === 'ic_hoja_campo') return 'tech_mediciones';
+        if (tabId === 'ic_history') return 'tech_muestras';
+        break;
+      case 'sys_admin':
+        if (tabId === 'sa_users' || tabId === 'sa_roles' || tabId === 'sa_catalogs' || tabId === 'sa_config') return 'dir_config';
+        break;
+    }
+    return tabId;
+  };
+
+  const getSidebarItems = (roleId: string | null) => {
+    if (!roleId) return [];
+    switch (roleId) {
+      case 'ceo':
         return [
-          { id: 'dir_dashboard', label: 'Dashboard de Dirección', icon: TrendingUp },
-          { id: 'dir_calibration', label: 'Monitor de Calibración', icon: Activity },
-          { id: 'dir_config', label: 'Configuración Maestra', icon: Sliders },
+          { id: 'ceo_dashboard', label: 'Dashboard Ejecutivo', icon: TrendingUp },
+          { id: 'ceo_reports', label: 'Reportes Globales', icon: ClipboardList },
+          { id: 'ceo_admin', label: 'Administración (Consulta)', icon: Sliders },
         ];
-      case 'LAB_SUP':
+      case 'dir_op':
         return [
-          { id: 'coord_agenda', label: 'Agenda y Logística', icon: Calendar },
-          { id: 'coord_inventory', label: 'Control de Inventario', icon: FileSpreadsheet },
-          { id: 'coord_validation', label: 'Validación de Resultados', icon: FileCheck },
+          { id: 'dir_dashboard', label: 'Dashboard de Control', icon: TrendingUp },
+          { id: 'dir_quotes', label: 'Cotizaciones', icon: FileText },
+          { id: 'dir_odt', label: 'Órdenes de Trabajo (ODT)', icon: Activity },
+          { id: 'dir_agenda', label: 'Agenda y Programación', icon: Calendar },
+          { id: 'dir_engineers', label: 'Carga de Ingenieros', icon: Users },
         ];
-      case 'LAB_TECH':
+      case 'dir_at_cl':
         return [
-          { id: 'tech_agenda', label: 'Mi Agenda (Móvil)', icon: Clock },
-          { id: 'tech_epp', label: 'Checklist EPP', icon: ShieldCheck },
-          { id: 'tech_mediciones', label: 'Captura de Mediciones', icon: Edit3 },
-          { id: 'tech_muestras', label: 'Control de Muestras', icon: Lock },
+          { id: 'dac_clients', label: 'Clientes (Alta/Edición)', icon: Users },
+          { id: 'dac_quotes', label: 'Cotizaciones', icon: FileText },
+          { id: 'dac_tracking', label: 'Seguimiento y Historial', icon: HelpCircle },
         ];
-      case 'SYS_ADMIN':
+      case 'ger_tec':
         return [
-          { id: 'admin_crm', label: 'CRM y Cotizador', icon: UserPlus },
-          { id: 'admin_finance', label: 'Finanzas y Cobranza', icon: DollarSign },
-          { id: 'admin_results', label: 'Entrega de Resultados', icon: Database },
+          { id: 'gt_services', label: 'Catálogo de Servicios', icon: Wrench },
+          { id: 'gt_norms', label: 'Normativas', icon: Sliders },
+          { id: 'gt_odt', label: 'Revisión Técnica de ODT', icon: Activity },
+          { id: 'gt_hojas_campo', label: 'Revisión Hojas de Campo', icon: FileText },
+        ];
+      case 'ger_cal':
+        return [
+          { id: 'gc_hojas_campo', label: 'Validación Hojas de Campo', icon: FileCheck },
+          { id: 'gc_reports', label: 'Reportes de Calidad', icon: ClipboardList },
+        ];
+      case 'coord_lab':
+        return [
+          { id: 'cl_agenda', label: 'Asignar Ingenieros (Agenda)', icon: Calendar },
+          { id: 'cl_hojas_campo', label: 'Supervisar Hojas de Campo', icon: FileText },
+          { id: 'cl_lab', label: 'Estudios y Muestras', icon: Microscope },
+        ];
+      case 'ger_lab':
+        return [
+          { id: 'gl_lab', label: 'Supervisión General Lab', icon: Microscope },
+          { id: 'gl_hojas_campo', label: 'Consulta Hojas de Campo', icon: FileText },
+          { id: 'gl_estudios', label: 'Validar Resultados', icon: Activity },
+        ];
+      case 'contabilidad':
+        return [
+          { id: 'cont_billing', label: 'Facturación', icon: FileSpreadsheet },
+          { id: 'cont_collection', label: 'Cobranza y Cartera', icon: DollarSign },
+          { id: 'cont_reports', label: 'Reportes Financieros', icon: ClipboardList },
+        ];
+      case 'jefe_rep':
+        return [
+          { id: 'jr_reports', label: 'Reportes Generales', icon: ClipboardList },
+        ];
+      case 'jefe_op':
+        return [
+          { id: 'jo_odt', label: 'Gestión de ODT', icon: Activity },
+          { id: 'jo_agenda', label: 'Programación de Servicios', icon: Calendar },
+          { id: 'jo_engineers', label: 'Asignación a Ingenieros', icon: Users },
+          { id: 'jo_tracking', label: 'Monitoreo de Avances', icon: Clock },
+        ];
+      case 'jefe_alm':
+        return [
+          { id: 'ja_inventory', label: 'Inventario de Materiales', icon: Package },
+          { id: 'ja_equip', label: 'Equipos y Devoluciones', icon: Cpu },
+        ];
+      case 'ing_campo':
+        return [
+          { id: 'ic_agenda', label: 'Ver Servicios Asignados', icon: Clock },
+          { id: 'ic_odt', label: 'Consultar ODT', icon: Activity },
+          { id: 'ic_hoja_campo', label: 'Captura Hoja de Campo', icon: Edit3 },
+          { id: 'ic_history', label: 'Historial Realizado', icon: FileCheck },
+        ];
+      case 'sys_admin':
+        return [
+          { id: 'sa_users', label: 'Usuarios y Accesos', icon: Users },
+          { id: 'sa_roles', label: 'Roles y Permisos', icon: Key },
+          { id: 'sa_catalogs', label: 'Administrar Catálogos', icon: Sliders },
+          { id: 'sa_config', label: 'Parámetros del Sistema', icon: Settings },
         ];
       default:
         return [];
@@ -1171,11 +1317,18 @@ export default function App() {
   };
 
   const sidebarItems = useMemo(() => {
-    return getSidebarItems(activePersona.id_role || activePersona.id_rol);
-  }, [activePersona]);
+    return getSidebarItems(selectedRole);
+  }, [selectedRole]);
 
   if (selectedRole === null) {
-    return <HomeSelection onSelectRole={(roleId, personaId) => { setSelectedRole(roleId); setCurrentPersonaId(personaId); }} />;
+    return <HomeSelection onSelectRole={(roleId, personaId) => { 
+      setSelectedRole(roleId); 
+      setCurrentPersonaId(personaId); 
+      const items = getSidebarItems(roleId);
+      if (items.length > 0) {
+        setActiveTab(items[0].id);
+      }
+    }} />;
   }
 
   return (
@@ -1217,6 +1370,16 @@ export default function App() {
               );
             })}
           </nav>
+          
+          <div className="mt-6 pt-6 border-t border-white/20">
+            <button
+              onClick={() => setSelectedRole(null)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-left text-xs font-bold text-white hover:bg-white/10 hover:text-red-100 cursor-pointer"
+            >
+              <Home className="w-4.5 h-4.5 shrink-0 text-red-100" />
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
         </div>
         
         {/* Footnotes / Certification indicators */}
@@ -1277,6 +1440,16 @@ export default function App() {
                     );
                   })}
                 </nav>
+
+                <div className="mt-6 pt-6 border-t border-white/20">
+                  <button
+                    onClick={() => { setSelectedRole(null); setIsMobileSidebarOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-left text-xs font-bold text-white hover:bg-white/10 hover:text-red-100 cursor-pointer"
+                  >
+                    <Home className="w-4.5 h-4.5 shrink-0 text-red-100" />
+                    <span>Cerrar Sesión</span>
+                  </button>
+                </div>
               </div>
 
               <div className="border-t border-white/15 pt-4 space-y-2 bg-black/5 p-4 rounded-lg">
@@ -1361,16 +1534,17 @@ export default function App() {
           <AnimatePresence mode="wait">
             
             {/* DIRECTOR VIEWS CONTAINER */}
-            {(activePersona.id_role === 'DIR_OP' || activePersona.id_rol === 'DIR_OP') && (
+            {getRoleCategory(selectedRole) === 'director' && (
               <DirectorViews
                 activePersona={activePersona}
+                selectedRole={selectedRole || undefined}
                 stats={stats}
                 financials={financials}
                 instruments={instruments}
                 certificates={certificates}
                 usuarios={usuarios}
                 auditLogs={auditLogs}
-                activeTab={activeTab}
+                activeTab={mapActiveTabToInternal(selectedRole, activeTab)}
                 setActiveTab={setActiveTab}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -1413,13 +1587,14 @@ export default function App() {
             )}
 
             {/* COORDINATOR VIEWS CONTAINER */}
-            {(activePersona.id_role === 'LAB_SUP' || activePersona.id_rol === 'LAB_SUP') && (
+            {getRoleCategory(selectedRole) === 'coordinator' && (
               <CoordinatorViews
                 activePersona={activePersona}
+                selectedRole={selectedRole || undefined}
                 instruments={instruments}
                 certificates={certificates}
                 usuarios={usuarios}
-                activeTab={activeTab}
+                activeTab={mapActiveTabToInternal(selectedRole, activeTab)}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 filteredInstruments={filteredInstruments}
@@ -1457,11 +1632,12 @@ export default function App() {
             )}
 
             {/* TECHNICIAN VIEWS CONTAINER */}
-            {(activePersona.id_role === 'LAB_TECH' || activePersona.id_rol === 'LAB_TECH') && (
+            {getRoleCategory(selectedRole) === 'technician' && (
               <TechnicianViews
                 activePersona={activePersona}
+                selectedRole={selectedRole || undefined}
                 instruments={instruments}
-                activeTab={activeTab}
+                activeTab={mapActiveTabToInternal(selectedRole, activeTab)}
                 setActiveTab={setActiveTab}
                 fieldStep={fieldStep}
                 setFieldStep={setFieldStep}
@@ -1501,10 +1677,11 @@ export default function App() {
             )}
 
             {/* ADMIN VIEWS CONTAINER */}
-            {(activePersona.id_role === 'SYS_ADMIN' || activePersona.id_rol === 'SYS_ADMIN') && (
+            {getRoleCategory(selectedRole) === 'admin' && (
               <AdminViews
                 activePersona={activePersona}
-                activeTab={activeTab}
+                selectedRole={selectedRole || undefined}
+                activeTab={mapActiveTabToInternal(selectedRole, activeTab)}
                 usuarios={usuarios}
                 leadFormData={leadFormData}
                 setLeadFormData={setLeadFormData}

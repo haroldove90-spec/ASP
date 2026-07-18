@@ -60,11 +60,13 @@ interface CoordinatorViewsProps {
   handleCoordinatorReviewReport: (reportId: string, approve: boolean, justification: string) => void;
   purchaseOrders?: any[];
   setPurchaseOrders?: (pos: any[]) => void;
+  selectedRole?: string;
 }
 
 export default function CoordinatorViews(props: CoordinatorViewsProps) {
   const {
     activePersona,
+    selectedRole,
     instruments,
     certificates,
     usuarios,
@@ -101,6 +103,18 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
     purchaseOrders,
     setPurchaseOrders
   } = props;
+
+  const getCoordinatorRoleLabel = (roleId?: string) => {
+    switch (roleId) {
+      case 'ger_tec': return "⚙️ Gerente Técnico";
+      case 'ger_cal': return "🛡️ Gerente de Calidad";
+      case 'coord_lab': return "🧪 Coordinador de Laboratorio";
+      case 'ger_lab': return "🔬 Gerente de Laboratorio";
+      case 'jefe_op': return "📋 Jefe de Operaciones";
+      case 'jefe_alm': return "📦 Jefe de Almacén";
+      default: return "Coordinador de Servicios y Metrología";
+    }
+  };
 
   const [coordinatorJustifications, setCoordinatorJustifications] = useState<Record<string, string>>({});
   const [linkingPoServiceId, setLinkingPoServiceId] = useState<string | null>(null);
@@ -589,7 +603,7 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          {renderWelcomeBanner("Coordinador de Servicios y Metrología")}
+          {renderWelcomeBanner(getCoordinatorRoleLabel(selectedRole))}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             

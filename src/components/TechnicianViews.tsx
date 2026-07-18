@@ -67,11 +67,13 @@ interface TechnicianViewsProps {
   
   // Submitted reports for export
   submittedReports?: any[];
+  selectedRole?: string;
 }
 
 export default function TechnicianViews(props: TechnicianViewsProps) {
   const {
     activePersona,
+    selectedRole,
     instruments,
     activeTab,
     setActiveTab,

@@ -94,6 +94,12 @@ const ROLES_LIST: RoleConfig[] = [
     name: "Ingeniero de Campo",
     icon: HardHat,
     personaId: "3cd40182-ef35-42d8-9df2-51c6b12a8844" // Lucía Juárez
+  },
+  {
+    id: "sys_admin",
+    name: "Administrador del Sistema",
+    icon: Settings,
+    personaId: "e88b48f9-4d6d-478a-aef4-4f40d12ea661" // Roberto Fernández
   }
 ];
 
