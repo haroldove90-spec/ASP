@@ -98,6 +98,21 @@ export default function AdminViews(props: AdminViewsProps) {
   const [editingTemplateCode, setEditingTemplateCode] = useState("");
   const [editingTemplateHeader, setEditingTemplateHeader] = useState("");
 
+  // --- BOOKKEEPING / ACCOUNTING STATES ---
+  const [isAddInvoiceOpen, setIsAddInvoiceOpen] = useState(false);
+  const [newInvoiceClient, setNewInvoiceClient] = useState("");
+  const [newInvoiceService, setNewInvoiceService] = useState("Mapeo NOM-011-STPS");
+  const [newInvoiceAmount, setNewInvoiceAmount] = useState(0);
+  const [newInvoiceDueDate, setNewInvoiceDueDate] = useState("");
+  const [collectionReminders, setCollectionReminders] = useState<{ [id: number]: number }>({});
+  const [collectionNotes, setCollectionNotes] = useState<{ [id: number]: string }>({
+    2: "El cliente solicita prórroga de 15 días por cierre de año fiscal.",
+    3: "Factura enviada a revisión con el departamento de cuentas por pagar."
+  });
+  const [editingCollectionNoteId, setEditingCollectionNoteId] = useState<number | null>(null);
+  const [tempCollectionNote, setTempCollectionNote] = useState("");
+  const [selectedInvoiceForReminder, setSelectedInvoiceForReminder] = useState<any | null>(null);
+
   const [selectedQuoteForPo, setSelectedQuoteForPo] = useState<any | null>(null);
   const [poFinalCost, setPoFinalCost] = useState<number>(0);
   const [poCommitmentDate, setPoCommitmentDate] = useState("");
@@ -634,17 +649,22 @@ export default function AdminViews(props: AdminViewsProps) {
     });
   }, [generatedQuotes, crmMonthFilter, crmClientFilter, crmServiceFilter]);
 
+  const [extraInvoices, setExtraInvoices] = useState<any[]>([]);
+  const allInvoices = useMemo(() => {
+    return [...(invoices || []), ...extraInvoices];
+  }, [invoices, extraInvoices]);
+
   // Dynamic filter lists
   const availableClientsList = useMemo(() => {
     const clients = new Set<string>();
     generatedQuotes.forEach(q => clients.add(q.cliente));
-    invoices.forEach(i => clients.add(i.cliente));
+    allInvoices.forEach(i => clients.add(i.cliente));
     return Array.from(clients);
-  }, [generatedQuotes, invoices]);
+  }, [generatedQuotes, allInvoices]);
 
   // Filter Invoices list and compute dynamic metrics on the fly!
   const filteredInvoices = useMemo(() => {
-    return invoices.filter(inv => {
+    return allInvoices.filter(inv => {
       const invMonth = inv.mes || "Julio";
       const matchMonth = finMonthFilter === "Todos" || invMonth === finMonthFilter;
       const matchClient = finClientFilter === "Todos" || inv.cliente === finClientFilter;
@@ -660,7 +680,7 @@ export default function AdminViews(props: AdminViewsProps) {
 
       return matchMonth && matchClient && matchService;
     });
-  }, [invoices, finMonthFilter, finClientFilter, finServiceFilter]);
+  }, [allInvoices, finMonthFilter, finClientFilter, finServiceFilter]);
 
   // Compute metrics dynamically for the filtered set of invoices
   const filteredMetrics = useMemo(() => {
@@ -2104,6 +2124,564 @@ export default function AdminViews(props: AdminViewsProps) {
               </div>
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* ROL CONTABILIDAD - TABS */}
+      {activeTab === 'cont_billing' && (
+        <motion.div
+          key="cont_billing"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <FileSpreadsheet className="text-[#85AA1C] w-4.5 h-4.5" />
+                Facturación Electrónica y Timbrado Fiscal (CFDI 4.0)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Emisión, validación y timbrado de comprobantes fiscales digitales por internet bajo los lineamientos del SAT.</p>
+            </div>
+            <button
+              onClick={() => {
+                setIsAddInvoiceOpen(!isAddInvoiceOpen);
+                setNewInvoiceClient("");
+                setNewInvoiceAmount(0);
+                setNewInvoiceDueDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+              }}
+              className="px-4 py-2 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAddInvoiceOpen ? "Ocultar Formulario" : "Emitir Nueva Factura (CFDI)"}</span>
+            </button>
+          </div>
+
+          {/* FORMULARIO PARA AGREGAR NUEVA FACTURA */}
+          {isAddInvoiceOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4"
+            >
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">Datos de Facturación del Emisor y Concepto</h4>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newInvoiceClient || newInvoiceAmount <= 0) {
+                    alert("Por favor ingrese el cliente y un monto válido.");
+                    return;
+                  }
+                  const newInv = {
+                    id_factura: allInvoices.length + 1,
+                    cliente: newInvoiceClient,
+                    servicio: newInvoiceService,
+                    monto: Number(newInvoiceAmount),
+                    estado: "Pendiente",
+                    mes: "Julio",
+                    fecha_emision: new Date().toISOString().split('T')[0],
+                    fecha_vencimiento: newInvoiceDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    uuid_sat: "3E" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-40CF-8F12-E5FA26D81C10"
+                  };
+                  setExtraInvoices([...extraInvoices, newInv]);
+                  setIsAddInvoiceOpen(false);
+                  alert(`¡Factura CFDI emitida con éxito! Timbrada ante el SAT con UUID: ${newInv.uuid_sat}`);
+                }}
+                className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs"
+              >
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Razón Social del Cliente</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Aceros de México S.A."
+                    value={newInvoiceClient}
+                    onChange={(e) => setNewInvoiceClient(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Concepto / Servicio</label>
+                  <select
+                    value={newInvoiceService}
+                    onChange={(e) => setNewInvoiceService(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  >
+                    <option value="Mapeo NOM-011-STPS (Ruido)">Mapeo NOM-011-STPS (Ruido)</option>
+                    <option value="Evaluación NOM-025-STPS (Iluminación)">Evaluación NOM-025-STPS (Iluminación)</option>
+                    <option value="Estudio NOM-015-STPS (Térmicas)">Estudio NOM-015-STPS (Térmicas)</option>
+                    <option value="Calibración Metrológica de Sonómetros">Calibración Metrológica de Sonómetros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Monto Neto (MXN)</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="Ej. 18500"
+                    value={newInvoiceAmount || ''}
+                    onChange={(e) => setNewInvoiceAmount(Number(e.target.value))}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Fecha de Vencimiento</label>
+                  <input
+                    type="date"
+                    required
+                    value={newInvoiceDueDate}
+                    onChange={(e) => setNewInvoiceDueDate(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-4 flex justify-end gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddInvoiceOpen(false)}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Sellar & Timbrar CFDI</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          {/* TABLA PRINCIPAL DE COMPROBANTES FISCALES */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-700 uppercase font-mono">Bandeja de Facturación Activa (CFDI 4.0)</span>
+              <span className="bg-[#85AA1C]/10 text-[#85AA1C] font-bold font-mono px-2 py-0.5 rounded text-[10px]">{allInvoices.length} facturas registradas</span>
+            </div>
+            
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900 text-white uppercase tracking-wider text-[10px] font-mono">
+                <tr>
+                  <th className="px-4 py-3">ID Factura / UUID SAT</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Concepto</th>
+                  <th className="px-4 py-3 text-right">Subtotal</th>
+                  <th className="px-4 py-3 text-right">IVA (16%)</th>
+                  <th className="px-4 py-3 text-right">Monto Total</th>
+                  <th className="px-4 py-3 text-center">Estado</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {allInvoices.map((inv) => {
+                  const sub = inv.monto;
+                  const iva = sub * 0.16;
+                  const total = sub + iva;
+                  return (
+                    <tr key={inv.id_factura} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 font-mono">
+                        <div className="font-bold text-slate-900">FAC-2026-00{inv.id_factura}</div>
+                        <div className="text-[9px] text-slate-400 select-all font-light tracking-tight">{inv.uuid_sat || "5F4A87B1-40A2-4BC2-91EA-A3926BF9D13C"}</div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700 font-semibold">{inv.cliente}</td>
+                      <td className="px-4 py-3">
+                        <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-600 rounded text-[9.5px] font-sans font-medium">
+                          {inv.servicio || inv.Concepto || "Mapeo NOM-011-STPS"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-600">${sub.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-600">${iva.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-950">${total.toLocaleString(undefined, {minimumFractionDigits: 2})} MXN</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[9.5px] font-bold rounded-full border ${
+                          inv.estado === 'Pagado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          inv.estado === 'Vencido' ? 'bg-red-50 text-red-700 border-red-200 animate-pulse' :
+                          'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          <span className={`w-1 h-1 rounded-full ${inv.estado === 'Pagado' ? 'bg-emerald-500' : inv.estado === 'Vencido' ? 'bg-red-500' : 'bg-amber-500'}`}></span>
+                          {inv.estado === 'Pagado' ? 'Efectuada' : inv.estado}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
+                        {inv.estado !== 'Pagado' && (
+                          <button
+                            onClick={() => {
+                              handleToggleInvoiceStatus(inv.id_factura);
+                              alert("Se ha registrado el Complemento de Pago (REP) en el SAT y conciliado la factura.");
+                            }}
+                            className="px-2 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 rounded font-bold text-[9.5px] cursor-pointer"
+                          >
+                            Cobrar
+                          </button>
+                        )}
+                        <button
+                          onClick={() => alert(`Descargando archivo XML CFDI para la factura FAC-2026-00${inv.id_factura}`)}
+                          className="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-[9.5px] text-slate-600 cursor-pointer"
+                          title="Descargar XML Original"
+                        >
+                          XML
+                        </button>
+                        <button
+                          onClick={() => alert(`Imprimiendo representación PDF bajo el estándar fiscal del SAT para FAC-2026-00${inv.id_factura}`)}
+                          className="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-[9.5px] text-slate-600 cursor-pointer"
+                          title="Descargar PDF"
+                        >
+                          PDF
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'cont_collection' && (
+        <motion.div
+          key="cont_collection"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <DollarSign className="text-emerald-600 w-4.5 h-4.5" />
+              Gestión de Cobranza, Cartera y Conciliación Relacional
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Control de cuentas por cobrar, antigüedad de saldos, seguimiento de promesas de pago y envío automatizado de requerimientos.</p>
+          </div>
+
+          {/* DYNAMIC KPI BLOCKS */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+            <div className="bg-white p-4 border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase font-mono">Cartera Total por Cobrar</span>
+              <div className="text-lg font-bold font-mono text-slate-900 mt-2">
+                ${allInvoices.filter(i => i.estado !== 'Pagado').reduce((acc, i) => acc + i.monto, 0).toLocaleString()} MXN
+              </div>
+              <p className="text-[9.5px] text-slate-400 mt-1">Total de saldos pendientes de liquidación.</p>
+            </div>
+            <div className="bg-red-50 border border-red-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-red-800 uppercase font-mono">Mora Crítica (Vencido)</span>
+              <div className="text-lg font-bold font-mono text-red-700 mt-2">
+                ${allInvoices.filter(i => i.estado === 'Vencido').reduce((acc, i) => acc + i.monto, 0).toLocaleString()} MXN
+              </div>
+              <p className="text-[9.5px] text-red-600 mt-1">Facturas con plazo de pago comercial excedido.</p>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-emerald-800 uppercase font-mono">Recaudado este Mes</span>
+              <div className="text-lg font-bold font-mono text-emerald-700 mt-2">
+                ${allInvoices.filter(i => i.estado === 'Pagado').reduce((acc, i) => acc + i.monto, 0).toLocaleString()} MXN
+              </div>
+              <p className="text-[9.5px] text-emerald-600 mt-1">Ingresos conciliados en cuenta de banco.</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-blue-800 uppercase font-mono">Gestiones Realizadas</span>
+              <div className="text-lg font-bold font-mono text-blue-700 mt-2">
+                {(Object.values(collectionReminders) as number[]).reduce((acc, curr) => acc + curr, 0)} Alertas
+              </div>
+              <p className="text-[9.5px] text-blue-600 mt-1">Exhortos de pago timbrados y enviados.</p>
+            </div>
+          </div>
+
+          {/* ANTIGÜEDAD DE SALDOS */}
+          <div className="bg-white border border-slate-200 p-4.5 rounded-xl shadow-sm space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">Distribución Temporal de la Cartera (Antigüedad de Saldos)</h4>
+            <div className="w-full bg-slate-100 h-6 rounded-lg overflow-hidden flex font-mono text-[10px] text-white font-bold text-center">
+              <div className="bg-emerald-500 flex items-center justify-center transition-all" style={{ width: '55%' }}>Corriente: 55%</div>
+              <div className="bg-amber-500 flex items-center justify-center transition-all" style={{ width: '25%' }}>31-60 Días: 25%</div>
+              <div className="bg-red-500 flex items-center justify-center transition-all" style={{ width: '20%' }}>61+ Días: 20%</div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-500">
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-sm"></span> Al corriente (Plazo ordinario de crédito)</div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-amber-500 rounded-sm"></span> Retraso leve (Bajo gestión extrajudicial preventiva)</div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-red-500 rounded-sm"></span> Mora crítica (Enviado a requerimiento formal)</div>
+            </div>
+          </div>
+
+          {/* LISTADO DE SEGUIMIENTO A LA CARTERA */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-700 uppercase font-mono">Bandeja de Cobranza y Bitácora de Compromisos</span>
+              <span className="text-slate-400 font-mono text-[10px]">Filtrado automático de saldos pendientes</span>
+            </div>
+
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900 text-white uppercase tracking-wider text-[10px] font-mono">
+                <tr>
+                  <th className="px-4 py-3">Factura</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3 text-right">Saldo Insoluto</th>
+                  <th className="px-4 py-3">Vencimiento</th>
+                  <th className="px-4 py-3">Estatus Mora</th>
+                  <th className="px-4 py-3">Comentarios / Compromisos de Pago</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {allInvoices.filter(inv => inv.estado !== 'Pagado').map((inv) => {
+                  const remindersCount = collectionReminders[inv.id_factura] || 0;
+                  const currentNote = collectionNotes[inv.id_factura] || "Sin observaciones de cobranza registradas.";
+                  return (
+                    <tr key={inv.id_factura} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900">FAC-2026-00{inv.id_factura}</td>
+                      <td className="px-4 py-3 text-slate-700 font-semibold">{inv.cliente}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-800">${(inv.monto * 1.16).toLocaleString(undefined, {minimumFractionDigits:2})} MXN</td>
+                      <td className="px-4 py-3 font-mono text-slate-600">{inv.fecha_vencimiento}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded-full ${
+                          inv.estado === 'Vencido' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {inv.estado === 'Vencido' ? 'VENCIDA (Peligro)' : 'CORRIENTE'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 max-w-xs text-slate-600 italic">
+                        {editingCollectionNoteId === inv.id_factura ? (
+                          <div className="flex gap-1.5 items-center">
+                            <input
+                              type="text"
+                              value={tempCollectionNote}
+                              onChange={(e) => setTempCollectionNote(e.target.value)}
+                              className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-800 w-full"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => {
+                                setCollectionNotes({ ...collectionNotes, [inv.id_factura]: tempCollectionNote });
+                                setEditingCollectionNoteId(null);
+                              }}
+                              className="px-1.5 py-0.5 bg-emerald-600 text-white rounded font-bold text-[9.5px] cursor-pointer"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => setEditingCollectionNoteId(null)}
+                              className="px-1.5 py-0.5 bg-slate-300 text-slate-700 rounded font-bold text-[9.5px] cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center gap-2 group">
+                            <span>{currentNote}</span>
+                            <button
+                              onClick={() => {
+                                setEditingCollectionNoteId(inv.id_factura);
+                                setTempCollectionNote(currentNote);
+                              }}
+                              className="text-[#85AA1C] hover:underline font-bold text-[9.5px] cursor-pointer"
+                            >
+                              Editar
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
+                        <button
+                          onClick={() => {
+                            setSelectedInvoiceForReminder(inv);
+                          }}
+                          className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded font-bold text-[9.5px] flex inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Mail className="w-3 h-3" />
+                          <span>Requerir Pago {remindersCount > 0 ? `(${remindersCount})` : ''}</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* SIMULACIÓN DE DETALLE DE RECORDATORIO DE PAGO */}
+          {selectedInvoiceForReminder && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-slate-900 text-white border border-slate-800 p-5 rounded-xl space-y-4 shadow-lg"
+            >
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <Mail className="text-blue-400 w-4 h-4" />
+                  Redacción de Exhorto Oficial y Recordatorio de Pago CFDI
+                </h4>
+                <button
+                  onClick={() => setSelectedInvoiceForReminder(null)}
+                  className="text-slate-400 hover:text-white font-bold p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-500 font-mono block">Para:</span>
+                  <span className="text-slate-200 font-semibold">{selectedInvoiceForReminder.cliente} (compras@contacto.com)</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 font-mono block">Asunto:</span>
+                  <span className="text-slate-200 font-semibold">Exhorto Preventivo de Pago - Factura FAC-2026-00{selectedInvoiceForReminder.id_factura} - ASP Metrología</span>
+                </div>
+                <div className="bg-slate-950 p-4 rounded border border-slate-800 font-mono text-[10.5px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+{`Estimado Cliente,
+
+Le contactamos del departamento de Cobranza y Cartera de ASP/ECH&S Metrología.
+Hacemos de su conocimiento que al día de hoy registramos un saldo insoluto pendiente de pago por concepto de servicios de evaluación y mapeo de NOM-STPS.
+
+Detalle del Comprobante Fiscal:
+• Número de Factura: FAC-2026-00${selectedInvoiceForReminder.id_factura}
+• UUID SAT: ${selectedInvoiceForReminder.uuid_sat || "5F4A87B1-40A2-4BC2-91EA-A3926BF9D13C"}
+• Concepto: ${selectedInvoiceForReminder.servicio || "Mapeo Metrológico NOM-011-STPS"}
+• Monto Neto: $${selectedInvoiceForReminder.monto.toLocaleString(undefined, {minimumFractionDigits: 2})} MXN
+• Total con IVA (16%): $${(selectedInvoiceForReminder.monto * 1.16).toLocaleString(undefined, {minimumFractionDigits: 2})} MXN
+• Fecha Límite de Pago: ${selectedInvoiceForReminder.fecha_vencimiento}
+
+Le solicitamos de la manera más atenta hacernos llegar la ficha de depósito o clave de transferencia (SPEI) para proceder con el timbrado de su complemento de pago correspondiente bajo el esquema CFDI 4.0.
+
+Atentamente,
+ASP METROLOGÍA S.A. DE C.V.`}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setSelectedInvoiceForReminder(null)}
+                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg cursor-pointer"
+                  >
+                    Cerrar Vista
+                  </button>
+                  <button
+                    onClick={() => {
+                      const id = selectedInvoiceForReminder.id_factura;
+                      setCollectionReminders({ ...collectionReminders, [id]: (collectionReminders[id] || 0) + 1 });
+                      setSelectedInvoiceForReminder(null);
+                      alert("¡Correo electrónico enviado con éxito a la cuenta del cliente! Se registró la bitácora de cobranza.");
+                    }}
+                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Enviar Exhorto por Mail</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
+      )}
+
+      {activeTab === 'cont_reports' && (
+        <motion.div
+          key="cont_reports"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Calculator className="text-[#85AA1C] w-4.5 h-4.5" />
+                Reportes Financieros, EBITDA y Retenciones Tributarias
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Indicadores clave de rendimiento financiero, impuestos retenidos e históricos consolidados del ejercicio fiscal.</p>
+            </div>
+            <button
+              onClick={() => alert("Generando balance contable completo consolidado en formato de hoja de cálculo XML certificado por e.firma SAT...")}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Exportar Reporte Excel</span>
+            </button>
+          </div>
+
+          {/* KPI CARDS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+            <div className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase font-mono tracking-wider block">Ingresos Acumulados (YTD)</span>
+              <div className="text-2xl font-bold font-mono text-slate-950">
+                ${allInvoices.filter(i => i.estado === 'Pagado').reduce((acc, i) => acc + i.monto * 1.16, 0).toLocaleString(undefined, {maximumFractionDigits:0})} MXN
+              </div>
+              <p className="text-[10px] text-slate-400">Total acumulado cobrado con IVA incluido.</p>
+            </div>
+            <div className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase font-mono tracking-wider block">Retenciones de IVA y ISR (SAT)</span>
+              <div className="text-2xl font-bold font-mono text-emerald-600">
+                ${allInvoices.filter(i => i.estado === 'Pagado').reduce((acc, i) => acc + i.monto * 0.16, 0).toLocaleString(undefined, {maximumFractionDigits:0})} MXN
+              </div>
+              <p className="text-[10px] text-slate-400">IVA acreditable y retenciones fiscales calculadas.</p>
+            </div>
+            <div className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase font-mono tracking-wider block">EBITDA / Beneficio Operativo Est.</span>
+              <div className="text-2xl font-bold font-mono text-blue-600">
+                ${(allInvoices.filter(i => i.estado === 'Pagado').reduce((acc, i) => acc + i.monto, 0) * 0.82).toLocaleString(undefined, {maximumFractionDigits:0})} MXN
+              </div>
+              <p className="text-[10px] text-slate-400">Margen neto operativo estimado en 82% por servicios.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs">
+            {/* GRÁFICO SVG DE FACTURACIÓN MENSUAL */}
+            <div className="lg:col-span-7 bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-4">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">Historial de Facturación Mensual - Ejercicio 2026</h4>
+              <div className="h-44 flex items-end justify-between px-4 border-b border-slate-200 pb-1 pt-6">
+                {[
+                  { mes: 'Ene', monto: 140000 },
+                  { mes: 'Feb', monto: 165000 },
+                  { mes: 'Mar', monto: 120000 },
+                  { mes: 'Abr', monto: 195000 },
+                  { mes: 'May', monto: 220000 },
+                  { mes: 'Jun', monto: 180000 },
+                  { mes: 'Jul', monto: 245000 },
+                ].map((item, idx) => {
+                  const maxMonto = 250000;
+                  const heightPercent = `${(item.monto / maxMonto) * 100}%`;
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-1.5 w-8">
+                      <span className="text-[8px] font-mono font-bold text-slate-500">${(item.monto / 1000).toFixed(0)}k</span>
+                      <div className="w-full bg-slate-100 hover:bg-[#85AA1C]/20 rounded-t transition-all relative group cursor-pointer" style={{ height: '120px' }}>
+                        <div className="absolute bottom-0 left-0 right-0 bg-[#85AA1C] hover:bg-[#739418] rounded-t transition-all" style={{ height: heightPercent }}></div>
+                      </div>
+                      <span className="text-[9px] font-mono text-slate-400">{item.mes}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-[10.5px] text-slate-500 text-center font-light leading-relaxed">
+                El gráfico muestra la facturación total facturada por mes. El mes de **Julio** reporta un incremento del **36.1%** gracias al aumento de ODTs asignadas al sector manufacturero.
+              </div>
+            </div>
+
+            {/* INGRESOS POR NORMATIVA */}
+            <div className="lg:col-span-5 bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-4">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">Participación de Ingresos por Tipo de Norma</h4>
+              
+              <div className="space-y-3.5">
+                {[
+                  { name: "NOM-011-STPS (Ruido Ambiental e Laboral)", percent: 45, color: "bg-blue-600", amount: 154000 },
+                  { name: "NOM-025-STPS (Iluminación de Áreas)", percent: 30, color: "bg-emerald-600", amount: 102000 },
+                  { name: "NOM-015-STPS (Condiciones Térmicas)", percent: 15, color: "bg-amber-600", amount: 51000 },
+                  { name: "Calibración Metrológica Autorizada (EMA)", percent: 10, color: "bg-purple-600", amount: 34000 }
+                ].map((norm, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="font-semibold text-slate-700">{norm.name}</span>
+                      <span className="font-mono font-bold text-slate-900">{norm.percent}% (${(norm.amount / 1000).toFixed(0)}k)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className={`${norm.color} h-full rounded-full`} style={{ width: `${norm.percent}%` }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-150 flex gap-2">
+                <Info className="w-4 h-4 text-[#85AA1C] shrink-0 mt-0.5" />
+                <p className="text-[9.5px] text-slate-500 leading-normal">
+                  Los estudios asociados a la **NOM-011-STPS** representan la principal fuente de ingresos del laboratorio, seguidos por auditorías de iluminación NOM-025.
+                </p>
+              </div>
+            </div>
+          </div>
         </motion.div>
       )}
 

@@ -26,7 +26,9 @@ import {
   Sparkles,
   Clock,
   Compass,
-  FileCheck
+  FileCheck,
+  UserPlus,
+  Settings
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion, AuditLog } from '../initial_data';
@@ -177,6 +179,43 @@ export default function DirectorViews(props: DirectorViewsProps) {
     id_instrumento: '',
     estado: 'Asignado'
   });
+
+  // --- SYSTEM ADMIN STATES ---
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    nombre_completo: '',
+    email: '',
+    id_rol: 'ing_campo',
+    puesto: 'Técnico de Campo'
+  });
+  const [selectedRoleForPermEditing, setSelectedRoleForPermEditing] = useState('ing_campo');
+  const [localRolePermissions, setLocalRolePermissions] = useState<Record<string, string[]>>(() => {
+    return { ...ROLE_PERMISSIONS_MAP };
+  });
+
+  // Catalogs and Parameters States
+  const [catalogType, setCatalogType] = useState<'servicios' | 'normas' | 'parametros'>('servicios');
+  const [catalogServices, setCatalogServices] = useState<any[]>([
+    { id: "S1", nombre: "Mapeo Metrológico de Ruido NOM-011", costo: 15000, duracion: "2 días" },
+    { id: "S2", nombre: "Evaluación Lumínica Ocupacional NOM-025", costo: 12000, duracion: "1 día" },
+    { id: "S3", nombre: "Estudio de Condiciones Térmicas NOM-015", costo: 14000, duracion: "1 día" },
+    { id: "S4", nombre: "Servicio de Calibración Acreditada EMA", costo: 4500, duracion: "1 día" }
+  ]);
+  const [catalogNorms, setCatalogNorms] = useState<any[]>([
+    { id: "N1", clave: "NOM-011-STPS-2001", nombre: "Condiciones de seguridad e higiene en los centros de trabajo donde se genere ruido." },
+    { id: "N2", clave: "NOM-025-STPS-2008", nombre: "Condiciones de iluminación en los centros de trabajo." },
+    { id: "N3", clave: "NOM-015-STPS-2001", nombre: "Condiciones térmicas elevadas o abatidas - Condiciones de seguridad e higiene." }
+  ]);
+  const [systemParameters, setSystemParameters] = useState<any[]>([
+    { clave: "IVA_TASA", valor: "0.16", descripcion: "Tasa del Impuesto al Valor Agregado" },
+    { clave: "POSTGRESQL_SSL", valor: "REQUERIDO", descripcion: "Exigir SSL/TLS en conexiones de base de datos" },
+    { clave: "NOM151_PROVIDER", valor: "PSC_AUTORIZADO_MEX", descripcion: "Proveedor de Constancias de Conservación de Mensajes de Datos" },
+    { clave: "JWT_EXPIRATION_MINUTES", valor: "480", descripcion: "Tiempo de expiración de sesión de usuario" }
+  ]);
+
+  const [isAddCatalogItemOpen, setIsAddCatalogItemOpen] = useState(false);
+  const [newCatalogItemName, setNewCatalogItemName] = useState("");
+  const [newCatalogItemValue, setNewCatalogItemValue] = useState("");
 
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -1514,6 +1553,542 @@ export default function DirectorViews(props: DirectorViewsProps) {
         </motion.div>
       )}
 
+      {/* SYSTEM ADMIN VIEWS */}
+      {activeTab === 'sa_users' && (
+        <motion.div
+          key="sa_users"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Users className="text-[#85AA1C] w-4.5 h-4.5" />
+                Control de Usuarios, Accesos y Firmas Digitales (LFPDPPP)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Registro oficial de personal, auditoría de credenciales del SAT y revocación inmediata de privilegios.</p>
+            </div>
+            <button
+              onClick={() => setIsAddUserOpen(!isAddUserOpen)}
+              className="px-4 py-2 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAddUserOpen ? "Ocultar Formulario" : "Registrar Nuevo Usuario"}</span>
+            </button>
+          </div>
+
+          {/* FORMULARIO DE REGISTRO */}
+          {isAddUserOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4 text-xs"
+            >
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-150 pb-2">Asignar Credenciales y Certificado Digital</h4>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newUserForm.nombre_completo || !newUserForm.email) {
+                    alert("Complete todos los campos requeridos.");
+                    return;
+                  }
+                  const newUser = {
+                    id_usuario: "USR-" + Math.random().toString(36).substring(2, 6).toUpperCase(),
+                    nombre_completo: newUserForm.nombre_completo,
+                    email: newUserForm.email,
+                    id_rol: newUserForm.id_rol,
+                    puesto: newUserForm.puesto,
+                    esta_activo: true,
+                    ultimo_acceso: "Hoy (Reciente)",
+                    firma_electronica_fingerprint: "SHA256:E89C" + Math.random().toString(16).substring(2, 10).toUpperCase() + "E981BA2"
+                  };
+                  setUsuarios([...usuarios, newUser]);
+                  setIsAddUserOpen(false);
+                  alert(`¡Usuario registrado de forma exitosa! Se emitió un certificado criptográfico local vinculado a la e.firma del SAT del usuario.`);
+                }}
+                className="grid grid-cols-1 md:grid-cols-4 gap-4"
+              >
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Nombre Completo (SAT)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Ing. Carlos Salinas"
+                    value={newUserForm.nombre_completo}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, nombre_completo: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Correo Institucional / SAT</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Ej. carlos.salinas@asp.com"
+                    value={newUserForm.email}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Puesto Operativo</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Coordinador de Metrología"
+                    value={newUserForm.puesto}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, puesto: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Rol de Acceso (RBAC)</label>
+                  <select
+                    value={newUserForm.id_rol}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, id_rol: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  >
+                    {INITIAL_ROLES.map(r => (
+                      <option key={r.id_rol} value={r.id_rol}>{r.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-4 flex justify-end gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddUserOpen(false)}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Registrar & Emitir Acceso</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          {/* LISTADO DE USUARIOS REGISTRADOS */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-700 uppercase font-mono">Personal de ASP de Alta en el Directorio</span>
+              <span className="bg-slate-200 text-slate-700 font-bold font-mono px-2 py-0.5 rounded text-[10px]">{usuarios.length} cuentas</span>
+            </div>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900 text-white uppercase tracking-wider text-[10px] font-mono">
+                <tr>
+                  <th className="px-4 py-3">ID / Personal</th>
+                  <th className="px-4 py-3">Puesto / Rol</th>
+                  <th className="px-4 py-3">Huella de e.firma SAT</th>
+                  <th className="px-4 py-3">Último Acceso</th>
+                  <th className="px-4 py-3 text-center">Estado</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-150 text-slate-700 font-sans">
+                {usuarios.map(user => (
+                  <tr key={user.id_usuario} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-950">{user.nombre_completo}</div>
+                      <div className="text-[10px] text-slate-500 font-mono font-light">{user.email}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-800">{user.puesto}</div>
+                      <span className="text-[9.5px] px-1.5 py-0.2 bg-slate-100 border rounded font-mono font-bold text-slate-600">{user.id_rol}</span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-[10.5px] text-slate-500 select-all">
+                      {user.firma_electronica_fingerprint}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">
+                      {user.ultimo_acceso || "Nunca"}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                        user.esta_activo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
+                      }`}>
+                        <span className={`w-1 h-1 rounded-full ${user.esta_activo ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                        {user.esta_activo ? 'Activo' : 'Suspendido'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
+                      <button
+                        onClick={() => {
+                          const updated = usuarios.map(u => u.id_usuario === user.id_usuario ? { ...u, esta_activo: !u.esta_activo } : u);
+                          setUsuarios(updated);
+                          alert(`Se ha ${user.esta_activo ? 'desactivado' : 'activado'} la cuenta del usuario de forma inmediata.`);
+                        }}
+                        className={`px-2 py-0.5 border rounded text-[10px] font-bold cursor-pointer ${
+                          user.esta_activo 
+                            ? 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700' 
+                            : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                        }`}
+                      >
+                        {user.esta_activo ? 'Suspender' : 'Activar'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'sa_roles' && (
+        <motion.div
+          key="sa_roles"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Key className="text-emerald-600 w-4.5 h-4.5" />
+              Matriz Relacional RBAC (Roles y Privilegios)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Definición de perfiles de seguridad, mapeo de vistas operativas y simulación de reglas de GRANT/DENY relacionales.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* PANEL SELECCIÓN DE ROL */}
+            <div className="lg:col-span-4 bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4 text-xs">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-150 pb-2">Seleccione Perfil a Modificar</h4>
+              <p className="text-slate-500 leading-relaxed font-light">Asigne permisos de forma granular para alterar las rutas y vistas dinámicas en tiempo de ejecución.</p>
+              
+              <div className="space-y-2">
+                {INITIAL_ROLES.map(r => {
+                  const isActive = selectedRoleForPermEditing === r.id_rol;
+                  const count = localRolePermissions[r.id_rol]?.length || 0;
+                  return (
+                    <div
+                      key={r.id_rol}
+                      onClick={() => setSelectedRoleForPermEditing(r.id_rol)}
+                      className={`p-3 rounded-lg border transition-all cursor-pointer flex justify-between items-center ${
+                        isActive ? 'bg-white border-emerald-500 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-slate-900">{r.nombre}</div>
+                        <div className="text-[10px] font-mono text-slate-400 mt-0.5">ID: {r.id_rol}</div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-slate-100 border text-slate-600 rounded">
+                        {count} perms
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* EDICIÓN DE PERMISOS */}
+            <div className="lg:col-span-8 bg-white border border-slate-200 p-5 rounded-xl space-y-4 text-xs">
+              <div className="flex justify-between items-center border-b border-slate-150 pb-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">
+                  Lista de Permisos del Rol: {INITIAL_ROLES.find(r => r.id_rol === selectedRoleForPermEditing)?.nombre || selectedRoleForPermEditing}
+                </h4>
+                <button
+                  onClick={() => {
+                    alert("Matriz de privilegios guardada con éxito. Se emitió un comando de ALTER ROLE en la base de datos PostgreSQL.");
+                  }}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-[10.5px] cursor-pointer"
+                >
+                  Guardar Cambios (GRANT)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-h-96 overflow-y-auto pr-2">
+                {INITIAL_PERMISOS.map(perm => {
+                  const permsOfRole = localRolePermissions[selectedRoleForPermEditing] || [];
+                  const isChecked = permsOfRole.includes(perm.id_permiso);
+                  return (
+                    <label 
+                      key={perm.id_permiso} 
+                      className={`p-3 rounded-lg border flex items-start gap-2.5 transition-all cursor-pointer hover:bg-slate-50 ${
+                        isChecked ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          let updatedPerms = [...permsOfRole];
+                          if (e.target.checked) {
+                            updatedPerms.push(perm.id_permiso);
+                          } else {
+                            updatedPerms = updatedPerms.filter(p => p !== perm.id_permiso);
+                          }
+                          setLocalRolePermissions({
+                            ...localRolePermissions,
+                            [selectedRoleForPermEditing]: updatedPerms
+                          });
+                        }}
+                        className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div>
+                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <span>[{perm.modulo.toUpperCase()}]</span>
+                          <span className="font-mono font-normal text-slate-500">{perm.accion}</span>
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 mt-0.5 leading-normal font-light">{perm.descripcion}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'sa_catalogs' && (
+        <motion.div
+          key="sa_catalogs"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Sliders className="text-[#85AA1C] w-4.5 h-4.5" />
+                Administrador de Catálogos y Parámetros del Sistema
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Edite las tablas dinámicas de referencia del laboratorio para servicios, normas y fórmulas matemáticas.</p>
+            </div>
+            
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setCatalogType('servicios')}
+                className={`px-3 py-1 rounded-md font-bold text-[11px] cursor-pointer transition-all ${catalogType === 'servicios' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Servicios
+              </button>
+              <button
+                onClick={() => setCatalogType('normas')}
+                className={`px-3 py-1 rounded-md font-bold text-[11px] cursor-pointer transition-all ${catalogType === 'normas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Normas STPS
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm text-xs">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+              <span className="font-bold text-slate-700 uppercase font-mono">
+                {catalogType === 'servicios' ? "Catálogo de Servicios y Costos" : "Normas Oficiales Mexicanas de Referencia"}
+              </span>
+              <button
+                onClick={() => {
+                  setIsAddCatalogItemOpen(true);
+                  setNewCatalogItemName("");
+                  setNewCatalogItemValue("");
+                }}
+                className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded text-[10px] cursor-pointer"
+              >
+                + Agregar Registro
+              </button>
+            </div>
+
+            {catalogType === 'servicios' ? (
+              <table className="w-full text-left">
+                <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider text-[10px] font-mono">
+                  <tr>
+                    <th className="px-4 py-2.5">Código</th>
+                    <th className="px-4 py-2.5">Nombre del Servicio Metrológico</th>
+                    <th className="px-4 py-2.5 text-right">Monto Unitario</th>
+                    <th className="px-4 py-2.5 text-right">Duración Estimada</th>
+                    <th className="px-4 py-2.5 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {catalogServices.map(s => (
+                    <tr key={s.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900">{s.id}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-800">{s.nombre}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">${s.costo.toLocaleString()} MXN</td>
+                      <td className="px-4 py-3 text-right text-slate-500">{s.duracion}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button 
+                          onClick={() => {
+                            setCatalogServices(catalogServices.filter(item => item.id !== s.id));
+                            alert("Registro eliminado del catálogo.");
+                          }}
+                          className="text-red-600 hover:underline font-bold text-[10px] cursor-pointer"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-slate-100 text-slate-700 uppercase tracking-wider text-[10px] font-mono">
+                  <tr>
+                    <th className="px-4 py-2.5">ID</th>
+                    <th className="px-4 py-2.5">Clave Oficial</th>
+                    <th className="px-4 py-2.5">Denominación e Integridad Metrológica</th>
+                    <th className="px-4 py-2.5 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {catalogNorms.map(n => (
+                    <tr key={n.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900">{n.id}</td>
+                      <td className="px-4 py-3 font-mono font-bold text-emerald-700">{n.clave}</td>
+                      <td className="px-4 py-3 text-slate-700 leading-normal font-light">{n.nombre}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button 
+                          onClick={() => {
+                            setCatalogNorms(catalogNorms.filter(item => item.id !== n.id));
+                            alert("Registro eliminado del catálogo.");
+                          }}
+                          className="text-red-600 hover:underline font-bold text-[10px] cursor-pointer"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* POPUP AGREGAR REGISTRO */}
+          {isAddCatalogItemOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-slate-950/65 backdrop-blur-xs" onClick={() => setIsAddCatalogItemOpen(false)} />
+              <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl border p-5 space-y-4 text-xs">
+                <h4 className="text-sm font-bold text-slate-900 uppercase font-mono tracking-wide">
+                  Agregar Registro a {catalogType === 'servicios' ? 'Servicios' : 'Normas'}
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                      {catalogType === 'servicios' ? 'Nombre del Servicio' : 'Clave de la Norma'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={catalogType === 'servicios' ? 'Mapeo de Vibraciones' : 'NOM-024-STPS-1993'}
+                      value={newCatalogItemName}
+                      onChange={(e) => setNewCatalogItemName(e.target.value)}
+                      className="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                      {catalogType === 'servicios' ? 'Costo Unitario (MXN)' : 'Descripción Completa'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={catalogType === 'servicios' ? '12500' : 'Vibraciones - Condiciones de seguridad en los centros de trabajo.'}
+                      value={newCatalogItemValue}
+                      onChange={(e) => setNewCatalogItemValue(e.target.value)}
+                      className="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t">
+                  <button
+                    onClick={() => setIsAddCatalogItemOpen(false)}
+                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!newCatalogItemName || !newCatalogItemValue) {
+                        alert("Rellene los campos.");
+                        return;
+                      }
+                      if (catalogType === 'servicios') {
+                        setCatalogServices([...catalogServices, {
+                          id: "S" + (catalogServices.length + 1),
+                          nombre: newCatalogItemName,
+                          costo: Number(newCatalogItemValue) || 10000,
+                          duracion: "2 días"
+                        }]);
+                      } else {
+                        setCatalogNorms([...catalogNorms, {
+                          id: "N" + (catalogNorms.length + 1),
+                          clave: newCatalogItemName,
+                          nombre: newCatalogItemValue
+                        }]);
+                      }
+                      setIsAddCatalogItemOpen(false);
+                      alert("Registro añadido con éxito.");
+                    }}
+                    className="px-4 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg cursor-pointer"
+                  >
+                    Agregar Registro
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {activeTab === 'sa_config' && (
+        <motion.div
+          key="sa_config"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Settings className="text-emerald-600 w-4.5 h-4.5" />
+              Parámetros Críticos y Fórmulas del Sistema
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Configure valores globales de cálculo de ruido de sonómetros y la integración criptográfica de la NOM-151.</p>
+          </div>
+
+          <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4 text-xs">
+            <div className="flex justify-between items-center border-b border-slate-150 pb-2">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">Tabla de Constantes y Configuración de API de Seguridad</h4>
+              <button
+                onClick={() => alert("Parámetros globales actualizados en la base de datos de producción.")}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded cursor-pointer"
+              >
+                Aplicar Constantes
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {systemParameters.map((param, idx) => (
+                <div key={param.clave} className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono font-bold text-slate-900 bg-white border px-1.5 py-0.5 rounded text-[10px]">{param.clave}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-mono font-semibold">Parámetro del Kernel</span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-500 leading-normal">{param.descripcion}</p>
+                  <input
+                    type="text"
+                    value={param.valor}
+                    onChange={(e) => {
+                      const updated = [...systemParameters];
+                      updated[idx].valor = e.target.value;
+                      setSystemParameters(updated);
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-800 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ORIGINAL QUOTES TAB */}
       {activeTab === 'dir_quotes' && (
         <motion.div
           key="dir_quotes"

@@ -119,8 +119,7 @@ export default function App() {
       case 'ger_tec':
         return tabId;
       case 'ger_cal':
-        if (tabId === 'gc_hojas_campo' || tabId === 'gc_reports') return 'coord_validation';
-        break;
+        return tabId;
       case 'coord_lab':
         if (tabId === 'cl_agenda') return 'coord_agenda';
         if (tabId === 'cl_hojas_campo') return 'coord_validation';
@@ -134,20 +133,13 @@ export default function App() {
         if (tabId === 'jr_reports') return 'admin_results';
         break;
       case 'jefe_op':
-        if (tabId === 'jo_odt') return 'coord_validation';
-        if (tabId === 'jo_agenda' || tabId === 'jo_engineers' || tabId === 'jo_tracking') return 'coord_agenda';
-        break;
+        return tabId;
       case 'jefe_alm':
-        if (tabId === 'ja_inventory' || tabId === 'ja_equip') return 'coord_inventory';
-        break;
+        return tabId;
       case 'ing_campo':
-        if (tabId === 'ic_agenda' || tabId === 'ic_odt') return 'tech_agenda';
-        if (tabId === 'ic_hoja_campo') return 'tech_mediciones';
-        if (tabId === 'ic_history') return 'tech_muestras';
-        break;
+        return tabId;
       case 'sys_admin':
-        if (tabId === 'sa_users' || tabId === 'sa_roles' || tabId === 'sa_catalogs' || tabId === 'sa_config') return 'dir_config';
-        break;
+        return tabId;
     }
     return tabId;
   };

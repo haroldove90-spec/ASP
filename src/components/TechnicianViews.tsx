@@ -251,9 +251,9 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
       {renderWelcomeBanner("Consultor y Técnico de Campo")}
 
       {/* WORKFLOW NAVIGATION HEADER FOR TECH WORKFLOW TABS */}
-      {activeTab !== 'tech_agenda' && renderWorkflowSelectorHeader()}
+      {(activeTab === 'ic_hoja_campo' || activeTab === 'tech_epp' || activeTab === 'tech_mediciones' || activeTab === 'tech_muestras') && renderWorkflowSelectorHeader()}
 
-      {activeTab === 'tech_agenda' && (
+      {(activeTab === 'tech_agenda' || activeTab === 'ic_agenda') && (
         <motion.div
           key="tech_agenda"
           initial={{ opacity: 0, y: 10 }}
@@ -323,7 +323,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
                         return;
                       }
                       setFieldStep(1);
-                      setActiveTab('tech_epp');
+                      setActiveTab(selectedRole === 'ing_campo' ? 'ic_hoja_campo' : 'tech_epp');
                     }}
                     className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded flex items-center gap-1 shadow-md shadow-blue-600/10"
                   >
@@ -396,7 +396,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
         </motion.div>
       )}
 
-      {activeTab === 'tech_epp' && (
+      {(activeTab === 'tech_epp' || (activeTab === 'ic_hoja_campo' && (fieldStep === 1 || fieldStep === 2))) && (
         <motion.div
           key="tech_epp"
           initial={{ opacity: 0, y: 10 }}
@@ -486,7 +486,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
                       return;
                     }
                     setFieldStep(3);
-                    setActiveTab('tech_mediciones');
+                    setActiveTab(activeTab === 'ic_hoja_campo' ? 'ic_hoja_campo' : 'tech_mediciones');
                   }}
                   className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs flex items-center gap-1"
                 >
@@ -499,7 +499,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
         </motion.div>
       )}
 
-      {activeTab === 'tech_mediciones' && (
+      {(activeTab === 'tech_mediciones' || (activeTab === 'ic_hoja_campo' && fieldStep === 3)) && (
         <motion.div
           key="tech_mediciones"
           initial={{ opacity: 0, y: 10 }}
@@ -763,7 +763,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
                       return;
                     }
                     setFieldStep(4);
-                    setActiveTab('tech_muestras');
+                    setActiveTab(activeTab === 'ic_hoja_campo' ? 'ic_hoja_campo' : 'tech_muestras');
                   }}
                   className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs flex items-center gap-1"
                 >
@@ -814,7 +814,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('tech_muestras')}
+                  onClick={() => setActiveTab(activeTab === 'ic_hoja_campo' ? 'ic_hoja_campo' : 'tech_muestras')}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10"
                 >
                   <span>Proceder a Firmas y Sello (Paso 4)</span>
@@ -826,7 +826,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
         </motion.div>
       )}
 
-      {activeTab === 'tech_muestras' && (
+      {(activeTab === 'tech_muestras' || (activeTab === 'ic_hoja_campo' && (fieldStep === 4 || fieldStep === 5))) && (
         <motion.div
           key="tech_muestras"
           initial={{ opacity: 0, y: 10 }}
@@ -856,7 +856,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('tech_mediciones')}
+                    onClick={() => setActiveTab(activeTab === 'ic_hoja_campo' ? 'ic_hoja_campo' : 'tech_mediciones')}
                     className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10"
                   >
                     <span>Ir a Captura de Campo</span>
@@ -1082,6 +1082,146 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
               )}
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* CONSULTAR ODT */}
+      {activeTab === 'ic_odt' && (
+        <motion.div
+          key="ic_odt"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4 font-sans text-slate-200 font-light">
+            <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <FileText className="text-blue-400 w-4.5 h-4.5" />
+                  Consulta de Órdenes de Trabajo (ODT) Asignadas
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Consulte los alcances técnicos, clientes y métodos de ensayo acreditados para sus visitas de campo.</p>
+              </div>
+              <span className="px-2.5 py-1 bg-slate-800 text-[10px] font-mono rounded text-slate-300 border border-slate-700 font-bold">
+                3 ODT ACTIVAS
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { odt: "ODT-2026-088", cliente: "Vidriera del Norte S.A. de C.V.", servicio: "Evaluación de Niveles de Ruido Laboral (NOM-011-STPS)", fecha: "Hoy", prioridad: "Alta", estatus: "Asignada", norma: "NOM-011-STPS-2001", metodo: "Método de Gradiente de Presión Acústica" },
+                { odt: "ODT-2026-089", cliente: "Papelera de Occidente S.A.", servicio: "Monitoreo Perimetral de Ruido Ambiental (NOM-081-SEMARNAT)", fecha: "Mañana", prioridad: "Media", estatus: "Pendiente", norma: "NOM-081-SEMARNAT-1994", metodo: "Método de Puntos Fijos en Lindero" },
+                { odt: "ODT-2026-090", cliente: "Metales Monterrey S.A.", servicio: "Dosimetría de Ruido por Turno Completo", fecha: "22 de Julio", prioridad: "Alta", estatus: "Asignada", norma: "NOM-011-STPS-2001", metodo: "Método de Dosimetría Personalizada" }
+              ].map((item, idx) => (
+                <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[9px] font-bold text-blue-400 bg-blue-950/80 px-2 py-0.5 rounded border border-blue-500/20">
+                        {item.odt}
+                      </span>
+                      <strong className="text-white text-xs">{item.cliente}</strong>
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${item.prioridad === 'Alta' ? 'bg-red-950 text-red-400 border border-red-500/10' : 'bg-amber-950 text-amber-400 border border-amber-500/10'}`}>
+                        {item.prioridad}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-300 font-light">{item.servicio}</div>
+                    <div className="text-[10px] text-slate-400 font-mono flex flex-wrap gap-x-3 gap-y-1">
+                      <span>Norma: <strong className="text-slate-200">{item.norma}</strong></span>
+                      <span>Método: <strong className="text-slate-200">{item.metodo}</strong></span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
+                    <span className="text-[10px] font-mono text-slate-400">{item.fecha}</span>
+                    <button
+                      onClick={() => {
+                        if (!isJornadaIniciada) {
+                          alert("Por favor, Inicie su Jornada Diaria en la agenda antes de proceder.");
+                          return;
+                        }
+                        setFieldStep(1);
+                        setActiveTab('ic_hoja_campo');
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded flex items-center gap-1 shadow-md shadow-blue-600/10"
+                    >
+                      <span>Atender ODT</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* HISTORIAL REALIZADO */}
+      {activeTab === 'ic_history' && (
+        <motion.div
+          key="ic_history"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-3 font-sans">
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <FileSpreadsheet className="text-emerald-400 w-4.5 h-4.5" />
+                  Historial de Levantamientos Realizados (NOM-151)
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Historial completo de servicios con firmas criptográficas asociadas a su cuenta.</p>
+              </div>
+              <button
+                onClick={handleExportCSV}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 font-mono"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Exportar Historial (.CSV)</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(() => {
+                const myReports = submittedReports.filter(r => 
+                  r.tecnico_nombre === activePersona.nombre_completo || 
+                  r.tecnico === activePersona.nombre_completo || 
+                  r.id_usuario === activePersona.id_usuario
+                );
+
+                const list = myReports.length > 0 ? myReports : [
+                  { id_reporte: "REP-NOM011-2026-001", cliente_nombre: "Vidriera del Norte S.A. de C.V.", fecha: "2026-07-10", area: "Área de Hornos (Taller 2)", gps: "25.6865, -100.3161", hash: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", constancia: "NOM151:CONSTANCIA-2026-F10495" },
+                  { id_reporte: "REP-NOM011-2026-002", cliente_nombre: "Papelera de Occidente S.A.", fecha: "2026-07-12", area: "Nave de Prensas 1", gps: "25.7231, -100.3015", hash: "a3f5b72cd9138406fbf4225b12850983c27eef0984cfb7cf7a9d3eefdfb99ab8", constancia: "NOM151:CONSTANCIA-2026-F98302" }
+                ];
+
+                return list.map((rep, idx) => (
+                  <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-3.5 flex flex-col gap-3 font-sans text-slate-200">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[9px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/20">
+                          {rep.id_reporte || `REP-2026-00${idx + 1}`}
+                        </span>
+                        <strong className="text-white text-xs">{rep.cliente_nombre || rep.payload?.datos_sitio?.empresa_cliente || "Cliente Metrología"}</strong>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-900/30 text-emerald-300 border border-emerald-500/20 font-mono">
+                        Sello NOM-151 Activo
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-400 font-mono border-t border-slate-900 pt-2">
+                      <div>
+                        <div>Área Evaluada: <span className="text-slate-200">{rep.area || rep.payload?.area_evaluada || "Planta Industrial"}</span></div>
+                        <div>Coordenadas: <span className="text-slate-200">{rep.gps || rep.coordenadas_gps || "No registrada"}</span></div>
+                      </div>
+                      <div>
+                        <div className="truncate">Constancia PSC: <span className="text-blue-400 font-bold">{rep.constancia || "NOM151:CONSTANCIA-2026-A1095"}</span></div>
+                        <div className="truncate text-emerald-500 font-bold">SHA256 Hash: <span>{rep.hash || "8f76e33cd9128406fbf4225b12850983c27eef0984cfb7cf7a9d3eefdfb59cd1"}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
         </motion.div>
       )}
     </div>

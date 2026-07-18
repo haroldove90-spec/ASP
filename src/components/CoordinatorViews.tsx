@@ -180,6 +180,49 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
   // State for Lab Studies validation
   const [studyValidationNotes, setStudyValidationNotes] = useState<Record<string, string>>({});
 
+  // --- GERENCIA DE CALIDAD STATES ---
+  const [qaNonConformities, setQaNonConformities] = useState([
+    { id: "NC-2026-001", ODT: "ODT-2026-101", hallazgo: "Desviación en calibración del sonómetro EQ-SON-055 detectado antes del servicio", origen: "Auditoría Interna", gravedad: "Media", responsable: "Lucía Juárez", fecha_deteccion: "2026-07-15", status: "Abierta", accion_correctiva: "Recalibración con patrón acústico Clase 1 y re-certificación inmediata." },
+    { id: "NC-2026-002", ODT: "ODT-2026-098", hallazgo: "Falta de firma del resguardo de equipo luxómetro por parte del ingeniero de campo", origen: "Revisión Documental", gravedad: "Baja", responsable: "Ing. Juan Pérez", fecha_deteccion: "2026-07-12", status: "Cerrada", accion_correctiva: "Firma digital del resguardo completada con SHA256." }
+  ]);
+  const [gcAudits, setGcAudits] = useState([
+    { id: "AUD-2026-01", tipo: "Interna ISO/IEC 17025", auditor_lider: "M. en C. Adriana Garza", fecha_inicio: "2026-07-01", fecha_fin: "2026-07-03", observaciones: 2, status: "Completada" },
+    { id: "AUD-2026-02", tipo: "Vigilancia EMA (Entidad Mexicana de Acreditación)", auditor_lider: "Dr. Roberto Valdés (EMA)", fecha_inicio: "2026-08-15", fecha_fin: "2026-08-17", observaciones: 0, status: "Programada" }
+  ]);
+  const [isAddNcOpen, setIsAddNcOpen] = useState(false);
+  const [newNcForm, setNewNcForm] = useState({
+    hallazgo: '',
+    gravedad: 'Media',
+    responsable: 'Lucía Juárez',
+    accion_correctiva: ''
+  });
+
+  // --- JEFE DE OPERACIONES STATES ---
+  const [workProgressList, setWorkProgressList] = useState([
+    { id: "WPR-001", odt: "ODT-2026-101", cliente: "Metalúrgica del Norte S.A.", servicio: "Mapeo de Ruido NOM-011", porcentaje: 35, etapa: "Ingeniero de Campo en Sitio (Muestreo)", tecnico: "Lucía Juárez" },
+    { id: "WPR-002", odt: "ODT-2026-102", cliente: "Plásticos Globales de México", servicio: "Evaluación Iluminación NOM-025", porcentaje: 70, etapa: "Resultados en Laboratorio de Ensayo", tecnico: "Ing. Juan Pérez" },
+    { id: "WPR-003", odt: "ODT-2026-103", cliente: "Extractora de Minerales S.A.", servicio: "Condiciones Térmicas NOM-015", porcentaje: 100, etapa: "Dictamen Técnico Validado & Cerrado", tecnico: "Lucía Juárez" }
+  ]);
+
+  // --- JEFE DE ALMACÉN STATES ---
+  const [warehouseStock, setWarehouseStock] = useState([
+    { id: "MAT-001", nombre: "Tubos de Muestreo de Carbón Activado", stock: 150, unidad: "Piezas", min: 50, estatus: "Óptimo" },
+    { id: "MAT-002", nombre: "Filtros de Membrana de PVC de 37mm", stock: 200, unidad: "Piezas", min: 100, estatus: "Óptimo" },
+    { id: "MAT-003", nombre: "Baterías recargables para Dosímetros", stock: 12, unidad: "Piezas", min: 20, estatus: "Crítico" },
+    { id: "MAT-004", nombre: "Frascos de Solución de Calibración de pH", stock: 8, unidad: "Litros", min: 5, estatus: "Óptimo" }
+  ]);
+  const [equipmentLoans, setEquipmentLoans] = useState([
+    { id: "LON-001", equipo: "Sonómetro Integrador EQ-SON-055", tecnico: "Lucía Juárez", fecha_prestamo: "2026-07-15", fecha_retorno_estimada: "2026-07-18", estatus: "Prestado" },
+    { id: "LON-002", equipo: "Luxómetro de Precisión EQ-LUX-012", tecnico: "Ing. Juan Pérez", fecha_prestamo: "2026-07-10", fecha_retorno_estimada: "2026-07-14", estatus: "Devuelto" }
+  ]);
+  const [newLoanForm, setNewLoanForm] = useState({
+    equipo: 'Sonómetro Integrador EQ-SON-055',
+    tecnico: 'Lucía Juárez',
+    fecha_prestamo: '2026-07-18',
+    fecha_retorno_estimada: '2026-07-21'
+  });
+  const [isAddLoanOpen, setIsAddLoanOpen] = useState(false);
+
   const handleRegisterService = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newServiceName || !newServiceDesc) {
@@ -1827,6 +1870,791 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                 )}
               </div>
             ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* GERENCIA DE CALIDAD VIEWS */}
+      {activeTab === 'gc_hojas_campo' && (
+        <motion.div
+          key="gc_hojas_campo"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <FileCheck className="text-emerald-600 w-4.5 h-4.5" />
+              Garantía de Calidad: Validación de Hojas de Campo
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Auditoría técnica previa al cálculo del reporte final de metrología bajo criterios ISO/IEC 17025.</p>
+          </div>
+
+          <div className="space-y-4">
+            {submittedReports.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-dashed rounded-xl text-xs text-slate-500">
+                No hay hojas de campo pendientes de validación de calidad en este momento.
+              </div>
+            ) : (
+              submittedReports.map((report) => (
+                <div key={report.id_reporte} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 text-xs text-slate-700">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <div>
+                      <span className="font-mono font-bold text-slate-900 bg-slate-100 border px-2 py-0.5 rounded text-[10px]">{report.id_reporte}</span>
+                      <h4 className="font-bold text-slate-800 mt-1">Cliente: {report.cliente_nombre}</h4>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500">{report.fecha_reporte}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">Servicio Evaluado</span>
+                      <strong className="text-slate-800">{report.servicio_nombre}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">Analista Autor</span>
+                      <span className="text-slate-800">{report.tecnico_nombre}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">Estado Actual</span>
+                      <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[9.5px] font-mono">{report.estado}</span>
+                    </div>
+                  </div>
+
+                  {report.estado === "Pendiente Aprobación Coordinador" && (
+                    <div className="border-t border-slate-150 pt-3 space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase font-mono mb-1">Notas de Verificación de Calidad (NMX-17025)</label>
+                        <input
+                          type="text"
+                          placeholder="Traceability verified. Sound level meter calibration values compliant."
+                          value={coordinatorJustifications[report.id_reporte] || ""}
+                          onChange={(e) => setCoordinatorJustifications({ ...coordinatorJustifications, [report.id_reporte]: e.target.value })}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            handleCoordinatorReviewReport(report.id_reporte, false, coordinatorJustifications[report.id_reporte] || "");
+                            alert("Hoja de campo retornada al analista por inconsistencias de calidad.");
+                          }}
+                          className="flex-1 py-1.5 bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-200 rounded font-semibold transition-colors cursor-pointer text-center"
+                        >
+                          Retornar por Desviación
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleCoordinatorReviewReport(report.id_reporte, true, coordinatorJustifications[report.id_reporte] || "");
+                            alert("Hoja de campo validada correctamente por Garantía de Calidad.");
+                          }}
+                          className="flex-1 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded font-bold transition-colors shadow-sm cursor-pointer text-center"
+                        >
+                          Aprobar Hoja de Campo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'gc_reports' && (
+        <motion.div
+          key="gc_reports"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <ClipboardList className="text-[#85AA1C] w-4.5 h-4.5" />
+                Reportes, Auditorías e Incidencias de Calidad (NMX-17025)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Seguimiento a no conformidades, trazabilidad de patrones, control de CAPAs e inspecciones de la EMA.</p>
+            </div>
+            <button
+              onClick={() => setIsAddNcOpen(!isAddNcOpen)}
+              className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAddNcOpen ? "Ocultar Formulario" : "Registrar No Conformidad"}</span>
+            </button>
+          </div>
+
+          {/* REGISTER NC FORM */}
+          {isAddNcOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3.5 text-xs"
+            >
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">Nueva Incidencia de Desviación Técnica</h4>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newNcForm.hallazgo || !newNcForm.accion_correctiva) {
+                    alert("Complete todos los campos del hallazgo.");
+                    return;
+                  }
+                  const newNc = {
+                    id: "NC-2026-" + Math.floor(100 + Math.random() * 900),
+                    ODT: "ODT-2026-" + Math.floor(100 + Math.random() * 50),
+                    hallazgo: newNcForm.hallazgo,
+                    origen: "Inspección de Calidad",
+                    gravedad: newNcForm.gravedad,
+                    responsable: newNcForm.responsable,
+                    fecha_deteccion: "Hoy",
+                    status: "Abierta",
+                    accion_correctiva: newNcForm.accion_correctiva
+                  };
+                  setQaNonConformities([newNc, ...qaNonConformities]);
+                  setIsAddNcOpen(false);
+                  alert("Desviación registrada y enviada al analista para plan de acción preventivo.");
+                }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-3"
+              >
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Descripción del Hallazgo / Desviación</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Sonómetro EQ-SON-055 excedió deriva máxima permitida de 0.5dB"
+                    value={newNcForm.hallazgo}
+                    onChange={(e) => setNewNcForm({ ...newNcForm, hallazgo: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Gravedad</label>
+                  <select
+                    value={newNcForm.gravedad}
+                    onChange={(e) => setNewNcForm({ ...newNcForm, gravedad: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  >
+                    <option value="Baja">Baja (Desviación menor)</option>
+                    <option value="Media">Media (Afecta calibración parcial)</option>
+                    <option value="Alta">Alta (Invalida toma de lecturas)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Analista Responsable</label>
+                  <input
+                    type="text"
+                    required
+                    value={newNcForm.responsable}
+                    onChange={(e) => setNewNcForm({ ...newNcForm, responsable: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Acción Correctiva / Contención Inmediata</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Retiro de circulación del equipo, re-evaluación con sonómetro alterno."
+                    value={newNcForm.accion_correctiva}
+                    onChange={(e) => setNewNcForm({ ...newNcForm, accion_correctiva: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-3 flex justify-end gap-2 border-t pt-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddNcOpen(false)}
+                    className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 rounded-lg font-bold cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold cursor-pointer"
+                  >
+                    Emitir Acción Preventiva (CAPA)
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          {/* LISTADO DE NO CONFORMIDADES */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm text-xs">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-slate-700 uppercase font-mono">
+              Control de No Conformidades y Desviaciones Técnicas
+            </div>
+            <div className="divide-y divide-slate-150">
+              {qaNonConformities.map(nc => (
+                <div key={nc.id} className="p-4 hover:bg-slate-50 transition-colors space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-[#85AA1C]">{nc.id}</span>
+                        <span className={`text-[9px] font-bold px-2 py-0.2 rounded-full border ${
+                          nc.gravedad === "Alta" ? "bg-red-50 text-red-700 border-red-200" :
+                          nc.gravedad === "Media" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                          "bg-slate-50 text-slate-700 border-slate-200"
+                        }`}>
+                          Gravedad {nc.gravedad}
+                        </span>
+                        <span className={`text-[9px] font-bold px-2 py-0.2 rounded-full border ${
+                          nc.status === "Abierta" ? "bg-red-50 text-red-700 border-red-200 animate-pulse" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        }`}>
+                          {nc.status}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-slate-800 mt-1">{nc.hallazgo}</h4>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500">{nc.fecha_deteccion}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg border">
+                    <div>Origen: <strong className="text-slate-800">{nc.origen}</strong></div>
+                    <div>Vinculado a: <strong className="text-slate-800">{nc.ODT}</strong></div>
+                    <div>Responsable: <span className="text-slate-800">{nc.responsable}</span></div>
+                    <div className="md:col-span-3 border-t pt-1.5 mt-1">
+                      <span className="text-[10px] font-bold uppercase block text-red-700">Acción Correctiva Definida:</span>
+                      <p className="text-slate-700 leading-normal font-light italic">"{nc.accion_correctiva}"</p>
+                    </div>
+                  </div>
+                  {nc.status === "Abierta" && (
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={() => {
+                          const updated = qaNonConformities.map(item => item.id === nc.id ? { ...item, status: "Cerrada" } : item);
+                          setQaNonConformities(updated);
+                          alert("Se ha verificado la eficacia de la acción correctiva. No conformidad cerrada.");
+                        }}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-[10.5px] cursor-pointer"
+                      >
+                        Marcar Acción como Cerrada & Eficaz
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* HISTORIAL DE AUDITORÍAS */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm text-xs">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-slate-700 uppercase font-mono">
+              Calendario de Auditorías de Certificación EMA / ISO 17025
+            </div>
+            <table className="w-full text-left">
+              <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-mono">
+                <tr>
+                  <th className="px-4 py-2.5">Código Auditoría</th>
+                  <th className="px-4 py-2.5">Tipo / Alcance</th>
+                  <th className="px-4 py-2.5">Auditor Líder</th>
+                  <th className="px-4 py-2.5">Período de Evaluación</th>
+                  <th className="px-4 py-2.5 text-center">Observaciones</th>
+                  <th className="px-4 py-2.5 text-right">Estatus</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {gcAudits.map(aud => (
+                  <tr key={aud.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{aud.id}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{aud.tipo}</td>
+                    <td className="px-4 py-3 text-slate-600">{aud.auditor_lider}</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{aud.fecha_inicio} al {aud.fecha_fin}</td>
+                    <td className="px-4 py-3 text-center font-bold font-mono text-red-600">{aud.observaciones}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                        aud.status === 'Completada' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                        {aud.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {/* JEFE DE OPERACIONES VIEWS */}
+      {activeTab === 'jo_odt' && (
+        <motion.div
+          key="jo_odt"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Activity className="text-emerald-600 w-4.5 h-4.5" />
+              Gestión Integral de Órdenes de Trabajo (ODT)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Control de bitácoras de campo, estados de servicio y firmas autorizadas de los ingenieros de ASP.</p>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm text-xs">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-slate-700 uppercase font-mono">
+              Órdenes de Trabajo de Campo
+            </div>
+            <table className="w-full text-left">
+              <thead className="bg-slate-900 text-white uppercase text-[10px] font-mono">
+                <tr>
+                  <th className="px-4 py-3">ID ODT</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Estudio / Servicio</th>
+                  <th className="px-4 py-3">Ingeniero Asignado</th>
+                  <th className="px-4 py-3">Fecha Programada</th>
+                  <th className="px-4 py-3 text-center">Estatus</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-150">
+                {odtList.map(odt => (
+                  <tr key={odt.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{odt.id}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{odt.client}</td>
+                    <td className="px-4 py-3 text-slate-600">{odt.service}</td>
+                    <td className="px-4 py-3 text-slate-600 font-medium">{odt.tech}</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{odt.date}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                        odt.status === 'Pre-Aprobada' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                      }`}>
+                        {odt.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => {
+                          const updated = odtList.map(item => item.id === odt.id ? { ...item, status: "Pre-Aprobada" } : item);
+                          setOdtList(updated);
+                          alert("Orden de trabajo pre-aprobada para muestreo en campo.");
+                        }}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-500 hover:text-white border rounded font-bold text-[10px] transition-colors cursor-pointer"
+                      >
+                        Aprobar ODT
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'jo_agenda' && (
+        <motion.div
+          key="jo_agenda"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Calendar className="text-[#85AA1C] w-4.5 h-4.5" />
+              Programación de Servicios Ocupacionales
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Calendario metrológico de asignaciones, disponibilidad de viáticos y control de rutas para analistas de ASP.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs text-slate-700">
+            {/* MINICALENDARIO ESTILIZADO */}
+            <div className="lg:col-span-5 bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono border-b pb-1.5">Calendario Julio 2026</h4>
+              <div className="grid grid-cols-7 gap-1 text-center font-bold text-[10px] text-slate-400 uppercase font-mono">
+                <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center font-mono font-medium">
+                {Array.from({ length: 31 }, (_, i) => {
+                  const day = i + 1;
+                  const isScheduled = [20, 22, 25].includes(day);
+                  return (
+                    <div
+                      key={day}
+                      className={`p-2 rounded-lg border transition-all cursor-pointer text-xs ${
+                        isScheduled 
+                          ? 'bg-emerald-600 text-white border-emerald-500 font-bold shadow-sm' 
+                          : 'bg-white hover:bg-slate-100 border-slate-150'
+                      }`}
+                    >
+                      {day}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* LISTADO DETALLADO */}
+            <div className="lg:col-span-7 bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono border-b pb-2">Servicios Programados en el Mes</h4>
+              <div className="space-y-3.5">
+                {odtList.map(item => (
+                  <div key={item.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-[#85AA1C]">{item.id}</span>
+                        <span className="text-[10px] font-mono text-slate-400">Fecha: {item.date}</span>
+                      </div>
+                      <h5 className="font-bold text-slate-900 mt-1">{item.client}</h5>
+                      <p className="text-[11px] text-slate-500 font-light mt-0.5">{item.service} (Ing. {item.tech})</p>
+                    </div>
+                    <span className="text-[10.5px] px-2.5 py-1 bg-white border rounded font-bold font-mono text-slate-700">
+                      VÍA ASP-01
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'jo_engineers' && (
+        <motion.div
+          key="jo_engineers"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <User className="text-emerald-600 w-4.5 h-4.5" />
+              Asignación a Ingenieros de Campo (Carga de Trabajo)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Distribución equitativa de órdenes, monitoreo de fatiga en ruta y emisión de órdenes de traslado oficiales.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs">
+            {/* WORKLOAD TABLE */}
+            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-slate-700 uppercase font-mono">
+                Carga de Trabajo de Ingenieros Evaluadores
+              </div>
+              <table className="w-full text-left">
+                <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-mono">
+                  <tr>
+                    <th className="px-4 py-2.5">Ingeniero</th>
+                    <th className="px-4 py-2.5">Especialidad</th>
+                    <th className="px-4 py-2.5 text-center">Servicios Activos</th>
+                    <th className="px-4 py-2.5 text-right">Siguiente Ruta</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-bold text-slate-900">Lucía Juárez</td>
+                    <td className="px-4 py-3 text-slate-500">NOM-011 (Ruido) & NOM-015 (Calor)</td>
+                    <td className="px-4 py-3 text-center font-bold font-mono text-emerald-600">2</td>
+                    <td className="px-4 py-3 text-right font-mono text-slate-500">2026-07-20</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-bold text-slate-900">Ing. Juan Pérez</td>
+                    <td className="px-4 py-3 text-slate-500">NOM-025 (Iluminación)</td>
+                    <td className="px-4 py-3 text-center font-bold font-mono text-emerald-600">1</td>
+                    <td className="px-4 py-3 text-right font-mono text-slate-500">2026-07-22</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* ASSIGNMENT FORM */}
+            <div className="lg:col-span-5 bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono border-b pb-1.5">Despachar Nueva Orden de Trabajo</h4>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  alert("Nueva ODT asignada de forma digital y enviada al dispositivo móvil del Ingeniero de Campo.");
+                }}
+                className="space-y-3"
+              >
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Seleccione Ingeniero</label>
+                  <select className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                    <option value="lucia">Lucía Juárez</option>
+                    <option value="juan">Ing. Juan Pérez</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Cliente de Destino</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Siderúrgica de Coahuila S.A."
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Servicio Metrológico</label>
+                  <select className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                    <option>Estudio de Ruido Ocupacional (NOM-011)</option>
+                    <option>Evaluación de Niveles de Iluminación (NOM-025)</option>
+                    <option>Condiciones Térmicas Extremas (NOM-015)</option>
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg transition-colors cursor-pointer text-center"
+                >
+                  Confirmar Asignación & Viáticos
+                </button>
+              </form>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'jo_tracking' && (
+        <motion.div
+          key="jo_tracking"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Clock className="text-emerald-600 w-4.5 h-4.5" />
+              Monitoreo de Avances en Tiempo Real (Work Progress)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Seguimiento de etapas de estudio, tiempos de muestreo en sitio y firmas digitales emitidas.</p>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-6 text-xs">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono border-b pb-2">Estatus Crítico de Servicios Operativos</h4>
+            <div className="space-y-5">
+              {workProgressList.map(job => (
+                <div key={job.id} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <strong className="text-slate-900">{job.cliente}</strong>
+                      <span className="text-slate-400 mx-1.5">|</span>
+                      <span className="text-slate-500">{job.servicio}</span>
+                    </div>
+                    <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 rounded text-[10px]">{job.porcentaje}%</span>
+                  </div>
+                  {/* PROGRESS BAR */}
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-[#85AA1C] h-full transition-all duration-500" 
+                      style={{ width: `${job.porcentaje}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-slate-400">
+                    <span>Etapa: <strong className="text-slate-700 font-medium">{job.etapa}</strong></span>
+                    <span>Analista en Sitio: <strong className="text-slate-700 font-medium">{job.tecnico}</strong></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* JEFE DE ALMACÉN VIEWS */}
+      {activeTab === 'ja_inventory' && (
+        <motion.div
+          key="ja_inventory"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+              <Microscope className="text-emerald-600 w-4.5 h-4.5" />
+              Inventario de Consumibles y Materiales de Laboratorio
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Control de stock mínimo, solicitud de reabastecimiento y trazabilidad de lotes de insumos de muestreo.</p>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm text-xs">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-slate-700 uppercase font-mono">
+              Insumos en Existencia de Almacén ASP
+            </div>
+            <table className="w-full text-left">
+              <thead className="bg-slate-900 text-white uppercase text-[10px] font-mono">
+                <tr>
+                  <th className="px-4 py-3">ID Material</th>
+                  <th className="px-4 py-3">Nombre del Consumible</th>
+                  <th className="px-4 py-3 text-center">Stock Actual</th>
+                  <th className="px-4 py-3 text-center">Stock Mínimo</th>
+                  <th className="px-4 py-3 text-center">Estatus Alerta</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-150">
+                {warehouseStock.map(item => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{item.id}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{item.nombre}</td>
+                    <td className="px-4 py-3 text-center font-mono font-bold text-slate-900">{item.stock} {item.unidad}</td>
+                    <td className="px-4 py-3 text-center font-mono text-slate-500">{item.min} {item.unidad}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                        item.estatus === 'Óptimo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                      }`}>
+                        {item.estatus}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => {
+                          const updated = warehouseStock.map(st => st.id === item.id ? { ...st, stock: st.stock + 50, estatus: "Óptimo" } : st);
+                          setWarehouseStock(updated);
+                          alert("Se ha registrado la entrada de 50 unidades al almacén.");
+                        }}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-[#85AA1C] hover:text-white border rounded font-bold text-[10px] cursor-pointer transition-colors"
+                      >
+                        + Abastecer 50
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'ja_equip' && (
+        <motion.div
+          key="ja_equip"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="border-b border-slate-100 pb-3 flex justify-between items-center text-xs">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Sliders className="text-emerald-600 w-4.5 h-4.5" />
+                Control de Equipos y Registro de Devoluciones (Resguardo)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Asignación de sonómetros y dosímetros bajo resguardo criptográfico. Control estricto de retornos.</p>
+            </div>
+            <button
+              onClick={() => setIsAddLoanOpen(!isAddLoanOpen)}
+              className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg font-mono cursor-pointer"
+            >
+              {isAddLoanOpen ? "Ocultar Formulario" : "Registrar Salida de Equipo"}
+            </button>
+          </div>
+
+          {/* LOAN REGISTER FORM */}
+          {isAddLoanOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3.5 text-xs text-slate-700"
+            >
+              <h4 className="text-xs font-bold text-slate-800 uppercase font-mono border-b pb-1">Carta Resguardo de Instrumento</h4>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const newLoan = {
+                    id: "LON-2026-" + Math.floor(100 + Math.random() * 900),
+                    equipo: newLoanForm.equipo,
+                    tecnico: newLoanForm.tecnico,
+                    fecha_prestamo: newLoanForm.fecha_prestamo,
+                    fecha_retorno_estimada: newLoanForm.fecha_retorno_estimada,
+                    estatus: "Prestado"
+                  };
+                  setEquipmentLoans([newLoan, ...equipmentLoans]);
+                  setIsAddLoanOpen(false);
+                  alert("Carta de resguardo firmada. El equipo ha sido entregado en custodia al analista.");
+                }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-3"
+              >
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Instrumento a Entregar</label>
+                  <select
+                    value={newLoanForm.equipo}
+                    onChange={(e) => setNewLoanForm({ ...newLoanForm, equipo: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  >
+                    <option value="Sonómetro Integrador EQ-SON-055">Sonómetro Integrador EQ-SON-055 (Clase 1)</option>
+                    <option value="Luxómetro de Precisión EQ-LUX-012">Luxómetro de Precisión EQ-LUX-012 (EMA)</option>
+                    <option value="Calibrador Acústico EQ-CAL-099">Calibrador Acústico EQ-CAL-099</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Ingeniero Custodio</label>
+                  <select
+                    value={newLoanForm.tecnico}
+                    onChange={(e) => setNewLoanForm({ ...newLoanForm, tecnico: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  >
+                    <option value="Lucía Juárez">Lucía Juárez</option>
+                    <option value="Ing. Juan Pérez">Ing. Juan Pérez</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 flex justify-end gap-2 border-t pt-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddLoanOpen(false)}
+                    className="px-3 py-1.5 bg-slate-200 text-slate-700 font-bold rounded cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded cursor-pointer"
+                  >
+                    Emitir Carta de Resguardo
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          {/* EQUIPMENT LOANS LIST */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm text-xs">
+            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-slate-700 uppercase font-mono">
+              Historial de Custodia e Instrumentos Fuera de Almacén
+            </div>
+            <table className="w-full text-left">
+              <thead className="bg-slate-900 text-white uppercase text-[10px] font-mono">
+                <tr>
+                  <th className="px-4 py-3">Código de Resguardo</th>
+                  <th className="px-4 py-3">Equipo / Instrumento</th>
+                  <th className="px-4 py-3">Ingeniero Custodio</th>
+                  <th className="px-4 py-3 font-mono">Préstamo</th>
+                  <th className="px-4 py-3 font-mono">Retorno Estimado</th>
+                  <th className="px-4 py-3 text-center">Estatus</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-150">
+                {equipmentLoans.map(loan => (
+                  <tr key={loan.id} className="hover:bg-slate-50 text-slate-700">
+                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{loan.id}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{loan.equipo}</td>
+                    <td className="px-4 py-3 text-slate-600 font-medium">{loan.tecnico}</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{loan.fecha_prestamo}</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{loan.fecha_retorno_estimada}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                        loan.estatus === 'Devuelto' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                      }`}>
+                        {loan.estatus}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {loan.estatus === "Prestado" && (
+                        <button
+                          onClick={() => {
+                            const updated = equipmentLoans.map(item => item.id === loan.id ? { ...item, estatus: "Devuelto" } : item);
+                            setEquipmentLoans(updated);
+                            alert("Se ha registrado el retorno del instrumento en perfectas condiciones metrológicas.");
+                          }}
+                          className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-600 hover:text-white border rounded font-bold text-[10px] cursor-pointer transition-colors"
+                        >
+                          Registrar Devolución
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </motion.div>
       )}
