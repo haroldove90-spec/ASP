@@ -514,6 +514,7 @@ export default function App() {
 
   // Keep active tab and selectedRole synced with persona authorization
   useEffect(() => {
+    if (selectedRole === null) return;
     const role = activePersona.id_role || activePersona.id_rol;
     if (role && role !== selectedRole) {
       setSelectedRole(role);
