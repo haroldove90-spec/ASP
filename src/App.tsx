@@ -512,9 +512,12 @@ export default function App() {
     return usuarios.find(u => u.id_usuario === currentPersonaId) || usuarios[0];
   }, [usuarios, currentPersonaId]);
 
-  // Keep active tab synced with persona authorization
+  // Keep active tab and selectedRole synced with persona authorization
   useEffect(() => {
     const role = activePersona.id_role || activePersona.id_rol;
+    if (role && role !== selectedRole) {
+      setSelectedRole(role);
+    }
     const items = getSidebarItems(role);
     const isAuthorized = items.some(item => item.id === activeTab);
     
@@ -522,7 +525,7 @@ export default function App() {
       // Auto-route to the first authorized tab of the new role
       setActiveTab(items[0].id);
     }
-  }, [activePersona, activeTab]);
+  }, [activePersona, activeTab, selectedRole]);
 
   // Persist State Helper
   const saveStateToLocalStorage = (newUsuarios?: Usuario[], newInsts?: Instrumento[], newCerts?: CertificadoCalibracion[], newLogs?: AuditLog[]) => {
@@ -1515,35 +1518,11 @@ export default function App() {
               <span>Cambiar de Rol</span>
             </button>
 
-            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                <div className="text-left">
-                  <div className="text-[10px] font-mono uppercase font-bold text-slate-400 leading-none">Usuario Activo (RBAC)</div>
-                  <div className="text-[11px] font-semibold text-slate-800 leading-tight">{activePersona.nombre_completo}</div>
-                </div>
-              </div>
-
-              <div className="relative flex items-center">
-                <select
-                  id="role-switcher-select"
-                  value={currentPersonaId}
-                  onChange={(e) => setCurrentPersonaId(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 px-3 py-1 pr-8 appearance-none focus:outline-none focus:ring-1 focus:ring-[#85AA1C] cursor-pointer font-sans"
-                >
-                  {usuarios.map(u => {
-                    let roleLabel = "Director";
-                    if (u.id_role === 'LAB_SUP' || u.id_rol === 'LAB_SUP') roleLabel = "Coordinador";
-                    if (u.id_role === 'LAB_TECH' || u.id_rol === 'LAB_TECH') roleLabel = "Técnico";
-                    if (u.id_role === 'SYS_ADMIN' || u.id_rol === 'SYS_ADMIN') roleLabel = "Ventas/Admin";
-                    return (
-                      <option key={u.id_usuario} value={u.id_usuario}>
-                        {roleLabel}: {u.nombre_completo.split(' ')[0]}
-                      </option>
-                    );
-                  })}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-2 pointer-events-none" />
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+              <div className="text-left">
+                <div className="text-[10px] font-mono uppercase font-bold text-slate-400 leading-none">Usuario Activo (RBAC)</div>
+                <div className="text-[11px] font-semibold text-slate-800 leading-tight">{activePersona.nombre_completo}</div>
               </div>
             </div>
           </div>
