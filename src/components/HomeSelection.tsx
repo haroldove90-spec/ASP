@@ -156,6 +156,15 @@ const ROLES_LIST: RoleConfig[] = [
 
 const PREDEFINED_USERS_MAPPING = [
   {
+    id: "01000000-0000-0000-0000-000000000001",
+    nombre: "Ing. Daniel Treviño Reyes",
+    email: "daniel.trevino@aspechs.com.mx",
+    rol: "ceo",
+    puesto: "CEO",
+    firma: "SHA256:CEO_DT_88129A (e.firma SAT)",
+    password: "DanielT2026!"
+  },
+  {
     id: "01000000-0000-0000-0000-000000000002",
     nombre: "Lic. Carlos Ayala",
     email: "carlos.ayala@aspechs.com.mx",
@@ -665,6 +674,7 @@ ON CONFLICT (id_rol) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLU
 
 -- 4. SEED DE USUARIOS PREDEFINIDOS EN SUPABASE
 INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
+('01000000-0000-0000-0000-000000000001', 'Ing. Daniel Treviño Reyes', 'daniel.trevino@aspechs.com.mx', 'DanielT2026!', 'ceo', 'CEO', 'SHA256:CEO_DT_88129A (e.firma SAT)', true),
 ('01000000-0000-0000-0000-000000000002', 'Lic. Carlos Ayala', 'carlos.ayala@aspechs.com.mx', 'CarlosA2026!', 'dir_at_cl', 'Director de Atención a Clientes', 'SHA256:DAC_CA_22910B (e.firma SAT)', true),
 ('e88b48f9-4d6d-478a-aef4-4f40d12ea661', 'Lic. Roberto Fernández Alanís', 'roberto.fernandez@aspechs.com.mx', 'RobertoF2026!', 'dir_op', 'Director de Operaciones', 'SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a', true),
 ('01000000-0000-0000-0000-000000000004', 'Ing. Adalberto Ledezma', 'adalberto.ledezma@aspechs.com.mx', 'AdalbertoL2026!', 'ger_tec', 'Gerente Técnico', 'SHA256:GT_AL_91032C (e.firma SAT)', true),
