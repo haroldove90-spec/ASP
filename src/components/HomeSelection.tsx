@@ -29,6 +29,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../supabaseClient";
 import { Usuario } from "../initial_data";
+import { downloadCredentialsPdf } from "../utils/credentialsPdf";
 
 interface RoleConfig {
   id: string;
@@ -44,15 +45,15 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ceo",
     name: "CEO / Alta Dirección",
     icon: Briefcase,
-    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Alejandro Torres
-    defaultEmail: "alejandro.torres@aspechs.com.mx",
-    puesto: "Coordinador de Ciberseguridad y TI"
+    personaId: "usr-ceo-daniel",
+    defaultEmail: "daniel.trevino@aspechs.com.mx",
+    puesto: "CEO"
   },
   {
     id: "dir_op",
     name: "Director de Operaciones",
     icon: Cpu,
-    personaId: "e88b48f9-4d6d-478a-aef4-4f40d12ea661", // Roberto Fernández
+    personaId: "e88b48f9-4d6d-478a-aef4-4f40d12ea661",
     defaultEmail: "roberto.fernandez@aspechs.com.mx",
     puesto: "Director de Operaciones"
   },
@@ -60,47 +61,47 @@ const ROLES_LIST: RoleConfig[] = [
     id: "dir_at_cl",
     name: "Director de Atención a Clientes",
     icon: HeartHandshake,
-    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Alejandro Torres
-    defaultEmail: "alejandro.torres@aspechs.com.mx",
-    puesto: "Coordinador de Ciberseguridad y TI"
+    personaId: "usr-dac-carlos",
+    defaultEmail: "carlos.ayala@aspechs.com.mx",
+    puesto: "Director de Atención a Clientes"
   },
   {
     id: "ger_tec",
     name: "Gerencia Técnica",
     icon: Wrench,
-    personaId: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    defaultEmail: "carlos.slim@aspechs.com.mx",
-    puesto: "Responsable Técnico del Laboratorio"
+    personaId: "usr-gt-adalberto",
+    defaultEmail: "adalberto.ledezma@aspechs.com.mx",
+    puesto: "Gerente Técnico"
   },
   {
     id: "ger_cal",
     name: "Gerencia de Calidad",
     icon: ShieldCheck,
-    personaId: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    defaultEmail: "carlos.slim@aspechs.com.mx",
-    puesto: "Responsable Técnico del Laboratorio"
+    personaId: "usr-gc-isela",
+    defaultEmail: "isela.ramos@aspechs.com.mx",
+    puesto: "Gerente de Calidad"
   },
   {
     id: "coord_lab",
     name: "Coordinación de Laboratorio",
     icon: Layers,
-    personaId: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    defaultEmail: "carlos.slim@aspechs.com.mx",
-    puesto: "Responsable Técnico del Laboratorio"
+    personaId: "usr-cl-mauricio",
+    defaultEmail: "mauricio.cordoba@aspechs.com.mx",
+    puesto: "Coordinador de Laboratorio"
   },
   {
     id: "ger_lab",
     name: "Gerente Laboratorio",
     icon: Microscope,
-    personaId: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    defaultEmail: "carlos.slim@aspechs.com.mx",
-    puesto: "Responsable Técnico del Laboratorio"
+    personaId: "usr-cl-mauricio",
+    defaultEmail: "mauricio.cordoba@aspechs.com.mx",
+    puesto: "Coordinador de Laboratorio"
   },
   {
     id: "contabilidad",
     name: "Contabilidad",
     icon: DollarSign,
-    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Alejandro Torres
+    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59",
     defaultEmail: "alejandro.torres@aspechs.com.mx",
     puesto: "Coordinador de Ciberseguridad y TI"
   },
@@ -108,76 +109,206 @@ const ROLES_LIST: RoleConfig[] = [
     id: "jefe_rep",
     name: "Jefe de Reportes",
     icon: ClipboardList,
-    personaId: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    defaultEmail: "carlos.slim@aspechs.com.mx",
-    puesto: "Responsable Técnico del Laboratorio"
+    personaId: "usr-jr-jasiel",
+    defaultEmail: "jasiel.navarro@aspechs.com.mx",
+    puesto: "Gerente de Reportes"
   },
   {
     id: "jefe_op",
     name: "Jefe de Operaciones",
     icon: Settings,
-    personaId: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    defaultEmail: "carlos.slim@aspechs.com.mx",
-    puesto: "Responsable Técnico del Laboratorio"
+    personaId: "usr-jo-juan",
+    defaultEmail: "juan.gallegos@aspechs.com.mx",
+    puesto: "Gerente de Operaciones"
   },
   {
     id: "jefe_alm",
     name: "Jefe de Almacén",
     icon: Package,
-    personaId: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    defaultEmail: "carlos.slim@aspechs.com.mx",
-    puesto: "Responsable Técnico del Laboratorio"
+    personaId: "usr-ja-abraham",
+    defaultEmail: "abraham.navarro@aspechs.com.mx",
+    puesto: "Jefe de Almacén"
   },
   {
     id: "ing_campo",
     name: "Ingeniero de Campo",
     icon: HardHat,
-    personaId: "3cd40182-ef35-42d8-9df2-51c6b12a8844", // Lucía Juárez
-    defaultEmail: "lucia.juarez@aspechs.com.mx",
-    puesto: "Analista Metrólogo Senior"
+    personaId: "usr-ic-gerardo",
+    defaultEmail: "gerardo.sanchez@aspechs.com.mx",
+    puesto: "Ingeniero en Fuentes Fijas"
   },
   {
     id: "sys_admin",
     name: "Administrador del Sistema",
     icon: Settings,
-    personaId: "e88b48f9-4d6d-478a-aef4-4f40d12ea661", // Roberto Fernández
-    defaultEmail: "roberto.fernandez@aspechs.com.mx",
-    puesto: "Director de Operaciones"
+    personaId: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59",
+    defaultEmail: "alejandro.torres@aspechs.com.mx",
+    puesto: "Coordinador de Ciberseguridad y TI"
   }
 ];
 
 const PREDEFINED_USERS_MAPPING = [
   {
+    id: "usr-ceo-daniel",
+    nombre: "Ing. Daniel Treviño Reyes",
+    email: "daniel.trevino@aspechs.com.mx",
+    rol: "ceo",
+    puesto: "CEO",
+    firma: "SHA256:CEO_DT_88129A (e.firma SAT)",
+    password: "DanielT2026!"
+  },
+  {
+    id: "usr-dac-carlos",
+    nombre: "Lic. Carlos Ayala",
+    email: "carlos.ayala@aspechs.com.mx",
+    rol: "dir_at_cl",
+    puesto: "Director de Atención a Clientes",
+    firma: "SHA256:DAC_CA_22910B (e.firma SAT)",
+    password: "CarlosA2026!"
+  },
+  {
     id: "e88b48f9-4d6d-478a-aef4-4f40d12ea661",
-    nombre: "Roberto Fernández",
+    nombre: "Lic. Roberto Fernández Alanís",
     email: "roberto.fernandez@aspechs.com.mx",
-    rol: "DIR_OP",
+    rol: "dir_op",
     puesto: "Director de Operaciones",
-    firma: "SHA256:f16b23...88ca4192 (e.firma SAT)"
+    firma: "SHA256:f16b23...88ca4192 (e.firma SAT)",
+    password: "RobertoF2026!"
+  },
+  {
+    id: "usr-gt-adalberto",
+    nombre: "Ing. Adalberto Ledezma",
+    email: "adalberto.ledezma@aspechs.com.mx",
+    rol: "ger_tec",
+    puesto: "Gerente Técnico",
+    firma: "SHA256:GT_AL_91032C (e.firma SAT)",
+    password: "AdalbertoL2026!"
+  },
+  {
+    id: "usr-gc-isela",
+    nombre: "Bio. Isela Ramos Lozano",
+    email: "isela.ramos@aspechs.com.mx",
+    rol: "ger_cal",
+    puesto: "Gerente de Calidad",
+    firma: "SHA256:GC_IR_10293D (e.firma SAT)",
+    password: "IselaR2026!"
+  },
+  {
+    id: "usr-jr-jasiel",
+    nombre: "Ing. Jasiel Navarro",
+    email: "jasiel.navarro@aspechs.com.mx",
+    rol: "jefe_rep",
+    puesto: "Gerente de Reportes",
+    firma: "SHA256:JR_JN_40210E (e.firma SAT)",
+    password: "JasielN2026!"
+  },
+  {
+    id: "usr-ja-abraham",
+    nombre: "Abraham Navarro",
+    email: "abraham.navarro@aspechs.com.mx",
+    rol: "jefe_alm",
+    puesto: "Jefe de Almacén",
+    firma: "SHA256:JA_AN_50321F (e.firma SAT)",
+    password: "AbrahamN2026!"
+  },
+  {
+    id: "usr-cl-mauricio",
+    nombre: "Ing. Mauricio Iván Córdoba",
+    email: "mauricio.cordoba@aspechs.com.mx",
+    rol: "coord_lab",
+    puesto: "Coordinador de Laboratorio",
+    firma: "SHA256:CL_MC_60432A (e.firma SAT)",
+    password: "MauricioC2026!"
+  },
+  {
+    id: "usr-jo-juan",
+    nombre: "Ing. Juan José Gallegos",
+    email: "juan.gallegos@aspechs.com.mx",
+    rol: "jefe_op",
+    puesto: "Gerente de Operaciones",
+    firma: "SHA256:JO_JG_70543B (e.firma SAT)",
+    password: "JuanG2026!"
+  },
+  {
+    id: "usr-ic-gerardo",
+    nombre: "Ing. Gerardo Daniel Sánchez",
+    email: "gerardo.sanchez@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Fuentes Fijas",
+    firma: "SHA256:IC_GS_80654C (e.firma SAT)",
+    password: "GerardoS2026!"
+  },
+  {
+    id: "usr-ic-andres",
+    nombre: "Ing. Andrés Manuel Gómez",
+    email: "andres.gomez@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Fuentes Fijas",
+    firma: "SHA256:IC_AG_90765D (e.firma SAT)",
+    password: "AndresG2026!"
+  },
+  {
+    id: "usr-ic-carlos-s",
+    nombre: "Ing. Carlos Sánchez Leal",
+    email: "carlos.sanchez@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Fuentes Fijas",
+    firma: "SHA256:IC_CS_10876E (e.firma SAT)",
+    password: "CarlosS2026!"
+  },
+  {
+    id: "usr-ic-roberto-p",
+    nombre: "Ing. Roberto Paulino Hdz",
+    email: "roberto.paulino@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Ambiente Laboral",
+    firma: "SHA256:IC_RP_20987F (e.firma SAT)",
+    password: "RobertoP2026!"
+  },
+  {
+    id: "usr-ic-francisco",
+    nombre: "Ing. Francisco Cupil",
+    email: "francisco.cupil@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Termo y OSP",
+    firma: "SHA256:IC_FC_31098A (e.firma SAT)",
+    password: "FranciscoC2026!"
+  },
+  {
+    id: "usr-ic-misael",
+    nombre: "Ing. Misael Baltasar",
+    email: "misael.baltasar@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Termo y OSP",
+    firma: "SHA256:IC_MB_42109B (e.firma SAT)",
+    password: "MisaelB2026!"
+  },
+  {
+    id: "usr-ic-natalia",
+    nombre: "Ing. Natalia Alfaro",
+    email: "natalia.alfaro@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Termo y OSP",
+    firma: "SHA256:IC_NA_53210C (e.firma SAT)",
+    password: "NataliaA2026!"
+  },
+  {
+    id: "usr-ic-baltazar",
+    nombre: "Ing. Baltazar",
+    email: "baltazar.hdz@aspechs.com.mx",
+    rol: "ing_campo",
+    puesto: "Ingeniero en Ambiente Laboral",
+    firma: "SHA256:IC_IB_64321D (e.firma SAT)",
+    password: "BaltazarH2026!"
   },
   {
     id: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59",
     nombre: "Alejandro Torres",
     email: "alejandro.torres@aspechs.com.mx",
-    rol: "SYS_ADMIN",
+    rol: "sys_admin",
     puesto: "Coordinador de Ciberseguridad y TI",
-    firma: "SHA256:d89a12...931cb921 (e.firma SAT)"
-  },
-  {
-    id: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
-    nombre: "Ing. Carlos Slim Jr.",
-    email: "carlos.slim@aspechs.com.mx",
-    rol: "LAB_SUP",
-    puesto: "Responsable Técnico del Laboratorio",
-    firma: "SHA256:a215fe...338eaef4 (e.firma SAT)"
-  },
-  {
-    id: "3cd40182-ef35-42d8-9df2-51c6b12a8844",
-    nombre: "Lucía Juárez",
-    email: "lucia.juarez@aspechs.com.mx",
-    rol: "LAB_TECH",
-    puesto: "Analista Metrólogo Senior",
-    firma: "SHA256:9cb812...0df63a29 (e.firma SAT)"
+    firma: "SHA256:d89a12...931cb921 (e.firma SAT)",
+    password: "ASPPass2026!"
   }
 ];
 
@@ -289,22 +420,25 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
   };
 
   const getSuggestedUserForRole = (roleId: string) => {
+    const matching = PREDEFINED_USERS_MAPPING.filter(u => u.rol === roleId);
+    if (matching.length > 0) return matching[0];
+    
+    // Fallbacks
     if (["ceo", "sys_admin", "dir_at_cl", "contabilidad"].includes(roleId)) {
-      return PREDEFINED_USERS_MAPPING.find(u => u.rol === "SYS_ADMIN");
+      return PREDEFINED_USERS_MAPPING.find(u => u.rol === "sys_admin");
     }
     if (roleId === "dir_op") {
-      return PREDEFINED_USERS_MAPPING.find(u => u.rol === "DIR_OP");
+      return PREDEFINED_USERS_MAPPING.find(u => u.rol === "dir_op");
     }
     if (roleId === "ing_campo") {
-      return PREDEFINED_USERS_MAPPING.find(u => u.rol === "LAB_TECH");
+      return PREDEFINED_USERS_MAPPING.find(u => u.rol === "ing_campo");
     }
-    // All other coordinators/managers
-    return PREDEFINED_USERS_MAPPING.find(u => u.rol === "LAB_SUP");
+    return PREDEFINED_USERS_MAPPING.find(u => u.rol === "ger_tec") || PREDEFINED_USERS_MAPPING[0];
   };
 
   const selectSuggestedUser = (u: typeof PREDEFINED_USERS_MAPPING[0]) => {
     setEmail(u.email);
-    setPassword("ASPPass2026!");
+    setPassword(u.password || "ASPPass2026!");
     setErrorMessage(null);
   };
 
@@ -313,10 +447,11 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
     const suggested = getSuggestedUserForRole(role.id);
     if (suggested) {
       setEmail(suggested.email);
+      setPassword(suggested.password || "ASPPass2026!");
     } else {
       setEmail(role.defaultEmail);
+      setPassword("ASPPass2026!");
     }
-    setPassword("ASPPass2026!");
     setErrorMessage(null);
     setSuccessMessage(null);
   };
@@ -339,6 +474,12 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
         const mappedUser = PREDEFINED_USERS_MAPPING.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
         
         if (mappedUser) {
+          const correctPassword = mappedUser.password || "ASPPass2026!";
+          if (password !== correctPassword) {
+            setErrorMessage("Contraseña de acceso incorrecta. Por favor verifique las credenciales.");
+            return;
+          }
+
           const matchedUsuario: Usuario = {
             id_usuario: mappedUser.id,
             nombre_completo: mappedUser.nombre,
@@ -355,7 +496,12 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
             onSelectRole(selectedRoleConfig?.id || matchedUsuario.id_rol, matchedUsuario.id_usuario, matchedUsuario);
           }, 800);
         } else {
-          // Allow login as a generic user for testing convenience
+          // Allow guest login ONLY with fallback password
+          if (password !== "ASPPass2026!") {
+            setErrorMessage("Contraseña de acceso incorrecta. Use la contraseña por defecto para cuentas de invitado: ASPPass2026!");
+            return;
+          }
+
           const customName = email.split("@")[0].replace(".", " ");
           const formattedName = customName.charAt(0).toUpperCase() + customName.slice(1);
           
@@ -512,36 +658,39 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 -- 3. SEED DE ROLES PREDEFINIDOS EN SUPABASE
 INSERT INTO roles (id_rol, nombre, descripcion) VALUES
-('DIR_OP', 'Director de Operaciones', 'Supervisión global de cumplimiento, aprobación de calibraciones y visualización del Audit Trail.')
-ON CONFLICT (id_rol) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion;
-
-INSERT INTO roles (id_rol, nombre, descripcion) VALUES
-('SYS_ADMIN', 'Administrador de Sistemas', 'Gestión de usuarios, asignación estricta de roles, auditoría de seguridad informática.')
-ON CONFLICT (id_rol) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion;
-
-INSERT INTO roles (id_rol, nombre, descripcion) VALUES
-('LAB_SUP', 'Supervisor de Laboratorio / H&S', 'Aprobación de certificados de calibración, liberación operativa de equipos.')
-ON CONFLICT (id_rol) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion;
-
-INSERT INTO roles (id_rol, nombre, descripcion) VALUES
-('LAB_TECH', 'Analista / Técnico de Laboratorio', 'Registro de instrumentos, carga preliminar de certificados, levantamientos en campo.')
+('ceo', 'CEO / Alta Dirección', 'Director General. Consulta estratégica de indicadores clave de rendimiento, firma legal de contratos de calibración.'),
+('dir_op', 'Director de Operaciones', 'Supervisión global de cumplimiento, aprobación de calibraciones y visualización del Audit Trail.'),
+('dir_at_cl', 'Director de Atención a Clientes', 'Gestión comercial de cotizaciones, seguimiento a clientes oficiales.'),
+('ger_tec', 'Gerente Técnico / Responsable Técnico', 'Aprobación técnica de calibraciones, auditorías de calibración de equipos.'),
+('ger_cal', 'Gerente de Calidad', 'Supervisión de cumplimiento de normativas de acreditación y certificación (ISO/IEC 17025).'),
+('jefe_rep', 'Gerente de Reportes', 'Emisión y revisión de informes técnicos finales.'),
+('jefe_alm', 'Jefe de Almacén', 'Control logístico de entrega y recepción de instrumentos y materiales.'),
+('coord_lab', 'Coordinador de Laboratorio', 'Programación de servicios, calibraciones internas, validación de bitácoras de laboratorio.'),
+('jefe_op', 'Gerente de Operaciones', 'Monitoreo de avances en ODT, asignación de ingenieros a servicios.'),
+('ing_campo', 'Ingeniero de Campo', 'Levantamiento físico de mediciones, captura de hojas de campo y calibraciones in situ.'),
+('sys_admin', 'Administrador de Sistemas', 'Gestión de usuarios, asignación estricta de roles, auditoría de seguridad informática.')
 ON CONFLICT (id_rol) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion;
 
 -- 4. SEED DE USUARIOS PREDEFINIDOS EN SUPABASE
 INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
-('e88b48f9-4d6d-478a-aef4-4f40d12ea661', 'Roberto Fernández', 'roberto.fernandez@aspechs.com.mx', 'ASPPass2026!', 'DIR_OP', 'Director de Operaciones', 'SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a', true)
-ON CONFLICT (email) DO NOTHING;
-
-INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
-('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Alejandro Torres', 'alejandro.torres@aspechs.com.mx', 'ASPPass2026!', 'SYS_ADMIN', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true)
-ON CONFLICT (email) DO NOTHING;
-
-INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
-('a6c8b931-e129-450a-8bf8-d30c50d4f128', 'Ing. Carlos Slim Jr.', 'carlos.slim@aspechs.com.mx', 'ASPPass2026!', 'LAB_SUP', 'Responsable Técnico del Laboratorio', 'SHA256:a215fe338eaef47c8b931e129450ad89a12a215fe338eaef4d89a12a215fe', true)
-ON CONFLICT (email) DO NOTHING;
-
-INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
-('3cd40182-ef35-42d8-9df2-51c6b12a8844', 'Lucía Juárez', 'lucia.juarez@aspechs.com.mx', 'ASPPass2026!', 'LAB_TECH', 'Analista Metrólogo Senior', 'SHA256:9cb812087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true)
+('usr-ceo-daniel', 'Ing. Daniel Treviño Reyes', 'daniel.trevino@aspechs.com.mx', 'DanielT2026!', 'ceo', 'CEO', 'SHA256:CEO_DT_88129A (e.firma SAT)', true),
+('usr-dac-carlos', 'Lic. Carlos Ayala', 'carlos.ayala@aspechs.com.mx', 'CarlosA2026!', 'dir_at_cl', 'Director de Atención a Clientes', 'SHA256:DAC_CA_22910B (e.firma SAT)', true),
+('e88b48f9-4d6d-478a-aef4-4f40d12ea661', 'Lic. Roberto Fernández Alanís', 'roberto.fernandez@aspechs.com.mx', 'RobertoF2026!', 'dir_op', 'Director de Operaciones', 'SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a', true),
+('usr-gt-adalberto', 'Ing. Adalberto Ledezma', 'adalberto.ledezma@aspechs.com.mx', 'AdalbertoL2026!', 'ger_tec', 'Gerente Técnico', 'SHA256:GT_AL_91032C (e.firma SAT)', true),
+('usr-gc-isela', 'Bio. Isela Ramos Lozano', 'isela.ramos@aspechs.com.mx', 'IselaR2026!', 'ger_cal', 'Gerente de Calidad', 'SHA256:GC_IR_10293D (e.firma SAT)', true),
+('usr-jr-jasiel', 'Ing. Jasiel Navarro', 'jasiel.navarro@aspechs.com.mx', 'JasielN2026!', 'jefe_rep', 'Gerente de Reportes', 'SHA256:JR_JN_40210E (e.firma SAT)', true),
+('usr-ja-abraham', 'Abraham Navarro', 'abraham.navarro@aspechs.com.mx', 'AbrahamN2026!', 'jefe_alm', 'Jefe de Almacén', 'SHA256:JA_AN_50321F (e.firma SAT)', true),
+('usr-cl-mauricio', 'Ing. Mauricio Iván Córdoba', 'mauricio.cordoba@aspechs.com.mx', 'MauricioC2026!', 'coord_lab', 'Coordinador de Laboratorio', 'SHA256:CL_MC_60432A (e.firma SAT)', true),
+('usr-jo-juan', 'Ing. Juan José Gallegos', 'juan.gallegos@aspechs.com.mx', 'JuanG2026!', 'jefe_op', 'Gerente de Operaciones', 'SHA256:JO_JG_70543B (e.firma SAT)', true),
+('usr-ic-gerardo', 'Ing. Gerardo Daniel Sánchez', 'gerardo.sanchez@aspechs.com.mx', 'GerardoS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_GS_80654C (e.firma SAT)', true),
+('usr-ic-andres', 'Ing. Andrés Manuel Gómez', 'andres.gomez@aspechs.com.mx', 'AndresG2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_AG_90765D (e.firma SAT)', true),
+('usr-ic-carlos-s', 'Ing. Carlos Sánchez Leal', 'carlos.sanchez@aspechs.com.mx', 'CarlosS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_CS_10876E (e.firma SAT)', true),
+('usr-ic-roberto-p', 'Ing. Roberto Paulino Hdz', 'roberto.paulino@aspechs.com.mx', 'RobertoP2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_RP_20987F (e.firma SAT)', true),
+('usr-ic-francisco', 'Ing. Francisco Cupil', 'francisco.cupil@aspechs.com.mx', 'FranciscoC2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_FC_31098A (e.firma SAT)', true),
+('usr-ic-misael', 'Ing. Misael Baltasar', 'misael.baltasar@aspechs.com.mx', 'MisaelB2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_MB_42109B (e.firma SAT)', true),
+('usr-ic-natalia', 'Ing. Natalia Alfaro', 'natalia.alfaro@aspechs.com.mx', 'NataliaA2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_NA_53210C (e.firma SAT)', true),
+('usr-ic-baltazar', 'Ing. Baltazar', 'baltazar.hdz@aspechs.com.mx', 'BaltazarH2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_IB_64321D (e.firma SAT)', true),
+('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Alejandro Torres', 'alejandro.torres@aspechs.com.mx', 'ASPPass2026!', 'sys_admin', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true)
 ON CONFLICT (email) DO NOTHING;
 `;
 
@@ -596,6 +745,27 @@ ON CONFLICT (email) DO NOTHING;
                 <h2 className="text-base font-bold text-slate-700 mt-2">
                   Seleccione su función para acceder al formulario de firma digital
                 </h2>
+              </div>
+
+              {/* PDF Download Callout Bar */}
+              <div className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50">
+                    <FileText className="w-5 h-5 text-[#85AA1C]" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xs font-bold text-slate-800">Directorio de Personal Autorizado (e.firma)</h3>
+                    <p className="text-[11px] text-slate-500">Descargue el archivo PDF con las credenciales de los 17 usuarios oficiales configurados en el sistema.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => downloadCredentialsPdf(PREDEFINED_USERS_MAPPING)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#85AA1C] hover:bg-[#729218] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Descargar Credenciales (PDF)</span>
+                </button>
               </div>
 
               {/* Roles Grid */}
@@ -676,26 +846,63 @@ ON CONFLICT (email) DO NOTHING;
                 <>
                   {/* Suggestion User Section */}
                   <div className="mb-6 bg-slate-50 border border-slate-200/60 rounded-2xl p-4">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono tracking-wider mb-2">
-                      Usuario Oficial Sugerido para esta función:
-                    </span>
                     {(() => {
-                      const suggested = getSuggestedUserForRole(selectedRoleConfig.id);
-                      if (!suggested) return <p className="text-xs text-slate-500">Ningún usuario configurado.</p>;
+                      const matchingUsers = PREDEFINED_USERS_MAPPING.filter(u => u.rol === selectedRoleConfig.id);
+                      if (matchingUsers.length === 0) {
+                        const suggested = getSuggestedUserForRole(selectedRoleConfig.id);
+                        if (!suggested) return <p className="text-xs text-slate-500">Ningún usuario configurado.</p>;
+                        return (
+                          <>
+                            <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono tracking-wider mb-2">
+                              Usuario Oficial Sugerido para esta función:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => selectSuggestedUser(suggested)}
+                              className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-[#85AA1C]/40 rounded-xl hover:bg-[#85AA1C]/5 transition-all text-left group cursor-pointer"
+                            >
+                              <div>
+                                <div className="text-xs font-bold text-slate-700 group-hover:text-slate-900">{suggested.nombre}</div>
+                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">{suggested.email}</div>
+                                <div className="text-[9px] text-slate-400 font-mono mt-0.5">Clave: <span className="text-emerald-600 font-bold">{suggested.password}</span></div>
+                              </div>
+                              <span className="text-[9px] bg-slate-100 group-hover:bg-[#85AA1C]/20 group-hover:text-[#85AA1C] text-slate-600 font-bold px-2 py-0.5 rounded-md font-mono shrink-0">
+                                Usar
+                              </span>
+                            </button>
+                          </>
+                        );
+                      }
+
                       return (
-                        <button
-                          type="button"
-                          onClick={() => selectSuggestedUser(suggested)}
-                          className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-[#85AA1C]/40 rounded-xl hover:bg-[#85AA1C]/5 transition-all text-left group cursor-pointer"
-                        >
-                          <div>
-                            <div className="text-xs font-bold text-slate-700 group-hover:text-slate-900">{suggested.nombre}</div>
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">{suggested.email}</div>
-                          </div>
-                          <span className="text-[9px] bg-slate-100 group-hover:bg-[#85AA1C]/20 group-hover:text-[#85AA1C] text-slate-600 font-bold px-2 py-0.5 rounded-md font-mono">
-                            Usar
+                        <>
+                          <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono tracking-wider mb-2">
+                            {matchingUsers.length > 1 ? `Personal Oficial Autorizado (${matchingUsers.length}):` : "Usuario Oficial Autorizado:"}
                           </span>
-                        </button>
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {matchingUsers.map((u) => (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => {
+                                  setEmail(u.email);
+                                  setPassword(u.password || "ASPPass2026!");
+                                  setErrorMessage(null);
+                                }}
+                                className="w-full flex items-center justify-between p-2 bg-white border border-slate-200 hover:border-[#85AA1C]/40 rounded-xl hover:bg-[#85AA1C]/5 transition-all text-left group cursor-pointer"
+                              >
+                                <div className="truncate max-w-[80%]">
+                                  <div className="text-xs font-bold text-slate-700 group-hover:text-slate-900 truncate">{u.nombre}</div>
+                                  <div className="text-[9px] text-slate-500 font-mono truncate">{u.email}</div>
+                                  <div className="text-[9px] text-slate-400 font-mono">Clave: <span className="text-emerald-600 font-bold">{u.password}</span></div>
+                                </div>
+                                <span className="text-[9px] bg-slate-100 group-hover:bg-[#85AA1C]/20 group-hover:text-[#85AA1C] text-slate-600 font-bold px-2 py-0.5 rounded-md font-mono shrink-0">
+                                  Seleccionar
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
                       );
                     })()}
                   </div>

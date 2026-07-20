@@ -118,26 +118,197 @@ export const ROLE_PERMISSIONS_MAP: Record<string, string[]> = {
   "DIR_OP": ["equipos:leer", "calibracion:leer", "usuarios:leer", "auditoria:leer", "calibracion:aprobar"],
   "SYS_ADMIN": ["equipos:leer", "calibracion:leer", "usuarios:leer", "usuarios:editar", "auditoria:leer"],
   "LAB_SUP": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear", "calibracion:aprobar"],
-  "LAB_TECH": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear"]
+  "LAB_TECH": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear"],
+  "ceo": ["equipos:leer", "calibracion:leer", "usuarios:leer", "auditoria:leer"],
+  "dir_op": ["equipos:leer", "calibracion:leer", "usuarios:leer", "auditoria:leer", "calibracion:aprobar"],
+  "dir_at_cl": ["equipos:leer", "usuarios:leer"],
+  "ger_tec": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear", "calibracion:aprobar"],
+  "ger_cal": ["equipos:leer", "calibracion:leer", "calibracion:aprobar"],
+  "jefe_rep": ["equipos:leer", "calibracion:leer"],
+  "jefe_alm": ["equipos:leer"],
+  "coord_lab": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear", "calibracion:aprobar"],
+  "jefe_op": ["equipos:leer", "calibracion:leer", "calibracion:aprobar"],
+  "ing_campo": ["equipos:leer", "calibracion:leer", "calibracion:crear"],
+  "sys_admin": ["equipos:leer", "calibracion:leer", "usuarios:leer", "usuarios:editar", "auditoria:leer"]
 };
 
 // Usuarios Predefinidos (Con e.firma)
 export const INITIAL_USUARIOS: Usuario[] = [
   {
+    id_usuario: "usr-ceo-daniel",
+    nombre_completo: "Ing. Daniel Treviño Reyes",
+    email: "daniel.trevino@aspechs.com.mx",
+    id_rol: "ceo",
+    puesto: "CEO / Alta Dirección",
+    firma_electronica_fingerprint: "SHA256:CEO_DT_88129A (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-dac-carlos",
+    nombre_completo: "Lic. Carlos Ayala",
+    email: "carlos.ayala@aspechs.com.mx",
+    id_rol: "dir_at_cl",
+    puesto: "Director de Atención a Clientes",
+    firma_electronica_fingerprint: "SHA256:DAC_CA_22910B (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
     id_usuario: "e88b48f9-4d6d-478a-aef4-4f40d12ea661",
-    nombre_completo: "Roberto Fernández",
+    nombre_completo: "Lic. Roberto Fernández Alanís",
     email: "roberto.fernandez@aspechs.com.mx",
-    id_rol: "DIR_OP",
+    id_rol: "dir_op",
     puesto: "Director de Operaciones",
     firma_electronica_fingerprint: "SHA256:f16b23...88ca4192 (e.firma SAT)",
     esta_activo: true,
     ultimo_acceso: "2026-07-14T12:05:12Z"
   },
   {
+    id_usuario: "usr-gt-adalberto",
+    nombre_completo: "Ing. Adalberto Ledezma",
+    email: "adalberto.ledezma@aspechs.com.mx",
+    id_rol: "ger_tec",
+    puesto: "Gerente Técnico",
+    firma_electronica_fingerprint: "SHA256:GT_AL_91032C (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-gc-isela",
+    nombre_completo: "Bio. Isela Ramos Lozano",
+    email: "isela.ramos@aspechs.com.mx",
+    id_rol: "ger_cal",
+    puesto: "Gerente de Calidad",
+    firma_electronica_fingerprint: "SHA256:GC_IR_10293D (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-jr-jasiel",
+    nombre_completo: "Ing. Jasiel Navarro",
+    email: "jasiel.navarro@aspechs.com.mx",
+    id_rol: "jefe_rep",
+    puesto: "Gerente de Reportes",
+    firma_electronica_fingerprint: "SHA256:JR_JN_40210E (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ja-abraham",
+    nombre_completo: "Abraham Navarro",
+    email: "abraham.navarro@aspechs.com.mx",
+    id_rol: "jefe_alm",
+    puesto: "Jefe de Almacén",
+    firma_electronica_fingerprint: "SHA256:JA_AN_50321F (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-cl-mauricio",
+    nombre_completo: "Ing. Mauricio Iván Córdoba",
+    email: "mauricio.cordoba@aspechs.com.mx",
+    id_rol: "coord_lab",
+    puesto: "Coordinador de Laboratorio",
+    firma_electronica_fingerprint: "SHA256:CL_MC_60432A (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-jo-juan",
+    nombre_completo: "Ing. Juan José Gallegos",
+    email: "juan.gallegos@aspechs.com.mx",
+    id_rol: "jefe_op",
+    puesto: "Gerente de Operaciones",
+    firma_electronica_fingerprint: "SHA256:JO_JG_70543B (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-gerardo",
+    nombre_completo: "Ing. Gerardo Daniel Sánchez",
+    email: "gerardo.sanchez@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Fuentes Fijas",
+    firma_electronica_fingerprint: "SHA256:IC_GS_80654C (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-andres",
+    nombre_completo: "Ing. Andrés Manuel Gómez",
+    email: "andres.gomez@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Fuentes Fijas",
+    firma_electronica_fingerprint: "SHA256:IC_AG_90765D (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-carlos-s",
+    nombre_completo: "Ing. Carlos Sánchez Leal",
+    email: "carlos.sanchez@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Fuentes Fijas",
+    firma_electronica_fingerprint: "SHA256:IC_CS_10876E (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-roberto-p",
+    nombre_completo: "Ing. Roberto Paulino Hdz",
+    email: "roberto.paulino@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Ambiente Laboral",
+    firma_electronica_fingerprint: "SHA256:IC_RP_20987F (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-francisco",
+    nombre_completo: "Ing. Francisco Cupil",
+    email: "francisco.cupil@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Termo y OSP",
+    firma_electronica_fingerprint: "SHA256:IC_FC_31098A (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-misael",
+    nombre_completo: "Ing. Misael Baltasar",
+    email: "misael.baltasar@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Termo y OSP",
+    firma_electronica_fingerprint: "SHA256:IC_MB_42109B (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-natalia",
+    nombre_completo: "Ing. Natalia Alfaro",
+    email: "natalia.alfaro@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Termo y OSP",
+    firma_electronica_fingerprint: "SHA256:IC_NA_53210C (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
+    id_usuario: "usr-ic-baltazar",
+    nombre_completo: "Ing. Baltazar",
+    email: "baltazar.hdz@aspechs.com.mx",
+    id_rol: "ing_campo",
+    puesto: "Ingeniero en Ambiente Laboral",
+    firma_electronica_fingerprint: "SHA256:IC_IB_64321D (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
     id_usuario: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59",
     nombre_completo: "Alejandro Torres",
     email: "alejandro.torres@aspechs.com.mx",
-    id_rol: "SYS_ADMIN",
+    id_rol: "sys_admin",
     puesto: "Coordinador de Ciberseguridad y TI",
     firma_electronica_fingerprint: "SHA256:d89a12...931cb921 (e.firma SAT)",
     esta_activo: true,
@@ -147,7 +318,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     id_usuario: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
     nombre_completo: "Ing. Carlos Slim Jr.",
     email: "carlos.slim@aspechs.com.mx",
-    id_rol: "LAB_SUP",
+    id_rol: "ger_tec",
     puesto: "Responsable Técnico del Laboratorio",
     firma_electronica_fingerprint: "SHA256:a215fe...338eaef4 (e.firma SAT)",
     esta_activo: true,
@@ -157,7 +328,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     id_usuario: "3cd40182-ef35-42d8-9df2-51c6b12a8844",
     nombre_completo: "Lucía Juárez",
     email: "lucia.juarez@aspechs.com.mx",
-    id_rol: "LAB_TECH",
+    id_rol: "ing_campo",
     puesto: "Analista Metrólogo Senior",
     firma_electronica_fingerprint: "SHA256:9cb812...0df63a29 (e.firma SAT)",
     esta_activo: true,
