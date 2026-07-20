@@ -31,6 +31,13 @@ import { supabase } from "../supabaseClient";
 import { Usuario } from "../initial_data";
 import { downloadCredentialsPdf } from "../utils/credentialsPdf";
 
+function generateUUID(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return "10000000-0000-4000-8000-" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
+}
+
 interface RoleConfig {
   id: string;
   name: string;
@@ -45,8 +52,8 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ceo",
     name: "CEO / Alta Dirección",
     icon: Briefcase,
-    personaId: "usr-ceo-daniel",
-    defaultEmail: "daniel.trevino@aspechs.com.mx",
+    personaId: "",
+    defaultEmail: "",
     puesto: "CEO"
   },
   {
@@ -61,7 +68,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "dir_at_cl",
     name: "Director de Atención a Clientes",
     icon: HeartHandshake,
-    personaId: "usr-dac-carlos",
+    personaId: "01000000-0000-0000-0000-000000000002",
     defaultEmail: "carlos.ayala@aspechs.com.mx",
     puesto: "Director de Atención a Clientes"
   },
@@ -69,7 +76,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ger_tec",
     name: "Gerencia Técnica",
     icon: Wrench,
-    personaId: "usr-gt-adalberto",
+    personaId: "01000000-0000-0000-0000-000000000004",
     defaultEmail: "adalberto.ledezma@aspechs.com.mx",
     puesto: "Gerente Técnico"
   },
@@ -77,7 +84,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ger_cal",
     name: "Gerencia de Calidad",
     icon: ShieldCheck,
-    personaId: "usr-gc-isela",
+    personaId: "01000000-0000-0000-0000-000000000005",
     defaultEmail: "isela.ramos@aspechs.com.mx",
     puesto: "Gerente de Calidad"
   },
@@ -85,7 +92,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "coord_lab",
     name: "Coordinación de Laboratorio",
     icon: Layers,
-    personaId: "usr-cl-mauricio",
+    personaId: "01000000-0000-0000-0000-000000000008",
     defaultEmail: "mauricio.cordoba@aspechs.com.mx",
     puesto: "Coordinador de Laboratorio"
   },
@@ -93,7 +100,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ger_lab",
     name: "Gerente Laboratorio",
     icon: Microscope,
-    personaId: "usr-cl-mauricio",
+    personaId: "01000000-0000-0000-0000-000000000008",
     defaultEmail: "mauricio.cordoba@aspechs.com.mx",
     puesto: "Coordinador de Laboratorio"
   },
@@ -109,7 +116,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "jefe_rep",
     name: "Jefe de Reportes",
     icon: ClipboardList,
-    personaId: "usr-jr-jasiel",
+    personaId: "01000000-0000-0000-0000-000000000006",
     defaultEmail: "jasiel.navarro@aspechs.com.mx",
     puesto: "Gerente de Reportes"
   },
@@ -117,7 +124,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "jefe_op",
     name: "Jefe de Operaciones",
     icon: Settings,
-    personaId: "usr-jo-juan",
+    personaId: "01000000-0000-0000-0000-000000000009",
     defaultEmail: "juan.gallegos@aspechs.com.mx",
     puesto: "Gerente de Operaciones"
   },
@@ -125,7 +132,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "jefe_alm",
     name: "Jefe de Almacén",
     icon: Package,
-    personaId: "usr-ja-abraham",
+    personaId: "01000000-0000-0000-0000-000000000007",
     defaultEmail: "abraham.navarro@aspechs.com.mx",
     puesto: "Jefe de Almacén"
   },
@@ -133,7 +140,7 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ing_campo",
     name: "Ingeniero de Campo",
     icon: HardHat,
-    personaId: "usr-ic-gerardo",
+    personaId: "01000000-0000-0000-0000-000000000010",
     defaultEmail: "gerardo.sanchez@aspechs.com.mx",
     puesto: "Ingeniero en Fuentes Fijas"
   },
@@ -149,16 +156,7 @@ const ROLES_LIST: RoleConfig[] = [
 
 const PREDEFINED_USERS_MAPPING = [
   {
-    id: "usr-ceo-daniel",
-    nombre: "Ing. Daniel Treviño Reyes",
-    email: "daniel.trevino@aspechs.com.mx",
-    rol: "ceo",
-    puesto: "CEO",
-    firma: "SHA256:CEO_DT_88129A (e.firma SAT)",
-    password: "DanielT2026!"
-  },
-  {
-    id: "usr-dac-carlos",
+    id: "01000000-0000-0000-0000-000000000002",
     nombre: "Lic. Carlos Ayala",
     email: "carlos.ayala@aspechs.com.mx",
     rol: "dir_at_cl",
@@ -176,7 +174,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "RobertoF2026!"
   },
   {
-    id: "usr-gt-adalberto",
+    id: "01000000-0000-0000-0000-000000000004",
     nombre: "Ing. Adalberto Ledezma",
     email: "adalberto.ledezma@aspechs.com.mx",
     rol: "ger_tec",
@@ -185,7 +183,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "AdalbertoL2026!"
   },
   {
-    id: "usr-gc-isela",
+    id: "01000000-0000-0000-0000-000000000005",
     nombre: "Bio. Isela Ramos Lozano",
     email: "isela.ramos@aspechs.com.mx",
     rol: "ger_cal",
@@ -194,7 +192,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "IselaR2026!"
   },
   {
-    id: "usr-jr-jasiel",
+    id: "01000000-0000-0000-0000-000000000006",
     nombre: "Ing. Jasiel Navarro",
     email: "jasiel.navarro@aspechs.com.mx",
     rol: "jefe_rep",
@@ -203,7 +201,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "JasielN2026!"
   },
   {
-    id: "usr-ja-abraham",
+    id: "01000000-0000-0000-0000-000000000007",
     nombre: "Abraham Navarro",
     email: "abraham.navarro@aspechs.com.mx",
     rol: "jefe_alm",
@@ -212,7 +210,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "AbrahamN2026!"
   },
   {
-    id: "usr-cl-mauricio",
+    id: "01000000-0000-0000-0000-000000000008",
     nombre: "Ing. Mauricio Iván Córdoba",
     email: "mauricio.cordoba@aspechs.com.mx",
     rol: "coord_lab",
@@ -221,7 +219,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "MauricioC2026!"
   },
   {
-    id: "usr-jo-juan",
+    id: "01000000-0000-0000-0000-000000000009",
     nombre: "Ing. Juan José Gallegos",
     email: "juan.gallegos@aspechs.com.mx",
     rol: "jefe_op",
@@ -230,7 +228,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "JuanG2026!"
   },
   {
-    id: "usr-ic-gerardo",
+    id: "01000000-0000-0000-0000-000000000010",
     nombre: "Ing. Gerardo Daniel Sánchez",
     email: "gerardo.sanchez@aspechs.com.mx",
     rol: "ing_campo",
@@ -239,7 +237,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "GerardoS2026!"
   },
   {
-    id: "usr-ic-andres",
+    id: "01000000-0000-0000-0000-000000000011",
     nombre: "Ing. Andrés Manuel Gómez",
     email: "andres.gomez@aspechs.com.mx",
     rol: "ing_campo",
@@ -248,7 +246,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "AndresG2026!"
   },
   {
-    id: "usr-ic-carlos-s",
+    id: "01000000-0000-0000-0000-000000000012",
     nombre: "Ing. Carlos Sánchez Leal",
     email: "carlos.sanchez@aspechs.com.mx",
     rol: "ing_campo",
@@ -257,7 +255,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "CarlosS2026!"
   },
   {
-    id: "usr-ic-roberto-p",
+    id: "01000000-0000-0000-0000-000000000013",
     nombre: "Ing. Roberto Paulino Hdz",
     email: "roberto.paulino@aspechs.com.mx",
     rol: "ing_campo",
@@ -266,7 +264,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "RobertoP2026!"
   },
   {
-    id: "usr-ic-francisco",
+    id: "01000000-0000-0000-0000-000000000014",
     nombre: "Ing. Francisco Cupil",
     email: "francisco.cupil@aspechs.com.mx",
     rol: "ing_campo",
@@ -275,7 +273,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "FranciscoC2026!"
   },
   {
-    id: "usr-ic-misael",
+    id: "01000000-0000-0000-0000-000000000015",
     nombre: "Ing. Misael Baltasar",
     email: "misael.baltasar@aspechs.com.mx",
     rol: "ing_campo",
@@ -284,7 +282,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "MisaelB2026!"
   },
   {
-    id: "usr-ic-natalia",
+    id: "01000000-0000-0000-0000-000000000016",
     nombre: "Ing. Natalia Alfaro",
     email: "natalia.alfaro@aspechs.com.mx",
     rol: "ing_campo",
@@ -293,7 +291,7 @@ const PREDEFINED_USERS_MAPPING = [
     password: "NataliaA2026!"
   },
   {
-    id: "usr-ic-baltazar",
+    id: "01000000-0000-0000-0000-000000000017",
     nombre: "Ing. Baltazar",
     email: "baltazar.hdz@aspechs.com.mx",
     rol: "ing_campo",
@@ -354,7 +352,7 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const newUserId = `usr-reg-${Date.now()}`;
+    const newUserId = generateUUID();
     const newUser: Usuario = {
       id_usuario: newUserId,
       nombre_completo: registerNombre.trim(),
@@ -506,7 +504,7 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
           const formattedName = customName.charAt(0).toUpperCase() + customName.slice(1);
           
           const guestUsuario: Usuario = {
-            id_usuario: `usr-guest-${Date.now()}`,
+            id_usuario: generateUUID(),
             nombre_completo: formattedName || "Usuario Invitado",
             email: email.trim().toLowerCase(),
             id_rol: selectedRoleConfig?.id.toUpperCase() || "LAB_TECH",
@@ -548,7 +546,7 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
 
       const userRow = data[0];
       const loggedInUser: Usuario = {
-        id_usuario: userRow.id_usuario || `usr-${Date.now()}`,
+        id_usuario: userRow.id_usuario || generateUUID(),
         nombre_completo: userRow.nombre_completo,
         email: userRow.email,
         id_rol: userRow.id_rol,
@@ -673,25 +671,31 @@ ON CONFLICT (id_rol) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLU
 
 -- 4. SEED DE USUARIOS PREDEFINIDOS EN SUPABASE
 INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
-('usr-ceo-daniel', 'Ing. Daniel Treviño Reyes', 'daniel.trevino@aspechs.com.mx', 'DanielT2026!', 'ceo', 'CEO', 'SHA256:CEO_DT_88129A (e.firma SAT)', true),
-('usr-dac-carlos', 'Lic. Carlos Ayala', 'carlos.ayala@aspechs.com.mx', 'CarlosA2026!', 'dir_at_cl', 'Director de Atención a Clientes', 'SHA256:DAC_CA_22910B (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000002', 'Lic. Carlos Ayala', 'carlos.ayala@aspechs.com.mx', 'CarlosA2026!', 'dir_at_cl', 'Director de Atención a Clientes', 'SHA256:DAC_CA_22910B (e.firma SAT)', true),
 ('e88b48f9-4d6d-478a-aef4-4f40d12ea661', 'Lic. Roberto Fernández Alanís', 'roberto.fernandez@aspechs.com.mx', 'RobertoF2026!', 'dir_op', 'Director de Operaciones', 'SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a', true),
-('usr-gt-adalberto', 'Ing. Adalberto Ledezma', 'adalberto.ledezma@aspechs.com.mx', 'AdalbertoL2026!', 'ger_tec', 'Gerente Técnico', 'SHA256:GT_AL_91032C (e.firma SAT)', true),
-('usr-gc-isela', 'Bio. Isela Ramos Lozano', 'isela.ramos@aspechs.com.mx', 'IselaR2026!', 'ger_cal', 'Gerente de Calidad', 'SHA256:GC_IR_10293D (e.firma SAT)', true),
-('usr-jr-jasiel', 'Ing. Jasiel Navarro', 'jasiel.navarro@aspechs.com.mx', 'JasielN2026!', 'jefe_rep', 'Gerente de Reportes', 'SHA256:JR_JN_40210E (e.firma SAT)', true),
-('usr-ja-abraham', 'Abraham Navarro', 'abraham.navarro@aspechs.com.mx', 'AbrahamN2026!', 'jefe_alm', 'Jefe de Almacén', 'SHA256:JA_AN_50321F (e.firma SAT)', true),
-('usr-cl-mauricio', 'Ing. Mauricio Iván Córdoba', 'mauricio.cordoba@aspechs.com.mx', 'MauricioC2026!', 'coord_lab', 'Coordinador de Laboratorio', 'SHA256:CL_MC_60432A (e.firma SAT)', true),
-('usr-jo-juan', 'Ing. Juan José Gallegos', 'juan.gallegos@aspechs.com.mx', 'JuanG2026!', 'jefe_op', 'Gerente de Operaciones', 'SHA256:JO_JG_70543B (e.firma SAT)', true),
-('usr-ic-gerardo', 'Ing. Gerardo Daniel Sánchez', 'gerardo.sanchez@aspechs.com.mx', 'GerardoS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_GS_80654C (e.firma SAT)', true),
-('usr-ic-andres', 'Ing. Andrés Manuel Gómez', 'andres.gomez@aspechs.com.mx', 'AndresG2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_AG_90765D (e.firma SAT)', true),
-('usr-ic-carlos-s', 'Ing. Carlos Sánchez Leal', 'carlos.sanchez@aspechs.com.mx', 'CarlosS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_CS_10876E (e.firma SAT)', true),
-('usr-ic-roberto-p', 'Ing. Roberto Paulino Hdz', 'roberto.paulino@aspechs.com.mx', 'RobertoP2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_RP_20987F (e.firma SAT)', true),
-('usr-ic-francisco', 'Ing. Francisco Cupil', 'francisco.cupil@aspechs.com.mx', 'FranciscoC2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_FC_31098A (e.firma SAT)', true),
-('usr-ic-misael', 'Ing. Misael Baltasar', 'misael.baltasar@aspechs.com.mx', 'MisaelB2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_MB_42109B (e.firma SAT)', true),
-('usr-ic-natalia', 'Ing. Natalia Alfaro', 'natalia.alfaro@aspechs.com.mx', 'NataliaA2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_NA_53210C (e.firma SAT)', true),
-('usr-ic-baltazar', 'Ing. Baltazar', 'baltazar.hdz@aspechs.com.mx', 'BaltazarH2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_IB_64321D (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000004', 'Ing. Adalberto Ledezma', 'adalberto.ledezma@aspechs.com.mx', 'AdalbertoL2026!', 'ger_tec', 'Gerente Técnico', 'SHA256:GT_AL_91032C (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000005', 'Bio. Isela Ramos Lozano', 'isela.ramos@aspechs.com.mx', 'IselaR2026!', 'ger_cal', 'Gerente de Calidad', 'SHA256:GC_IR_10293D (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000006', 'Ing. Jasiel Navarro', 'jasiel.navarro@aspechs.com.mx', 'JasielN2026!', 'jefe_rep', 'Gerente de Reportes', 'SHA256:JR_JN_40210E (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000007', 'Abraham Navarro', 'abraham.navarro@aspechs.com.mx', 'AbrahamN2026!', 'jefe_alm', 'Jefe de Almacén', 'SHA256:JA_AN_50321F (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000008', 'Ing. Mauricio Iván Córdoba', 'mauricio.cordoba@aspechs.com.mx', 'MauricioC2026!', 'coord_lab', 'Coordinador de Laboratorio', 'SHA256:CL_MC_60432A (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000009', 'Ing. Juan José Gallegos', 'juan.gallegos@aspechs.com.mx', 'JuanG2026!', 'jefe_op', 'Gerente de Operaciones', 'SHA256:JO_JG_70543B (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000010', 'Ing. Gerardo Daniel Sánchez', 'gerardo.sanchez@aspechs.com.mx', 'GerardoS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_GS_80654C (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000011', 'Ing. Andrés Manuel Gómez', 'andres.gomez@aspechs.com.mx', 'AndresG2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_AG_90765D (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000012', 'Ing. Carlos Sánchez Leal', 'carlos.sanchez@aspechs.com.mx', 'CarlosS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_CS_10876E (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000013', 'Ing. Roberto Paulino Hdz', 'roberto.paulino@aspechs.com.mx', 'RobertoP2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_RP_20987F (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000014', 'Ing. Francisco Cupil', 'francisco.cupil@aspechs.com.mx', 'FranciscoC2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_FC_31098A (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000015', 'Ing. Misael Baltasar', 'misael.baltasar@aspechs.com.mx', 'MisaelB2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_MB_42109B (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000016', 'Ing. Natalia Alfaro', 'natalia.alfaro@aspechs.com.mx', 'NataliaA2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_NA_53210C (e.firma SAT)', true),
+('01000000-0000-0000-0000-000000000017', 'Ing. Baltazar', 'baltazar.hdz@aspechs.com.mx', 'BaltazarH2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_IB_64321D (e.firma SAT)', true),
 ('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Alejandro Torres', 'alejandro.torres@aspechs.com.mx', 'ASPPass2026!', 'sys_admin', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true)
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET 
+  id_usuario = EXCLUDED.id_usuario,
+  nombre_completo = EXCLUDED.nombre_completo,
+  password_hash = EXCLUDED.password_hash,
+  id_rol = EXCLUDED.id_rol,
+  puesto = EXCLUDED.puesto,
+  firma_electronica_fingerprint = EXCLUDED.firma_electronica_fingerprint,
+  esta_activo = EXCLUDED.esta_activo;
 `;
 
   return (

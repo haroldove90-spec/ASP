@@ -340,7 +340,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
     }
 
     const newEng: Usuario = {
-      id_usuario: `usr-${100 + usuarios.length + 1}`,
+      id_usuario: `01000000-0000-0000-0000-000000000${100 + usuarios.length + 1}`,
       nombre_completo: newEngineerForm.nombre_completo,
       email: newEngineerForm.email,
       id_rol: 'LAB_TECH',

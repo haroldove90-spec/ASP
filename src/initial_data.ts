@@ -135,17 +135,7 @@ export const ROLE_PERMISSIONS_MAP: Record<string, string[]> = {
 // Usuarios Predefinidos (Con e.firma)
 export const INITIAL_USUARIOS: Usuario[] = [
   {
-    id_usuario: "usr-ceo-daniel",
-    nombre_completo: "Ing. Daniel Treviño Reyes",
-    email: "daniel.trevino@aspechs.com.mx",
-    id_rol: "ceo",
-    puesto: "CEO / Alta Dirección",
-    firma_electronica_fingerprint: "SHA256:CEO_DT_88129A (e.firma SAT)",
-    esta_activo: true,
-    ultimo_acceso: "2026-07-20T12:00:00Z"
-  },
-  {
-    id_usuario: "usr-dac-carlos",
+    id_usuario: "01000000-0000-0000-0000-000000000002",
     nombre_completo: "Lic. Carlos Ayala",
     email: "carlos.ayala@aspechs.com.mx",
     id_rol: "dir_at_cl",
@@ -165,7 +155,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-14T12:05:12Z"
   },
   {
-    id_usuario: "usr-gt-adalberto",
+    id_usuario: "01000000-0000-0000-0000-000000000004",
     nombre_completo: "Ing. Adalberto Ledezma",
     email: "adalberto.ledezma@aspechs.com.mx",
     id_rol: "ger_tec",
@@ -175,7 +165,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-gc-isela",
+    id_usuario: "01000000-0000-0000-0000-000000000005",
     nombre_completo: "Bio. Isela Ramos Lozano",
     email: "isela.ramos@aspechs.com.mx",
     id_rol: "ger_cal",
@@ -185,7 +175,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-jr-jasiel",
+    id_usuario: "01000000-0000-0000-0000-000000000006",
     nombre_completo: "Ing. Jasiel Navarro",
     email: "jasiel.navarro@aspechs.com.mx",
     id_rol: "jefe_rep",
@@ -195,7 +185,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ja-abraham",
+    id_usuario: "01000000-0000-0000-0000-000000000007",
     nombre_completo: "Abraham Navarro",
     email: "abraham.navarro@aspechs.com.mx",
     id_rol: "jefe_alm",
@@ -205,7 +195,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-cl-mauricio",
+    id_usuario: "01000000-0000-0000-0000-000000000008",
     nombre_completo: "Ing. Mauricio Iván Córdoba",
     email: "mauricio.cordoba@aspechs.com.mx",
     id_rol: "coord_lab",
@@ -215,7 +205,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-jo-juan",
+    id_usuario: "01000000-0000-0000-0000-000000000009",
     nombre_completo: "Ing. Juan José Gallegos",
     email: "juan.gallegos@aspechs.com.mx",
     id_rol: "jefe_op",
@@ -225,7 +215,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-gerardo",
+    id_usuario: "01000000-0000-0000-0000-000000000010",
     nombre_completo: "Ing. Gerardo Daniel Sánchez",
     email: "gerardo.sanchez@aspechs.com.mx",
     id_rol: "ing_campo",
@@ -235,7 +225,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-andres",
+    id_usuario: "01000000-0000-0000-0000-000000000011",
     nombre_completo: "Ing. Andrés Manuel Gómez",
     email: "andres.gomez@aspechs.com.mx",
     id_rol: "ing_campo",
@@ -245,7 +235,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-carlos-s",
+    id_usuario: "01000000-0000-0000-0000-000000000012",
     nombre_completo: "Ing. Carlos Sánchez Leal",
     email: "carlos.sanchez@aspechs.com.mx",
     id_rol: "ing_campo",
@@ -255,7 +245,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-roberto-p",
+    id_usuario: "01000000-0000-0000-0000-000000000013",
     nombre_completo: "Ing. Roberto Paulino Hdz",
     email: "roberto.paulino@aspechs.com.mx",
     id_rol: "ing_campo",
@@ -265,7 +255,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-francisco",
+    id_usuario: "01000000-0000-0000-0000-000000000014",
     nombre_completo: "Ing. Francisco Cupil",
     email: "francisco.cupil@aspechs.com.mx",
     id_rol: "ing_campo",
@@ -275,7 +265,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-misael",
+    id_usuario: "01000000-0000-0000-0000-000000000015",
     nombre_completo: "Ing. Misael Baltasar",
     email: "misael.baltasar@aspechs.com.mx",
     id_rol: "ing_campo",
@@ -285,7 +275,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-natalia",
+    id_usuario: "01000000-0000-0000-0000-000000000016",
     nombre_completo: "Ing. Natalia Alfaro",
     email: "natalia.alfaro@aspechs.com.mx",
     id_rol: "ing_campo",
@@ -295,7 +285,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-20T12:00:00Z"
   },
   {
-    id_usuario: "usr-ic-baltazar",
+    id_usuario: "01000000-0000-0000-0000-000000000017",
     nombre_completo: "Ing. Baltazar",
     email: "baltazar.hdz@aspechs.com.mx",
     id_rol: "ing_campo",
