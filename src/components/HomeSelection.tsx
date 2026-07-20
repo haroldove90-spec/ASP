@@ -747,26 +747,28 @@ ON CONFLICT (email) DO NOTHING;
                 </h2>
               </div>
 
-              {/* PDF Download Callout Bar */}
-              <div className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50">
-                    <FileText className="w-5 h-5 text-[#85AA1C]" />
+              {/* PDF Download Callout Bar (Ocultado temporalmente por solicitud del usuario) */}
+              {false && (
+                <div className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50">
+                      <FileText className="w-5 h-5 text-[#85AA1C]" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-xs font-bold text-slate-800">Directorio de Personal Autorizado (e.firma)</h3>
+                      <p className="text-[11px] text-slate-500">Descargue el archivo PDF con las credenciales de los 17 usuarios oficiales configurados en el sistema.</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <h3 className="text-xs font-bold text-slate-800">Directorio de Personal Autorizado (e.firma)</h3>
-                    <p className="text-[11px] text-slate-500">Descargue el archivo PDF con las credenciales de los 17 usuarios oficiales configurados en el sistema.</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => downloadCredentialsPdf(PREDEFINED_USERS_MAPPING)}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-[#85AA1C] hover:bg-[#729218] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Descargar Credenciales (PDF)</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => downloadCredentialsPdf(PREDEFINED_USERS_MAPPING)}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-[#85AA1C] hover:bg-[#729218] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer shrink-0"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Descargar Credenciales (PDF)</span>
-                </button>
-              </div>
+              )}
 
               {/* Roles Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
