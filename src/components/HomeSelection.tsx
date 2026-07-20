@@ -317,7 +317,7 @@ interface HomeSelectionProps {
 export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
   const [selectedRoleConfig, setSelectedRoleConfig] = useState<RoleConfig | null>(null);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("ASPPass2026!");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [connectionMode, setConnectionMode] = useState<"local" | "supabase">("local");
   const [isLoading, setIsLoading] = useState(false);
@@ -329,7 +329,7 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerNombre, setRegisterNombre] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("ASPPass2026!");
+  const [registerPassword, setRegisterPassword] = useState("");
   const [registerPuesto, setRegisterPuesto] = useState("");
   const [registerRole, setRegisterRole] = useState("ing_campo");
 
@@ -442,14 +442,8 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
 
   const handleRoleClick = (role: RoleConfig) => {
     setSelectedRoleConfig(role);
-    const suggested = getSuggestedUserForRole(role.id);
-    if (suggested) {
-      setEmail(suggested.email);
-      setPassword(suggested.password || "ASPPass2026!");
-    } else {
-      setEmail(role.defaultEmail);
-      setPassword("ASPPass2026!");
-    }
+    setEmail("");
+    setPassword("");
     setErrorMessage(null);
     setSuccessMessage(null);
   };
@@ -850,69 +844,6 @@ ON CONFLICT (email) DO UPDATE SET
               {!isRegistering ? (
                 // 1. LOGIN VIEW
                 <>
-                  {/* Suggestion User Section */}
-                  <div className="mb-6 bg-slate-50 border border-slate-200/60 rounded-2xl p-4">
-                    {(() => {
-                      const matchingUsers = PREDEFINED_USERS_MAPPING.filter(u => u.rol === selectedRoleConfig.id);
-                      if (matchingUsers.length === 0) {
-                        const suggested = getSuggestedUserForRole(selectedRoleConfig.id);
-                        if (!suggested) return <p className="text-xs text-slate-500">Ningún usuario configurado.</p>;
-                        return (
-                          <>
-                            <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono tracking-wider mb-2">
-                              Usuario Oficial Sugerido para esta función:
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => selectSuggestedUser(suggested)}
-                              className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-[#85AA1C]/40 rounded-xl hover:bg-[#85AA1C]/5 transition-all text-left group cursor-pointer"
-                            >
-                              <div>
-                                <div className="text-xs font-bold text-slate-700 group-hover:text-slate-900">{suggested.nombre}</div>
-                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">{suggested.email}</div>
-                                <div className="text-[9px] text-slate-400 font-mono mt-0.5">Clave: <span className="text-emerald-600 font-bold">{suggested.password}</span></div>
-                              </div>
-                              <span className="text-[9px] bg-slate-100 group-hover:bg-[#85AA1C]/20 group-hover:text-[#85AA1C] text-slate-600 font-bold px-2 py-0.5 rounded-md font-mono shrink-0">
-                                Usar
-                              </span>
-                            </button>
-                          </>
-                        );
-                      }
-
-                      return (
-                        <>
-                          <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono tracking-wider mb-2">
-                            {matchingUsers.length > 1 ? `Personal Oficial Autorizado (${matchingUsers.length}):` : "Usuario Oficial Autorizado:"}
-                          </span>
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {matchingUsers.map((u) => (
-                              <button
-                                key={u.id}
-                                type="button"
-                                onClick={() => {
-                                  setEmail(u.email);
-                                  setPassword(u.password || "ASPPass2026!");
-                                  setErrorMessage(null);
-                                }}
-                                className="w-full flex items-center justify-between p-2 bg-white border border-slate-200 hover:border-[#85AA1C]/40 rounded-xl hover:bg-[#85AA1C]/5 transition-all text-left group cursor-pointer"
-                              >
-                                <div className="truncate max-w-[80%]">
-                                  <div className="text-xs font-bold text-slate-700 group-hover:text-slate-900 truncate">{u.nombre}</div>
-                                  <div className="text-[9px] text-slate-500 font-mono truncate">{u.email}</div>
-                                  <div className="text-[9px] text-slate-400 font-mono">Clave: <span className="text-emerald-600 font-bold">{u.password}</span></div>
-                                </div>
-                                <span className="text-[9px] bg-slate-100 group-hover:bg-[#85AA1C]/20 group-hover:text-[#85AA1C] text-slate-600 font-bold px-2 py-0.5 rounded-md font-mono shrink-0">
-                                  Seleccionar
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-
                   {/* Login form */}
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
