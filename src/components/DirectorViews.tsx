@@ -2367,8 +2367,8 @@ export default function DirectorViews(props: DirectorViewsProps) {
                     onChange={(e) => setNewOdtForm({ ...newOdtForm, id_tecnico: e.target.value })}
                     className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
                   >
-                    <option value="">Seleccione Ingeniero...</option>
-                    {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero')).map(eng => (
+                    <option value="">Seleccione Ingeniero / Asesor...</option>
+                    {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.id_rol === 'ing_campo' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero') || u.puesto?.includes('Consultor') || u.puesto?.includes('Asesor')).map(eng => (
                       <option key={eng.id_usuario} value={eng.id_usuario}>{eng.nombre_completo}</option>
                     ))}
                   </select>
@@ -2621,8 +2621,8 @@ export default function DirectorViews(props: DirectorViewsProps) {
                         onChange={(e) => setNewScheduleForm({ ...newScheduleForm, id_tecnico: e.target.value })}
                         className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
                       >
-                        <option value="">Seleccione Técnico...</option>
-                        {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero')).map(eng => (
+                        <option value="">Seleccione Técnico / Asesor...</option>
+                        {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.id_rol === 'ing_campo' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero') || u.puesto?.includes('Consultor') || u.puesto?.includes('Asesor')).map(eng => (
                           <option key={eng.id_usuario} value={eng.id_usuario}>{eng.nombre_completo}</option>
                         ))}
                       </select>
@@ -2779,7 +2779,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
 
           {/* List of Engineers with Workloads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero')).map((eng) => {
+            {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.id_rol === 'ing_campo' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero') || u.puesto?.includes('Consultor') || u.puesto?.includes('Asesor')).map((eng) => {
               // Calculate active services/workload
               const engServices = scheduledServices.filter(s => s.id_tecnico === eng.id_usuario);
               const activeCount = engServices.length;

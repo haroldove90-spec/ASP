@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Calendar, 
   FileSpreadsheet, 
@@ -133,6 +133,35 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
   const [poInputCode, setPoInputCode] = useState("");
   const [poInputCost, setPoInputCost] = useState(0);
   const [poInputDate, setPoInputDate] = useState("");
+
+  const availableAdvisors = useMemo(() => {
+    if (!usuarios || usuarios.length === 0) return [];
+    
+    const filtered = usuarios.filter(u => {
+      if (u.esta_activo === false) return false;
+      const role = (u.id_rol || (u as any).id_role || '').toLowerCase();
+      const job = (u.puesto || '').toLowerCase();
+      return (
+        role === 'lab_tech' ||
+        role === 'ing_campo' ||
+        role === 'consultant' ||
+        role === 'advisor' ||
+        role === 'asesor' ||
+        role === 'ger_tec' ||
+        role === 'coord_lab' ||
+        job.includes('técnico') ||
+        job.includes('tecnico') ||
+        job.includes('ingeniero') ||
+        job.includes('consultor') ||
+        job.includes('asesor') ||
+        job.includes('fuentes') ||
+        job.includes('ambiente') ||
+        job.includes('campo')
+      );
+    });
+
+    return filtered.length > 0 ? filtered : usuarios.filter(u => u.esta_activo !== false);
+  }, [usuarios]);
 
   // Initial Services List
   const [servicesList, setServicesList] = useState(() => {
@@ -875,7 +904,7 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {usuarios.filter(u => u.id_rol === 'LAB_TECH').map(tech => {
+                  {availableAdvisors.map(tech => {
                     const techServices = scheduledServices.filter(s => s.id_tecnico === tech.id_usuario);
                     const openOTs = techServices.filter(s => s.estado === "Asignado" || s.estado === "Abierta" || s.estado === "Abiertas").length;
                     const closedOTs = techServices.filter(s => s.estado === "Cerrada" || s.estado === "Cerradas" || s.estado === "Completado").length;
@@ -976,9 +1005,11 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                       onChange={(e) => setNewServiceAssignment({ ...newServiceAssignment, id_tecnico: e.target.value })}
                       className="w-full bg-slate-950 text-white border border-slate-700 rounded-lg px-3 py-1.5 font-mono"
                     >
-                      <option value="">-- Seleccionar Consultor --</option>
-                      {usuarios.filter(u => u.id_rol === 'LAB_TECH').map(u => (
-                        <option key={u.id_usuario} value={u.id_usuario}>{u.nombre_completo}</option>
+                      <option value="">-- Seleccionar Consultor / Asesor --</option>
+                      {availableAdvisors.map(u => (
+                        <option key={u.id_usuario} value={u.id_usuario}>
+                          {u.nombre_completo} {u.puesto ? `(${u.puesto})` : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
