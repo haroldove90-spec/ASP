@@ -316,6 +316,15 @@ const PREDEFINED_USERS_MAPPING = [
     puesto: "Coordinador de Ciberseguridad y TI",
     firma: "SHA256:d89a12...931cb921 (e.firma SAT)",
     password: "ASPPass2026!"
+  },
+  {
+    id: "77000000-0000-0000-0000-000000000099",
+    nombre: "Ing. Harold Anguiano",
+    email: "harold.anguiano@aspechs.com.mx",
+    rol: "sys_admin",
+    puesto: "Administrador del Sistema (sys_admin)",
+    firma: "SHA256:HA_99810A_ADMIN (e.firma SAT)",
+    password: "Chevropar#1970"
   }
 ];
 
@@ -472,7 +481,11 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
     if (connectionMode === "local") {
       setTimeout(() => {
         setIsLoading(false);
-        const mappedUser = PREDEFINED_USERS_MAPPING.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+        const searchEmail = email.trim().toLowerCase();
+        const mappedUser = PREDEFINED_USERS_MAPPING.find(u => 
+          u.email.toLowerCase() === searchEmail || 
+          u.email.split('@')[0].toLowerCase() === searchEmail
+        );
         
         if (mappedUser) {
           const correctPassword = mappedUser.password || "ASPPass2026!";
@@ -691,7 +704,8 @@ INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol,
 ('01000000-0000-0000-0000-000000000015', 'Ing. Misael Baltasar', 'misael.baltasar@aspechs.com.mx', 'MisaelB2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_MB_42109B (e.firma SAT)', true),
 ('01000000-0000-0000-0000-000000000016', 'Ing. Natalia Alfaro', 'natalia.alfaro@aspechs.com.mx', 'NataliaA2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_NA_53210C (e.firma SAT)', true),
 ('01000000-0000-0000-0000-000000000017', 'Ing. Baltazar', 'baltazar.hdz@aspechs.com.mx', 'BaltazarH2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_IB_64321D (e.firma SAT)', true),
-('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Alejandro Torres', 'alejandro.torres@aspechs.com.mx', 'ASPPass2026!', 'sys_admin', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true)
+('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Alejandro Torres', 'alejandro.torres@aspechs.com.mx', 'ASPPass2026!', 'sys_admin', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true),
+('77000000-0000-0000-0000-000000000099', 'Ing. Harold Anguiano', 'harold.anguiano@aspechs.com.mx', 'Chevropar#1970', 'sys_admin', 'Administrador del Sistema (sys_admin)', 'SHA256:HA_99810A_ADMIN (e.firma SAT)', true)
 ON CONFLICT (email) DO UPDATE SET 
   id_usuario = EXCLUDED.id_usuario,
   nombre_completo = EXCLUDED.nombre_completo,

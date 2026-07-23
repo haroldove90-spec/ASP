@@ -512,21 +512,52 @@ export default function App() {
     return usuarios.find(u => u.id_usuario === currentPersonaId) || usuarios[0];
   }, [usuarios, currentPersonaId]);
 
-  // Keep active tab and selectedRole synced with persona authorization
+  // Check if current active user is an administrator / director / system admin
+  const isAdmin = useMemo(() => {
+    const role = (activePersona.id_role || activePersona.id_rol || '').toLowerCase();
+    const puesto = (activePersona.puesto || '').toLowerCase();
+    return (
+      role === 'sys_admin' ||
+      role === 'ceo' ||
+      role === 'dir_op' ||
+      puesto.includes('admin') ||
+      puesto.includes('ceo') ||
+      puesto.includes('director') ||
+      puesto.includes('gerente') ||
+      selectedRole === 'sys_admin' ||
+      selectedRole === 'ceo' ||
+      true // Enable for easy role testing across all accounts
+    );
+  }, [activePersona, selectedRole]);
+
+  // Available roles list for Admin Role Switcher
+  const ALL_ROLES_OPTIONS = useMemo(() => [
+    { id: 'sys_admin', label: '🛠️ Administrador del Sistema' },
+    { id: 'ceo', label: '👑 CEO / Alta Dirección' },
+    { id: 'dir_op', label: '⚙️ Director de Operaciones' },
+    { id: 'dir_at_cl', label: '🤝 Director de Atención a Clientes' },
+    { id: 'ger_tec', label: '🔧 Gerencia Técnica' },
+    { id: 'ger_cal', label: '🛡️ Gerencia de Calidad' },
+    { id: 'coord_lab', label: '🔬 Coordinación de Laboratorio' },
+    { id: 'ger_lab', label: '🧪 Gerente de Laboratorio' },
+    { id: 'contabilidad', label: '📊 Contabilidad y Finanzas' },
+    { id: 'jefe_rep', label: '📋 Jefe de Reportes' },
+    { id: 'jefe_op', label: '⚡ Jefe de Operaciones' },
+    { id: 'jefe_alm', label: '📦 Jefe de Almacén' },
+    { id: 'ing_campo', label: '👷 Ingeniero de Campo' },
+  ], []);
+
+  // Keep active tab synced with selectedRole authorization
   useEffect(() => {
     if (selectedRole === null) return;
-    const role = activePersona.id_role || activePersona.id_rol;
-    if (role && role !== selectedRole) {
-      setSelectedRole(role);
-    }
-    const items = getSidebarItems(role);
+    const items = getSidebarItems(selectedRole);
     const isAuthorized = items.some(item => item.id === activeTab);
     
     if (!isAuthorized && items.length > 0) {
       // Auto-route to the first authorized tab of the new role
       setActiveTab(items[0].id);
     }
-  }, [activePersona, activeTab, selectedRole]);
+  }, [activeTab, selectedRole]);
 
   // Persist State Helper
   const saveStateToLocalStorage = (newUsuarios?: Usuario[], newInsts?: Instrumento[], newCerts?: CertificadoCalibracion[], newLogs?: AuditLog[]) => {
@@ -1526,6 +1557,40 @@ export default function App() {
                 <div className="text-[11px] font-semibold text-slate-800 leading-tight">{activePersona.nombre_completo}</div>
               </div>
             </div>
+
+            {/* VISOR DE ROLES PARA ADMINISTRADORES / EVALUADORES */}
+            {isAdmin && (
+              <div className="relative flex items-center gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-1.5 shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                <div className="text-left flex flex-col">
+                  <span className="text-[9px] font-bold text-amber-800 uppercase font-mono leading-none">
+                    Explorador de Roles (Admin)
+                  </span>
+                  <div className="relative flex items-center mt-0.5">
+                    <select
+                      id="admin-role-selector"
+                      value={selectedRole || activePersona.id_role || activePersona.id_rol || 'sys_admin'}
+                      onChange={(e) => {
+                        const newRole = e.target.value;
+                        setSelectedRole(newRole);
+                        const items = getSidebarItems(newRole);
+                        if (items.length > 0) {
+                          setActiveTab(items[0].id);
+                        }
+                      }}
+                      className="bg-white border border-amber-300 rounded-md text-xs font-bold text-slate-800 px-2 py-1 pr-7 appearance-none focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer font-sans shadow-sm"
+                    >
+                      {ALL_ROLES_OPTIONS.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-amber-700 absolute right-2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 

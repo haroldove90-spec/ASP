@@ -305,6 +305,16 @@ export const INITIAL_USUARIOS: Usuario[] = [
     ultimo_acceso: "2026-07-14T13:10:45Z"
   },
   {
+    id_usuario: "77000000-0000-0000-0000-000000000099",
+    nombre_completo: "Ing. Harold Anguiano",
+    email: "harold.anguiano@aspechs.com.mx",
+    id_rol: "sys_admin",
+    puesto: "Administrador del Sistema",
+    firma_electronica_fingerprint: "SHA256:HA_99810A_ADMIN (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-23T06:20:00Z"
+  },
+  {
     id_usuario: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
     nombre_completo: "Ing. Carlos Slim Jr.",
     email: "carlos.slim@aspechs.com.mx",
