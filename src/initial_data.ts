@@ -114,22 +114,29 @@ export const INITIAL_PERMISOS: Permiso[] = [
 ];
 
 // Asignación de Permisos a Roles (Matriz RBAC)
+const ALL_PERMS = [
+  "equipos:leer", "equipos:crear", "equipos:editar", "equipos:eliminar",
+  "calibracion:leer", "calibracion:crear", "calibracion:editar", "calibracion:eliminar", "calibracion:aprobar",
+  "usuarios:leer", "usuarios:editar", "auditoria:leer"
+];
+
 export const ROLE_PERMISSIONS_MAP: Record<string, string[]> = {
-  "DIR_OP": ["equipos:leer", "calibracion:leer", "usuarios:leer", "auditoria:leer", "calibracion:aprobar"],
-  "SYS_ADMIN": ["equipos:leer", "calibracion:leer", "usuarios:leer", "usuarios:editar", "auditoria:leer"],
-  "LAB_SUP": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear", "calibracion:aprobar"],
-  "LAB_TECH": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear"],
-  "ceo": ["equipos:leer", "calibracion:leer", "usuarios:leer", "auditoria:leer"],
-  "dir_op": ["equipos:leer", "calibracion:leer", "usuarios:leer", "auditoria:leer", "calibracion:aprobar"],
-  "dir_at_cl": ["equipos:leer", "usuarios:leer"],
-  "ger_tec": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear", "calibracion:aprobar"],
-  "ger_cal": ["equipos:leer", "calibracion:leer", "calibracion:aprobar"],
-  "jefe_rep": ["equipos:leer", "calibracion:leer"],
-  "jefe_alm": ["equipos:leer"],
-  "coord_lab": ["equipos:leer", "equipos:crear", "equipos:editar", "calibracion:leer", "calibracion:crear", "calibracion:aprobar"],
-  "jefe_op": ["equipos:leer", "calibracion:leer", "calibracion:aprobar"],
-  "ing_campo": ["equipos:leer", "calibracion:leer", "calibracion:crear"],
-  "sys_admin": ["equipos:leer", "calibracion:leer", "usuarios:leer", "usuarios:editar", "auditoria:leer"]
+  "DIR_OP": ALL_PERMS,
+  "SYS_ADMIN": ALL_PERMS,
+  "LAB_SUP": ALL_PERMS,
+  "LAB_TECH": ALL_PERMS,
+  "ceo": ALL_PERMS,
+  "dir_op": ALL_PERMS,
+  "dir_at_cl": ALL_PERMS,
+  "ger_tec": ALL_PERMS,
+  "ger_cal": ALL_PERMS,
+  "ger_lab": ALL_PERMS,
+  "jefe_rep": ALL_PERMS,
+  "jefe_alm": ALL_PERMS,
+  "coord_lab": ALL_PERMS,
+  "jefe_op": ALL_PERMS,
+  "ing_campo": ALL_PERMS,
+  "sys_admin": ALL_PERMS
 };
 
 // Usuarios Predefinidos (Con e.firma)
