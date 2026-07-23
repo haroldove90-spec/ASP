@@ -1138,9 +1138,23 @@ export default function App() {
   };
 
   const handleCoordinatorReviewReport = (reportId: string, approve: boolean, technicalJustification: string) => {
-    if (!technicalJustification || technicalJustification.trim().length < 5) {
-      alert("Error (NMX-17025): Debe proporcionar una Justificación Técnica científica obligatoria de al menos 5 caracteres para auditar este cambio.");
-      return;
+    let finalJustification = technicalJustification ? technicalJustification.trim() : "";
+
+    if (finalJustification.length < 5) {
+      const defaultMsg = approve 
+        ? "Dictamen metrológico verificado conforme a la norma NMX-17025 y criterios de calibración EMA." 
+        : "Desviación técnica detectada en la hoja de campo durante la auditoría metrológica de calidad.";
+
+      const userPrompt = prompt(
+        `[AUDITORÍA NMX-17025] Ingrese la Justificación Técnica obligatoria para ${approve ? 'Aprobar' : 'Rechazar por Desviación'} la Hoja de Campo (${reportId}):`,
+        defaultMsg
+      );
+
+      if (!userPrompt || userPrompt.trim().length < 5) {
+        alert("Error (NMX-17025): Debe proporcionar una Justificación Técnica científica obligatoria de al menos 5 caracteres para auditar este cambio.");
+        return;
+      }
+      finalJustification = userPrompt.trim();
     }
 
     const report = submittedReports.find(r => r.id_reporte === reportId);
@@ -1155,7 +1169,7 @@ export default function App() {
           ...r,
           estado: nextStatus,
           aprobado_por: activePersona.nombre_completo,
-          justificacion_coordinador: technicalJustification,
+          justificacion_coordinador: finalJustification,
           timestamp_revision: new Date().toISOString()
         };
       }
@@ -1172,7 +1186,7 @@ export default function App() {
       estado: nextStatus, 
       revisado_por: activePersona.nombre_completo, 
       rol: activePersona.id_role || activePersona.id_rol,
-      justificacion_tecnica: technicalJustification 
+      justificacion_tecnica: finalJustification 
     };
 
     const hash = generarHashIntegridad(
@@ -1182,7 +1196,7 @@ export default function App() {
       "UPDATE",
       JSON.stringify(auditValueAnterior),
       JSON.stringify(auditValueNuevo),
-      technicalJustification
+      finalJustification
     );
 
     const newLog: AuditLog = {
@@ -1195,14 +1209,14 @@ export default function App() {
       accion: "UPDATE",
       valor_anterior: JSON.stringify(auditValueAnterior),
       valor_nuevo: JSON.stringify(auditValueNuevo),
-      justificacion_tecnica: technicalJustification,
+      justificacion_tecnica: finalJustification,
       hash_integridad: hash,
       ip_origen: "192.168.10.12",
       timestamp: new Date().toISOString()
     };
 
     saveStateToLocalStorage(undefined, undefined, undefined, [newLog, ...auditLogs]);
-    alert(`Reporte ${approve ? 'Aprobado' : 'Rechazado'} correctamente. Se ha generado un registro inalterable de auditoría (NMX-17025).`);
+    alert(`Reporte ${approve ? 'Aprobado' : 'Rechazado por Desviación'} correctamente. Se ha generado un registro inalterable de auditoría (NMX-17025).`);
   };
 
   const handleResetData = () => {

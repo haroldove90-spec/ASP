@@ -1973,7 +1973,6 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                         <button
                           onClick={() => {
                             handleCoordinatorReviewReport(report.id_reporte, false, coordinatorJustifications[report.id_reporte] || "");
-                            alert("Hoja de campo retornada al analista por inconsistencias de calidad.");
                           }}
                           className="flex-1 py-1.5 bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-200 rounded font-semibold transition-colors cursor-pointer text-center"
                         >
@@ -1982,7 +1981,6 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                         <button
                           onClick={() => {
                             handleCoordinatorReviewReport(report.id_reporte, true, coordinatorJustifications[report.id_reporte] || "");
-                            alert("Hoja de campo validada correctamente por Garantía de Calidad.");
                           }}
                           className="flex-1 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded font-bold transition-colors shadow-sm cursor-pointer text-center"
                         >
