@@ -190,28 +190,56 @@ export default function DirectorViews(props: DirectorViewsProps) {
   });
   const [selectedRoleForPermEditing, setSelectedRoleForPermEditing] = useState('ing_campo');
   const [localRolePermissions, setLocalRolePermissions] = useState<Record<string, string[]>>(() => {
-    return { ...ROLE_PERMISSIONS_MAP };
+    const saved = localStorage.getItem('aspechs_role_permissions');
+    return saved ? JSON.parse(saved) : { ...ROLE_PERMISSIONS_MAP };
   });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_role_permissions', JSON.stringify(localRolePermissions));
+  }, [localRolePermissions]);
 
   // Catalogs and Parameters States
   const [catalogType, setCatalogType] = useState<'servicios' | 'normas' | 'parametros'>('servicios');
-  const [catalogServices, setCatalogServices] = useState<any[]>([
-    { id: "S1", nombre: "Mapeo Metrológico de Ruido NOM-011", costo: 15000, duracion: "2 días" },
-    { id: "S2", nombre: "Evaluación Lumínica Ocupacional NOM-025", costo: 12000, duracion: "1 día" },
-    { id: "S3", nombre: "Estudio de Condiciones Térmicas NOM-015", costo: 14000, duracion: "1 día" },
-    { id: "S4", nombre: "Servicio de Calibración Acreditada EMA", costo: 4500, duracion: "1 día" }
-  ]);
-  const [catalogNorms, setCatalogNorms] = useState<any[]>([
-    { id: "N1", clave: "NOM-011-STPS-2001", nombre: "Condiciones de seguridad e higiene en los centros de trabajo donde se genere ruido." },
-    { id: "N2", clave: "NOM-025-STPS-2008", nombre: "Condiciones de iluminación en los centros de trabajo." },
-    { id: "N3", clave: "NOM-015-STPS-2001", nombre: "Condiciones térmicas elevadas o abatidas - Condiciones de seguridad e higiene." }
-  ]);
-  const [systemParameters, setSystemParameters] = useState<any[]>([
-    { clave: "IVA_TASA", valor: "0.16", descripcion: "Tasa del Impuesto al Valor Agregado" },
-    { clave: "POSTGRESQL_SSL", valor: "REQUERIDO", descripcion: "Exigir SSL/TLS en conexiones de base de datos" },
-    { clave: "NOM151_PROVIDER", valor: "PSC_AUTORIZADO_MEX", descripcion: "Proveedor de Constancias de Conservación de Mensajes de Datos" },
-    { clave: "JWT_EXPIRATION_MINUTES", valor: "480", descripcion: "Tiempo de expiración de sesión de usuario" }
-  ]);
+  const [catalogServices, setCatalogServices] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_catalog_services');
+    return saved ? JSON.parse(saved) : [
+      { id: "S1", nombre: "Mapeo Metrológico de Ruido NOM-011", costo: 15000, duracion: "2 días" },
+      { id: "S2", nombre: "Evaluación Lumínica Ocupacional NOM-025", costo: 12000, duracion: "1 día" },
+      { id: "S3", nombre: "Estudio de Condiciones Térmicas NOM-015", costo: 14000, duracion: "1 día" },
+      { id: "S4", nombre: "Servicio de Calibración Acreditada EMA", costo: 4500, duracion: "1 día" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_catalog_services', JSON.stringify(catalogServices));
+  }, [catalogServices]);
+
+  const [catalogNorms, setCatalogNorms] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_catalog_norms');
+    return saved ? JSON.parse(saved) : [
+      { id: "N1", clave: "NOM-011-STPS-2001", nombre: "Condiciones de seguridad e higiene en los centros de trabajo donde se genere ruido." },
+      { id: "N2", clave: "NOM-025-STPS-2008", nombre: "Condiciones de iluminación en los centros de trabajo." },
+      { id: "N3", clave: "NOM-015-STPS-2001", nombre: "Condiciones térmicas elevadas o abatidas - Condiciones de seguridad e higiene." }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_catalog_norms', JSON.stringify(catalogNorms));
+  }, [catalogNorms]);
+
+  const [systemParameters, setSystemParameters] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_system_parameters');
+    return saved ? JSON.parse(saved) : [
+      { clave: "IVA_TASA", valor: "0.16", descripcion: "Tasa del Impuesto al Valor Agregado" },
+      { clave: "POSTGRESQL_SSL", valor: "REQUERIDO", descripcion: "Exigir SSL/TLS en conexiones de base de datos" },
+      { clave: "NOM151_PROVIDER", valor: "PSC_AUTORIZADO_MEX", descripcion: "Proveedor de Constancias de Conservación de Mensajes de Datos" },
+      { clave: "JWT_EXPIRATION_MINUTES", valor: "480", descripcion: "Tiempo de expiración de sesión de usuario" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_system_parameters', JSON.stringify(systemParameters));
+  }, [systemParameters]);
 
   const [isAddCatalogItemOpen, setIsAddCatalogItemOpen] = useState(false);
   const [newCatalogItemName, setNewCatalogItemName] = useState("");

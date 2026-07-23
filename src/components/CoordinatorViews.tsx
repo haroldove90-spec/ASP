@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   FileSpreadsheet, 
@@ -135,12 +135,19 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
   const [poInputDate, setPoInputDate] = useState("");
 
   // Initial Services List
-  const [servicesList, setServicesList] = useState([
-    { id: "SRV-NOM011", name: "Estudio de Ruido Ocupacional (NOM-011)", norm: "NOM-011-STPS-2001", price: 12500, desc: "Evaluación de niveles máximos de ruido ocupacional y dosimetrías por jornada.", method: "Método de dosimetría de ruido integrado", equip: "Sonómetro Integrador Clase 1", duration: "3 días" },
-    { id: "SRV-NOM025", name: "Evaluación de Niveles de Iluminación (NOM-025)", norm: "NOM-025-STPS-2008", price: 8500, desc: "Determinación de los niveles de iluminación en áreas de trabajo y puestos individuales.", method: "Método de malla de luxometría digital", equip: "Luxómetro de Precisión", duration: "2 días" },
-    { id: "SRV-NOM015", name: "Condiciones Térmicas Extremas (NOM-015)", norm: "NOM-015-STPS-2001", price: 14000, desc: "Medición de índice de temperatura de globo bulbo húmedo (TGBH) en fuentes de calor.", method: "Método de índice de estrés térmico TGBH", equip: "Monitor de Estrés Térmico", duration: "4 días" },
-    { id: "SRV-NOM024", name: "Medición de Vibraciones (NOM-024)", norm: "NOM-024-STPS-1993", price: 18000, desc: "Evaluación de vibraciones en cuerpo entero y de extremidades superiores de operadores.", method: "Análisis espectral con acelerómetros de contacto", equip: "Vibrómetro de Cuerpo Entero", duration: "5 días" },
-  ]);
+  const [servicesList, setServicesList] = useState(() => {
+    const saved = localStorage.getItem('aspechs_coord_services');
+    return saved ? JSON.parse(saved) : [
+      { id: "SRV-NOM011", name: "Estudio de Ruido Ocupacional (NOM-011)", norm: "NOM-011-STPS-2001", price: 12500, desc: "Evaluación de niveles máximos de ruido ocupacional y dosimetrías por jornada.", method: "Método de dosimetría de ruido integrado", equip: "Sonómetro Integrador Clase 1", duration: "3 días" },
+      { id: "SRV-NOM025", name: "Evaluación de Niveles de Iluminación (NOM-025)", norm: "NOM-025-STPS-2008", price: 8500, desc: "Determinación de los niveles de iluminación en áreas de trabajo y puestos individuales.", method: "Método de malla de luxometría digital", equip: "Luxómetro de Precisión", duration: "2 días" },
+      { id: "SRV-NOM015", name: "Condiciones Térmicas Extremas (NOM-015)", norm: "NOM-015-STPS-2001", price: 14000, desc: "Medición de índice de temperatura de globo bulbo húmedo (TGBH) en fuentes de calor.", method: "Método de índice de estrés térmico TGBH", equip: "Monitor de Estrés Térmico", duration: "4 días" },
+      { id: "SRV-NOM024", name: "Medición de Vibraciones (NOM-024)", norm: "NOM-024-STPS-1993", price: 18000, desc: "Evaluación de vibraciones en cuerpo entero y de extremidades superiores de operadores.", method: "Análisis espectral con acelerómetros de contacto", equip: "Vibrómetro de Cuerpo Entero", duration: "5 días" },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_coord_services', JSON.stringify(servicesList));
+  }, [servicesList]);
 
   // Initial Norms List
   const [normsList] = useState([
@@ -151,18 +158,32 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
   ]);
 
   // Work Orders List
-  const [odtList, setOdtList] = useState([
-    { id: "ODT-2026-101", client: "Metalúrgica del Norte S.A.", service: "Estudio de Ruido (NOM-011)", tech: "Lucía Juárez", date: "2026-07-20", status: "Pendiente Revisión Técnica", notes: "Requiere calibración de sonómetro antes de salir." },
-    { id: "ODT-2026-102", client: "Plásticos Globales de México", service: "Evaluación Iluminación (NOM-025)", tech: "Ing. Juan Pérez", date: "2026-07-22", status: "Pendiente Revisión Técnica", notes: "Áreas de alta precisión en almacén y empaque." },
-    { id: "ODT-2026-103", client: "Extractora de Minerales S.A.", service: "Estrés Térmico (NOM-015)", tech: "Lucía Juárez", date: "2026-07-25", status: "Pre-Aprobada", notes: "Trabajos en cercanías de calderas de vapor.", signedBy: "Ing. Carlos Slim Jr." }
-  ]);
+  const [odtList, setOdtList] = useState(() => {
+    const saved = localStorage.getItem('aspechs_coord_odts');
+    return saved ? JSON.parse(saved) : [
+      { id: "ODT-2026-101", client: "Metalúrgica del Norte S.A.", service: "Estudio de Ruido (NOM-011)", tech: "Lucía Juárez", date: "2026-07-20", status: "Pendiente Revisión Técnica", notes: "Requiere calibración de sonómetro antes de salir." },
+      { id: "ODT-2026-102", client: "Plásticos Globales de México", service: "Evaluación Iluminación (NOM-025)", tech: "Ing. Juan Pérez", date: "2026-07-22", status: "Pendiente Revisión Técnica", notes: "Áreas de alta precisión en almacén y empaque." },
+      { id: "ODT-2026-103", client: "Extractora de Minerales S.A.", service: "Estrés Térmico (NOM-015)", tech: "Lucía Juárez", date: "2026-07-25", status: "Pre-Aprobada", notes: "Trabajos en cercanías de calderas de vapor.", signedBy: "Ing. Carlos Slim Jr." }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_coord_odts', JSON.stringify(odtList));
+  }, [odtList]);
 
   // Laboratory Studies List
-  const [studiesList, setStudiesList] = useState([
-    { id: "EST-2026-901", client: "Metalúrgica del Norte S.A.", studyType: "Dosimetría de Ruido NOM-011", date: "2026-07-14", analyst: "Lucía Juárez", readings: "85.2 dB, 88.7 dB, 90.1 dB", status: "Pendiente Validación", metrologicalTraceability: "Sonómetro EQ-SON-055 calibrado EMA con vigencia hasta Nov 2026", hash: "SHA256:d82e11...9f8a", temperature: "24.5 °C", humidity: "45%" },
-    { id: "EST-2026-902", client: "Alimentos Congelados del Centro", studyType: "Presión Sonora de Bandas de Octava", date: "2026-07-15", analyst: "Lucía Juárez", readings: "74.1 dB, 79.5 dB, 81.3 dB", status: "Pendiente Validación", metrologicalTraceability: "Sonómetro EQ-SON-091 calibrado EMA con vigencia hasta Dic 2026", hash: "SHA256:f12a88...c774", temperature: "22.1 °C", humidity: "40%" },
-    { id: "EST-2026-903", client: "Cemex Planta Monterrey", studyType: "Evaluación de Ruido de Impacto", date: "2026-07-16", analyst: "Lucía Juárez", readings: "112.5 dB, 114.2 dB", status: "Validado", metrologicalTraceability: "Sonómetro EQ-SON-055 calibrado EMA", hash: "SHA256:9cb812...0df6", validator: "Ing. Carlos Slim Jr.", signature: "e.firma SAT SHA256:a215fe...338eaef4" }
-  ]);
+  const [studiesList, setStudiesList] = useState(() => {
+    const saved = localStorage.getItem('aspechs_coord_studies');
+    return saved ? JSON.parse(saved) : [
+      { id: "EST-2026-901", client: "Metalúrgica del Norte S.A.", studyType: "Dosimetría de Ruido NOM-011", date: "2026-07-14", analyst: "Lucía Juárez", readings: "85.2 dB, 88.7 dB, 90.1 dB", status: "Pendiente Validación", metrologicalTraceability: "Sonómetro EQ-SON-055 calibrado EMA con vigencia hasta Nov 2026", hash: "SHA256:d82e11...9f8a", temperature: "24.5 °C", humidity: "45%" },
+      { id: "EST-2026-902", client: "Alimentos Congelados del Centro", studyType: "Presión Sonora de Bandas de Octava", date: "2026-07-15", analyst: "Lucía Juárez", readings: "74.1 dB, 79.5 dB, 81.3 dB", status: "Pendiente Validación", metrologicalTraceability: "Sonómetro EQ-SON-091 calibrado EMA con vigencia hasta Dic 2026", hash: "SHA256:f12a88...c774", temperature: "22.1 °C", humidity: "40%" },
+      { id: "EST-2026-903", client: "Cemex Planta Monterrey", studyType: "Evaluación de Ruido de Impacto", date: "2026-07-16", analyst: "Lucía Juárez", readings: "112.5 dB, 114.2 dB", status: "Validado", metrologicalTraceability: "Sonómetro EQ-SON-055 calibrado EMA", hash: "SHA256:9cb812...0df6", validator: "Ing. Carlos Slim Jr.", signature: "e.firma SAT SHA256:a215fe...338eaef4" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_coord_studies', JSON.stringify(studiesList));
+  }, [studiesList]);
 
   // State for Service Creation
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
@@ -181,14 +202,29 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
   const [studyValidationNotes, setStudyValidationNotes] = useState<Record<string, string>>({});
 
   // --- GERENCIA DE CALIDAD STATES ---
-  const [qaNonConformities, setQaNonConformities] = useState([
-    { id: "NC-2026-001", ODT: "ODT-2026-101", hallazgo: "Desviación en calibración del sonómetro EQ-SON-055 detectado antes del servicio", origen: "Auditoría Interna", gravedad: "Media", responsable: "Lucía Juárez", fecha_deteccion: "2026-07-15", status: "Abierta", accion_correctiva: "Recalibración con patrón acústico Clase 1 y re-certificación inmediata." },
-    { id: "NC-2026-002", ODT: "ODT-2026-098", hallazgo: "Falta de firma del resguardo de equipo luxómetro por parte del ingeniero de campo", origen: "Revisión Documental", gravedad: "Baja", responsable: "Ing. Juan Pérez", fecha_deteccion: "2026-07-12", status: "Cerrada", accion_correctiva: "Firma digital del resguardo completada con SHA256." }
-  ]);
-  const [gcAudits, setGcAudits] = useState([
-    { id: "AUD-2026-01", tipo: "Interna ISO/IEC 17025", auditor_lider: "M. en C. Adriana Garza", fecha_inicio: "2026-07-01", fecha_fin: "2026-07-03", observaciones: 2, status: "Completada" },
-    { id: "AUD-2026-02", tipo: "Vigilancia EMA (Entidad Mexicana de Acreditación)", auditor_lider: "Dr. Roberto Valdés (EMA)", fecha_inicio: "2026-08-15", fecha_fin: "2026-08-17", observaciones: 0, status: "Programada" }
-  ]);
+  const [qaNonConformities, setQaNonConformities] = useState(() => {
+    const saved = localStorage.getItem('aspechs_qa_non_conformities');
+    return saved ? JSON.parse(saved) : [
+      { id: "NC-2026-001", ODT: "ODT-2026-101", hallazgo: "Desviación en calibración del sonómetro EQ-SON-055 detectado antes del servicio", origen: "Auditoría Interna", gravedad: "Media", responsable: "Lucía Juárez", fecha_deteccion: "2026-07-15", status: "Abierta", accion_correctiva: "Recalibración con patrón acústico Clase 1 y re-certificación inmediata." },
+      { id: "NC-2026-002", ODT: "ODT-2026-098", hallazgo: "Falta de firma del resguardo de equipo luxómetro por parte del ingeniero de campo", origen: "Revisión Documental", gravedad: "Baja", responsable: "Ing. Juan Pérez", fecha_deteccion: "2026-07-12", status: "Cerrada", accion_correctiva: "Firma digital del resguardo completada con SHA256." }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_qa_non_conformities', JSON.stringify(qaNonConformities));
+  }, [qaNonConformities]);
+
+  const [gcAudits, setGcAudits] = useState(() => {
+    const saved = localStorage.getItem('aspechs_gc_audits');
+    return saved ? JSON.parse(saved) : [
+      { id: "AUD-2026-01", tipo: "Interna ISO/IEC 17025", auditor_lider: "M. en C. Adriana Garza", fecha_inicio: "2026-07-01", fecha_fin: "2026-07-03", observaciones: 2, status: "Completada" },
+      { id: "AUD-2026-02", tipo: "Vigilancia EMA (Entidad Mexicana de Acreditación)", auditor_lider: "Dr. Roberto Valdés (EMA)", fecha_inicio: "2026-08-15", fecha_fin: "2026-08-17", observaciones: 0, status: "Programada" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_gc_audits', JSON.stringify(gcAudits));
+  }, [gcAudits]);
   const [isAddNcOpen, setIsAddNcOpen] = useState(false);
   const [newNcForm, setNewNcForm] = useState({
     hallazgo: '',

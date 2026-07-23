@@ -395,6 +395,10 @@ export default function App() {
     ];
   });
 
+  useEffect(() => {
+    localStorage.setItem('aspechs_submitted_reports', JSON.stringify(submittedReports));
+  }, [submittedReports]);
+
   // Dynamic Home/Dashboard States
   const [jornadaIniciada, setJornadaIniciada] = useState<boolean>(() => {
     return localStorage.getItem('aspechs_jornada_iniciada') === 'true';
@@ -1838,6 +1842,7 @@ export default function App() {
                 generatedQuotes={generatedQuotes}
                 handleGenerateQuote={handleAdminGenerateQuote}
                 invoices={invoices}
+                setInvoices={setInvoices}
                 handleToggleInvoiceStatus={handleToggleInvoiceStatus}
                 financials={financials}
                 DB_SCHEMA_SQL={DB_SCHEMA_SQL}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   UserPlus, 
   DollarSign, 
@@ -124,60 +124,67 @@ export default function AdminViews(props: AdminViewsProps) {
   const [serverDossier, setServerDossier] = useState<any | null>(null);
 
   // --- CRM & CLIENTS ADVANCED STATES ---
-  const [clientsList, setClientsList] = useState<any[]>([
-    {
-      id: "CLI-001",
-      razon_social: "Aceros de México S.A. de C.V.",
-      rfc: "AME841012TS9",
-      direccion: "Av. Constitución 400, Monterrey, NL",
-      contacto_nombre: "Ing. Juan Gómez",
-      contacto_email: "compras@acerosmex.com",
-      contacto_telefono: "811-555-0199",
-      sector: "Metalúrgico",
-      estado: "Activo",
-      pipeline_stage: "negotiation",
-      fecha_registro: "2026-01-15"
-    },
-    {
-      id: "CLI-002",
-      razon_social: "Farmacéutica del Norte S.A. de C.V.",
-      rfc: "FNO981105RE4",
-      direccion: "Paseo de la Reforma 1200, Ciudad de México",
-      contacto_nombre: "Dra. Sofía Méndez",
-      contacto_email: "s.mendez@farnorte.com",
-      contacto_telefono: "555-123-4567",
-      sector: "Farmacéutico",
-      estado: "Activo",
-      pipeline_stage: "quoted",
-      fecha_registro: "2026-02-20"
-    },
-    {
-      id: "CLI-003",
-      razon_social: "Alimentos Procesados Bajío S.A.",
-      rfc: "APB100220UY3",
-      direccion: "Blvd. Adolfo López Mateos 15, León, Gto",
-      contacto_nombre: "Lic. Pedro Torres",
-      contacto_email: "ptorres@alimentosbajio.mx",
-      contacto_telefono: "477-987-6543",
-      sector: "Alimentos",
-      estado: "Prospecto",
-      pipeline_stage: "lead",
-      fecha_registro: "2026-04-10"
-    },
-    {
-      id: "CLI-004",
-      razon_social: "Refinería Tuxpan S.A. de C.V.",
-      rfc: "RTU750403KL8",
-      direccion: "Zona Industrial Lote 4, Tuxpan, Ver",
-      contacto_nombre: "Ing. Carlos Ruiz",
-      contacto_email: "cruiz@refineriatuxpan.com",
-      contacto_telefono: "783-111-2233",
-      sector: "Petroquímico",
-      estado: "Activo",
-      pipeline_stage: "won",
-      fecha_registro: "2026-05-02"
-    }
-  ]);
+  const [clientsList, setClientsList] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_clients_list');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: "CLI-001",
+        razon_social: "Aceros de México S.A. de C.V.",
+        rfc: "AME841012TS9",
+        direccion: "Av. Constitución 400, Monterrey, NL",
+        contacto_nombre: "Ing. Juan Gómez",
+        contacto_email: "compras@acerosmex.com",
+        contacto_telefono: "811-555-0199",
+        sector: "Metalúrgico",
+        estado: "Activo",
+        pipeline_stage: "negotiation",
+        fecha_registro: "2026-01-15"
+      },
+      {
+        id: "CLI-002",
+        razon_social: "Farmacéutica del Norte S.A. de C.V.",
+        rfc: "FNO981105RE4",
+        direccion: "Paseo de la Reforma 1200, Ciudad de México",
+        contacto_nombre: "Dra. Sofía Méndez",
+        contacto_email: "s.mendez@farnorte.com",
+        contacto_telefono: "555-123-4567",
+        sector: "Farmacéutico",
+        estado: "Activo",
+        pipeline_stage: "quoted",
+        fecha_registro: "2026-02-20"
+      },
+      {
+        id: "CLI-003",
+        razon_social: "Alimentos Procesados Bajío S.A.",
+        rfc: "APB100220UY3",
+        direccion: "Blvd. Adolfo López Mateos 15, León, Gto",
+        contacto_nombre: "Lic. Pedro Torres",
+        contacto_email: "ptorres@alimentosbajio.mx",
+        contacto_telefono: "477-987-6543",
+        sector: "Alimentos",
+        estado: "Prospecto",
+        pipeline_stage: "lead",
+        fecha_registro: "2026-04-10"
+      },
+      {
+        id: "CLI-004",
+        razon_social: "Refinería Tuxpan S.A. de C.V.",
+        rfc: "RTU750403KL8",
+        direccion: "Zona Industrial Lote 4, Tuxpan, Ver",
+        contacto_nombre: "Ing. Carlos Ruiz",
+        contacto_email: "cruiz@refineriatuxpan.com",
+        contacto_telefono: "783-111-2233",
+        sector: "Petroquímico",
+        estado: "Activo",
+        pipeline_stage: "won",
+        fecha_registro: "2026-05-02"
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_clients_list', JSON.stringify(clientsList));
+  }, [clientsList]);
 
   const [clientsSearchQuery, setClientsSearchQuery] = useState("");
   const [editingClient, setEditingClient] = useState<any | null>(null);
@@ -193,35 +200,42 @@ export default function AdminViews(props: AdminViewsProps) {
     pipeline_stage: "lead"
   });
 
-  const [trackingNotes, setTrackingNotes] = useState<any[]>([
-    {
-      id: "TRK-001",
-      cliente_id: "CLI-001",
-      cliente_nombre: "Aceros de México S.A. de C.V.",
-      fecha: "2026-07-10T14:30:00Z",
-      tipo: "Llamada",
-      comentario: "Se contactó al Ing. Gómez para revisar la cotización de ruido de la NOM-011. Comenta que el departamento de compras está revisando el presupuesto final.",
-      usuario: "Sofía Méndez"
-    },
-    {
-      id: "TRK-002",
-      cliente_id: "CLI-002",
-      cliente_nombre: "Farmacéutica del Norte S.A. de C.V.",
-      fecha: "2026-07-12T11:00:00Z",
-      tipo: "Reunión",
-      comentario: "Reunión técnica virtual de alineación sobre los puntos de medición de la NOM-025. Se validó que el laboratorio de metrología cuenta con calibración vigente de luxómetros ante EMA.",
-      usuario: "Sofía Méndez"
-    },
-    {
-      id: "TRK-003",
-      cliente_id: "CLI-003",
-      cliente_nombre: "Alimentos Procesados Bajío S.A.",
-      fecha: "2026-07-15T09:45:00Z",
-      tipo: "Correo",
-      comentario: "Se envió la cotización formal con el desglose de IVA y viáticos estimados. Quedaron de enviar comentarios antes del fin de semana.",
-      usuario: "Sofía Méndez"
-    }
-  ]);
+  const [trackingNotes, setTrackingNotes] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_tracking_notes');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: "TRK-001",
+        cliente_id: "CLI-001",
+        cliente_nombre: "Aceros de México S.A. de C.V.",
+        fecha: "2026-07-10T14:30:00Z",
+        tipo: "Llamada",
+        comentario: "Se contactó al Ing. Gómez para revisar la cotización de ruido de la NOM-011. Comenta que el departamento de compras está revisando el presupuesto final.",
+        usuario: "Sofía Méndez"
+      },
+      {
+        id: "TRK-002",
+        cliente_id: "CLI-002",
+        cliente_nombre: "Farmacéutica del Norte S.A. de C.V.",
+        fecha: "2026-07-12T11:00:00Z",
+        tipo: "Reunión",
+        comentario: "Reunión técnica virtual de alineación sobre los puntos de medición de la NOM-025. Se validó que el laboratorio de metrología cuenta con calibración vigente de luxómetros ante EMA.",
+        usuario: "Sofía Méndez"
+      },
+      {
+        id: "TRK-003",
+        cliente_id: "CLI-003",
+        cliente_nombre: "Alimentos Procesados Bajío S.A.",
+        fecha: "2026-07-15T09:45:00Z",
+        tipo: "Correo",
+        comentario: "Se envió la cotización formal con el desglose de IVA y viáticos estimados. Quedaron de enviar comentarios antes del fin de semana.",
+        usuario: "Sofía Méndez"
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_tracking_notes', JSON.stringify(trackingNotes));
+  }, [trackingNotes]);
 
   const [selectedClientForTracking, setSelectedClientForTracking] = useState<string>("all");
   const [newTrackingNote, setNewTrackingNote] = useState({
@@ -2183,7 +2197,11 @@ export default function AdminViews(props: AdminViewsProps) {
                     fecha_vencimiento: newInvoiceDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     uuid_sat: "3E" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-40CF-8F12-E5FA26D81C10"
                   };
-                  setExtraInvoices([...extraInvoices, newInv]);
+                  if (setInvoices) {
+                    setInvoices([...invoices, newInv]);
+                  } else {
+                    setExtraInvoices([...extraInvoices, newInv]);
+                  }
                   setIsAddInvoiceOpen(false);
                   alert(`¡Factura CFDI emitida con éxito! Timbrada ante el SAT con UUID: ${newInv.uuid_sat}`);
                 }}
