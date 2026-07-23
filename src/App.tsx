@@ -1840,6 +1840,7 @@ export default function App() {
                 leadFormData={leadFormData}
                 setLeadFormData={setLeadFormData}
                 generatedQuotes={generatedQuotes}
+                setGeneratedQuotes={setGeneratedQuotes}
                 handleGenerateQuote={handleAdminGenerateQuote}
                 invoices={invoices}
                 setInvoices={setInvoices}
