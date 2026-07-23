@@ -72,10 +72,28 @@ import HomeSelection from './components/HomeSelection';
 
 export default function App() {
   // Session / Active Role state for dynamic landing page
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string | null>(() => {
+    return localStorage.getItem('aspechs_selected_role') || null;
+  });
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<string>('dir_dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return localStorage.getItem('aspechs_active_tab') || 'dir_dashboard';
+  });
+
+  useEffect(() => {
+    if (selectedRole) {
+      localStorage.setItem('aspechs_selected_role', selectedRole);
+    } else {
+      localStorage.removeItem('aspechs_selected_role');
+    }
+  }, [selectedRole]);
+
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('aspechs_active_tab', activeTab);
+    }
+  }, [activeTab]);
 
   const getRoleCategory = (roleId: string | null) => {
     if (!roleId) return 'director';
@@ -378,35 +396,73 @@ export default function App() {
   });
 
   // Dynamic Home/Dashboard States
-  const [jornadaIniciada, setJornadaIniciada] = useState<boolean>(false);
-  const [jornadaStartTime, setJornadaStartTime] = useState<string>("");
+  const [jornadaIniciada, setJornadaIniciada] = useState<boolean>(() => {
+    return localStorage.getItem('aspechs_jornada_iniciada') === 'true';
+  });
+  const [jornadaStartTime, setJornadaStartTime] = useState<string>(() => {
+    return localStorage.getItem('aspechs_jornada_start_time') || "";
+  });
   const [_jornadaGPS, setJornadaGPS] = useState<string>("");
 
+  useEffect(() => {
+    localStorage.setItem('aspechs_jornada_iniciada', String(jornadaIniciada));
+    localStorage.setItem('aspechs_jornada_start_time', jornadaStartTime);
+  }, [jornadaIniciada, jornadaStartTime]);
+
   // Cotizador States for Admin/Ventas
-  const [generatedQuotes, setGeneratedQuotes] = useState<any[]>([
-    { id: "COT-001", cliente: "Vidriera del Norte", servicio: "NOM-011-STPS (Ruido)", puntos: 10, costo: 24500, fecha: "2026-07-10", estado: "Enviado" },
-    { id: "COT-002", cliente: "Papelera de Occidente", servicio: "NOM-015-STPS (Térmicas)", puntos: 4, costo: 15200, fecha: "2026-07-12", estado: "Aceptado" },
-  ]);
+  const [generatedQuotes, setGeneratedQuotes] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_generated_quotes');
+    return saved ? JSON.parse(saved) : [
+      { id: "COT-001", cliente: "Vidriera del Norte", servicio: "NOM-011-STPS (Ruido)", puntos: 10, costo: 24500, fecha: "2026-07-10", estado: "Enviado" },
+      { id: "COT-002", cliente: "Papelera de Occidente", servicio: "NOM-015-STPS (Térmicas)", puntos: 4, costo: 15200, fecha: "2026-07-12", estado: "Aceptado" },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_generated_quotes', JSON.stringify(generatedQuotes));
+  }, [generatedQuotes]);
 
   // Invoice control state for Admin/Ventas and Director
-  const [invoices, setInvoices] = useState<any[]>([
-    { id_factura: 1, cliente: "Vidriera del Norte", monto: 24500, estado: "Pendiente", vencimiento: "2026-08-10" },
-    { id_factura: 2, cliente: "Papelera de Occidente", monto: 15200, estado: "Pagado", vencimiento: "2026-07-30" },
-    { id_factura: 3, cliente: "Cementos de Hidalgo", monto: 45000, estado: "Pagado", vencimiento: "2026-06-15" },
-    { id_factura: 4, cliente: "Metales de Saltillo", monto: 18900, estado: "Vencido", vencimiento: "2026-07-01" },
-  ]);
+  const [invoices, setInvoices] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_invoices');
+    return saved ? JSON.parse(saved) : [
+      { id_factura: 1, cliente: "Vidriera del Norte", monto: 24500, estado: "Pendiente", vencimiento: "2026-08-10" },
+      { id_factura: 2, cliente: "Papelera de Occidente", monto: 15200, estado: "Pagado", vencimiento: "2026-07-30" },
+      { id_factura: 3, cliente: "Cementos de Hidalgo", monto: 45000, estado: "Pagado", vencimiento: "2026-06-15" },
+      { id_factura: 4, cliente: "Metales de Saltillo", monto: 18900, estado: "Vencido", vencimiento: "2026-07-01" },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_invoices', JSON.stringify(invoices));
+  }, [invoices]);
 
   // Service Calendar Tasks for Coordinador
-  const [scheduledServices, setScheduledServices] = useState<any[]>([
-    { id_servicio: "SERV-101", cliente_nombre: "Arneses del Eje S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-15", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
-    { id_servicio: "SERV-102", cliente_nombre: "Química de Coahuila S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-16", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
-  ]);
+  const [scheduledServices, setScheduledServices] = useState<any[]>(() => {
+    const saved = localStorage.getItem('aspechs_scheduled_services');
+    return saved ? JSON.parse(saved) : [
+      { id_servicio: "SERV-101", cliente_nombre: "Arneses del Eje S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-15", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
+      { id_servicio: "SERV-102", cliente_nombre: "Química de Coahuila S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-16", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_scheduled_services', JSON.stringify(scheduledServices));
+  }, [scheduledServices]);
 
   // Mobile Sidebar State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Simulator Persona State (Roberto Fernández is selected by default as the Director)
-  const [currentPersonaId, setCurrentPersonaId] = useState<string>("e88b48f9-4d6d-478a-aef4-4f40d12ea661");
+  // Persona State
+  const [currentPersonaId, setCurrentPersonaId] = useState<string>(() => {
+    return localStorage.getItem('aspechs_current_persona_id') || "e88b48f9-4d6d-478a-aef4-4f40d12ea661";
+  });
+
+  useEffect(() => {
+    if (currentPersonaId) {
+      localStorage.setItem('aspechs_current_persona_id', currentPersonaId);
+    }
+  }, [currentPersonaId]);
   
   // App Data States (with LocalStorage fallback or initialization)
   const [usuarios, setUsuarios] = useState<Usuario[]>(() => {
@@ -428,6 +484,22 @@ export default function App() {
     const saved = localStorage.getItem('aspechs_audit_logs');
     return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
   });
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_usuarios', JSON.stringify(usuarios));
+  }, [usuarios]);
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_instruments', JSON.stringify(instruments));
+  }, [instruments]);
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_certificates', JSON.stringify(certificates));
+  }, [certificates]);
+
+  useEffect(() => {
+    localStorage.setItem('aspechs_audit_logs', JSON.stringify(auditLogs));
+  }, [auditLogs]);
 
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>(() => {
     const saved = localStorage.getItem('aspechs_purchase_orders');
@@ -1382,6 +1454,13 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    setSelectedRole(null);
+    localStorage.removeItem('aspechs_selected_role');
+    localStorage.removeItem('aspechs_active_tab');
+    setIsMobileSidebarOpen(false);
+  };
+
   if (selectedRole === null) {
     return <HomeSelection onSelectRole={handleOnLogin} />;
   }
@@ -1428,7 +1507,7 @@ export default function App() {
           
           <div className="mt-6 pt-6 border-t border-white/20">
             <button
-              onClick={() => setSelectedRole(null)}
+              onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-left text-xs font-bold text-white hover:bg-white/10 hover:text-red-100 cursor-pointer"
             >
               <Home className="w-4.5 h-4.5 shrink-0 text-red-100" />
@@ -1498,7 +1577,7 @@ export default function App() {
 
                 <div className="mt-6 pt-6 border-t border-white/20">
                   <button
-                    onClick={() => { setSelectedRole(null); setIsMobileSidebarOpen(false); }}
+                    onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-left text-xs font-bold text-white hover:bg-white/10 hover:text-red-100 cursor-pointer"
                   >
                     <Home className="w-4.5 h-4.5 shrink-0 text-red-100" />

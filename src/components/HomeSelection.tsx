@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../supabaseClient";
+import { DB_SCHEMA_SQL } from "../db_schema_sql";
 import { Usuario } from "../initial_data";
 import { downloadCredentialsPdf } from "../utils/credentialsPdf";
 
@@ -641,80 +642,7 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
     }
   };
 
-  const SQL_SCRIPT = `-- =====================================================================
--- SCRIPT DE BASE DE DATOS PARA CONFIGURAR SUPABASE - ASP/EcH&S
--- Copia este script y ejecútalo en la consola SQL Editor de Supabase
--- =====================================================================
-
--- 1. CREACIÓN DE LA TABLA DE ROLES
-CREATE TABLE IF NOT EXISTS roles (
-    id_rol VARCHAR(50) PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    descripcion TEXT,
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 2. CREACIÓN DE LA TABLA DE USUARIOS
-CREATE TABLE IF NOT EXISTS usuarios (
-    id_usuario UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nombre_completo VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    id_rol VARCHAR(50) NOT NULL REFERENCES roles(id_rol),
-    puesto VARCHAR(100),
-    firma_electronica_fingerprint VARCHAR(128),
-    esta_activo BOOLEAN DEFAULT TRUE NOT NULL,
-    ultimo_acceso TIMESTAMP WITH TIME ZONE,
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 3. SEED DE ROLES PREDEFINIDOS EN SUPABASE
-INSERT INTO roles (id_rol, nombre, descripcion) VALUES
-('ceo', 'CEO / Alta Dirección', 'Director General. Consulta estratégica de indicadores clave de rendimiento, firma legal de contratos de calibración.'),
-('dir_op', 'Director de Operaciones', 'Supervisión global de cumplimiento, aprobación de calibraciones y visualización del Audit Trail.'),
-('dir_at_cl', 'Director de Atención a Clientes', 'Gestión comercial de cotizaciones, seguimiento a clientes oficiales.'),
-('ger_tec', 'Gerente Técnico / Responsable Técnico', 'Aprobación técnica de calibraciones, auditorías de calibración de equipos.'),
-('ger_cal', 'Gerente de Calidad', 'Supervisión de cumplimiento de normativas de acreditación y certificación (ISO/IEC 17025).'),
-('jefe_rep', 'Gerente de Reportes', 'Emisión y revisión de informes técnicos finales.'),
-('jefe_alm', 'Jefe de Almacén', 'Control logístico de entrega y recepción de instrumentos y materiales.'),
-('coord_lab', 'Coordinador de Laboratorio', 'Programación de servicios, calibraciones internas, validación de bitácoras de laboratorio.'),
-('jefe_op', 'Gerente de Operaciones', 'Monitoreo de avances en ODT, asignación de ingenieros a servicios.'),
-('ing_campo', 'Ingeniero de Campo', 'Levantamiento físico de mediciones, captura de hojas de campo y calibraciones in situ.'),
-('sys_admin', 'Administrador de Sistemas', 'Gestión de usuarios, asignación estricta de roles, auditoría de seguridad informática.')
-ON CONFLICT (id_rol) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion;
-
--- 4. SEED DE USUARIOS PREDEFINIDOS EN SUPABASE
-INSERT INTO usuarios (id_usuario, nombre_completo, email, password_hash, id_rol, puesto, firma_electronica_fingerprint, esta_activo) VALUES
-('01000000-0000-0000-0000-000000000001', 'Ing. Daniel Treviño Reyes', 'daniel.trevino@aspechs.com.mx', 'DanielT2026!', 'ceo', 'CEO', 'SHA256:CEO_DT_88129A (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000002', 'Lic. Carlos Ayala', 'carlos.ayala@aspechs.com.mx', 'CarlosA2026!', 'dir_at_cl', 'Director de Atención a Clientes', 'SHA256:DAC_CA_22910B (e.firma SAT)', true),
-('e88b48f9-4d6d-478a-aef4-4f40d12ea661', 'Lic. Roberto Fernández Alanís', 'roberto.fernandez@aspechs.com.mx', 'RobertoF2026!', 'dir_op', 'Director de Operaciones', 'SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a', true),
-('01000000-0000-0000-0000-000000000004', 'Ing. Adalberto Ledezma', 'adalberto.ledezma@aspechs.com.mx', 'AdalbertoL2026!', 'ger_tec', 'Gerente Técnico', 'SHA256:GT_AL_91032C (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000005', 'Bio. Isela Ramos Lozano', 'isela.ramos@aspechs.com.mx', 'IselaR2026!', 'ger_cal', 'Gerente de Calidad', 'SHA256:GC_IR_10293D (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000006', 'Ing. Jasiel Navarro', 'jasiel.navarro@aspechs.com.mx', 'JasielN2026!', 'jefe_rep', 'Gerente de Reportes', 'SHA256:JR_JN_40210E (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000007', 'Abraham Navarro', 'abraham.navarro@aspechs.com.mx', 'AbrahamN2026!', 'jefe_alm', 'Jefe de Almacén', 'SHA256:JA_AN_50321F (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000008', 'Ing. Mauricio Iván Córdoba', 'mauricio.cordoba@aspechs.com.mx', 'MauricioC2026!', 'coord_lab', 'Coordinador de Laboratorio', 'SHA256:CL_MC_60432A (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000009', 'Ing. Juan José Gallegos', 'juan.gallegos@aspechs.com.mx', 'JuanG2026!', 'jefe_op', 'Gerente de Operaciones', 'SHA256:JO_JG_70543B (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000010', 'Ing. Gerardo Daniel Sánchez', 'gerardo.sanchez@aspechs.com.mx', 'GerardoS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_GS_80654C (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000011', 'Ing. Andrés Manuel Gómez', 'andres.gomez@aspechs.com.mx', 'AndresG2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_AG_90765D (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000012', 'Ing. Carlos Sánchez Leal', 'carlos.sanchez@aspechs.com.mx', 'CarlosS2026!', 'ing_campo', 'Ingeniero en Fuentes Fijas', 'SHA256:IC_CS_10876E (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000013', 'Ing. Roberto Paulino Hdz', 'roberto.paulino@aspechs.com.mx', 'RobertoP2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_RP_20987F (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000014', 'Ing. Francisco Cupil', 'francisco.cupil@aspechs.com.mx', 'FranciscoC2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_FC_31098A (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000015', 'Ing. Misael Baltasar', 'misael.baltasar@aspechs.com.mx', 'MisaelB2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_MB_42109B (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000016', 'Ing. Natalia Alfaro', 'natalia.alfaro@aspechs.com.mx', 'NataliaA2026!', 'ing_campo', 'Ingeniero en Termo y OSP', 'SHA256:IC_NA_53210C (e.firma SAT)', true),
-('01000000-0000-0000-0000-000000000017', 'Ing. Baltazar', 'baltazar.hdz@aspechs.com.mx', 'BaltazarH2026!', 'ing_campo', 'Ingeniero en Ambiente Laboral', 'SHA256:IC_IB_64321D (e.firma SAT)', true),
-('91d1c8ea-c774-4b92-ba78-2dfa938c5f59', 'Alejandro Torres', 'alejandro.torres@aspechs.com.mx', 'ASPPass2026!', 'sys_admin', 'Coordinador de Ciberseguridad y TI', 'SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe', true),
-('77000000-0000-0000-0000-000000000099', 'Ing. Harold Anguiano', 'harold.anguiano@aspechs.com.mx', 'Chevropar#1970', 'sys_admin', 'Administrador del Sistema (sys_admin)', 'SHA256:HA_99810A_ADMIN (e.firma SAT)', true)
-ON CONFLICT (email) DO UPDATE SET 
-  id_usuario = EXCLUDED.id_usuario,
-  nombre_completo = EXCLUDED.nombre_completo,
-  password_hash = EXCLUDED.password_hash,
-  id_rol = EXCLUDED.id_rol,
-  puesto = EXCLUDED.puesto,
-  firma_electronica_fingerprint = EXCLUDED.firma_electronica_fingerprint,
-  esta_activo = EXCLUDED.esta_activo;
-`;
+  const SQL_SCRIPT = DB_SCHEMA_SQL;
 
   return (
     <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-6 md:p-12 relative overflow-y-auto">
