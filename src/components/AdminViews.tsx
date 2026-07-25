@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Usuario } from '../initial_data';
+import TierrasFisicasModule from './TierrasFisicasModule';
 
 interface AdminViewsProps {
   activePersona: Usuario;
@@ -1659,6 +1660,16 @@ export default function AdminViews(props: AdminViewsProps) {
             </div>
 
           </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'dac_tierras_fisicas' && (
+        <motion.div
+          key="dac_tierras_fisicas"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <TierrasFisicasModule />
         </motion.div>
       )}
 

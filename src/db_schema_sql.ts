@@ -223,6 +223,73 @@ ON CONFLICT (email) DO UPDATE SET
   puesto = EXCLUDED.puesto,
   firma_electronica_fingerprint = EXCLUDED.firma_electronica_fingerprint,
   esta_activo = EXCLUDED.esta_activo;
+
+-- ==========================================
+-- 5. RECONOCIMIENTO Y EVALUACIÓN DE RESISTENCIAS Y CONTINUIDADES (TIERRAS FÍSICAS - NOM-022-STPS / NMX-EC-17025)
+-- FORMS: F1PAL22-01 / F1PAL22-03
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS tierras_fisicas_evaluaciones (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    no_proyecto VARCHAR(100) NOT NULL,
+    fecha_informe DATE,
+    fechas_evaluacion TEXT,
+    
+    -- Etapa 1: Datos Generales
+    razon_social VARCHAR(255) NOT NULL,
+    nombre_comercial VARCHAR(255),
+    giro VARCHAR(150),
+    domicilio_fiscal TEXT,
+    domicilio_fisico TEXT,
+    telefono VARCHAR(50),
+    reportar_a VARCHAR(255),
+    puesto_contacto VARCHAR(150),
+    rfc VARCHAR(20),
+    descripcion_proceso TEXT,
+    
+    -- Etapa 1: Solicitudes al Cliente
+    layout_empresa VARCHAR(100),
+    programa_mantenimiento VARCHAR(100),
+    trabajo_condiciones_normales VARCHAR(50),
+    horario_jornadas TEXT,
+    descripcion_epp TEXT,
+    controles_tecnicos TEXT,
+    observaciones_cliente TEXT,
+    
+    -- Etapa 2: Fuentes Generadoras de Electricidad Estática (JSONB)
+    fuentes_generadoras JSONB DEFAULT '[]'::jsonb,
+    
+    -- Etapa 3: Información del Proyecto y Equipos de Muestreo
+    no_puntos_evaluar INT DEFAULT 0,
+    conexiones_tierra_count INT DEFAULT 0,
+    pararrayos_count INT DEFAULT 0,
+    areas_cerradas_humedad TEXT,
+    areas_quimicas_peligrosas TEXT,
+    
+    -- Equipos de Muestreo (JSONB)
+    medidor_tierra JSONB DEFAULT '{}'::jsonb,
+    multimetro JSONB DEFAULT '{}'::jsonb,
+    higrometro JSONB DEFAULT '{}'::jsonb,
+    
+    -- Etapa 3 y 4: Verificación de Equipos y Patrones (JSONB)
+    verificacion_patrones JSONB DEFAULT '[]'::jsonb,
+    realizado_por_1 VARCHAR(255),
+    realizado_por_2 VARCHAR(255),
+    superviso_por VARCHAR(255),
+    
+    -- Etapa 5: Puntos de Evaluación de Resistencia y Continuidad (JSONB)
+    puntos_evaluacion JSONB DEFAULT '[]'::jsonb,
+    
+    -- Estado y Trazabilidad
+    estado VARCHAR(50) DEFAULT 'Completado',
+    creado_por VARCHAR(255),
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    hash_integridad VARCHAR(128)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tierras_fisicas_proyecto ON tierras_fisicas_evaluaciones(no_proyecto);
+CREATE INDEX IF NOT EXISTS idx_tierras_fisicas_cliente ON tierras_fisicas_evaluaciones(razon_social);
 `;
 
 export const EXPLICACION_NORMATIVA = [

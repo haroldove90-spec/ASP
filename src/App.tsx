@@ -43,7 +43,8 @@ import {
   ClipboardList,
   Settings,
   Package,
-  Cpu
+  Cpu,
+  Zap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -184,6 +185,7 @@ export default function App() {
           { id: 'dac_clients', label: 'Clientes (Alta/Edición)', icon: Users },
           { id: 'dac_quotes', label: 'Cotizaciones', icon: FileText },
           { id: 'dac_tracking', label: 'Seguimiento y Historial', icon: HelpCircle },
+          { id: 'dac_tierras_fisicas', label: 'Reconocimiento y Evaluación de Resistencias', icon: Zap },
         ];
       case 'ger_tec':
         return [
