@@ -13,10 +13,12 @@ import {
   Hash,
   FileSignature,
   FileSpreadsheet,
-  Info
+  Info,
+  Zap
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, generarHashIntegridad } from '../initial_data';
+import TierrasFisicasModule from './TierrasFisicasModule';
 
 interface TechnicianViewsProps {
   activePersona: Usuario;
@@ -1222,6 +1224,17 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
               })()}
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* EVALUACIÓN DE RESISTENCIAS Y CONTINUIDADES (TIERRAS FÍSICAS) - 5 ETAPAS */}
+      {activeTab === 'ic_tierras_fisicas' && (
+        <motion.div
+          key="ic_tierras_fisicas"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <TierrasFisicasModule />
         </motion.div>
       )}
     </div>

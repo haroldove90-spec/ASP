@@ -236,6 +236,7 @@ export default function App() {
       case 'ing_campo':
         return [
           { id: 'ic_agenda', label: 'Ver Servicios Asignados', icon: Clock },
+          { id: 'ic_tierras_fisicas', label: 'Reconocimiento y Evaluación de Resistencias', icon: Zap },
           { id: 'ic_odt', label: 'Consultar ODT', icon: Activity },
           { id: 'ic_hoja_campo', label: 'Captura Hoja de Campo', icon: Edit3 },
           { id: 'ic_history', label: 'Historial Realizado', icon: FileCheck },
