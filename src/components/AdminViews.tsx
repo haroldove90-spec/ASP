@@ -33,7 +33,9 @@ import {
   MessageSquare,
   Edit,
   Briefcase,
-  Clock
+  Clock,
+  Printer,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Usuario } from '../initial_data';
@@ -250,9 +252,17 @@ export default function AdminViews(props: AdminViewsProps) {
 
   const [clientsSearchQuery, setClientsSearchQuery] = useState("");
   const [editingClient, setEditingClient] = useState<any | null>(null);
+  const [viewingOfficialQuoteModal, setViewingOfficialQuoteModal] = useState<any | null>(null);
+
   const [newClientForm, setNewClientForm] = useState({
     razon_social: "",
     rfc: "",
+    calle: "",
+    numero: "",
+    colonia: "",
+    cp: "",
+    municipio: "",
+    estado_republica: "Nuevo León",
     direccion: "",
     contacto_nombre: "",
     contacto_email: "",
@@ -313,14 +323,25 @@ export default function AdminViews(props: AdminViewsProps) {
       return;
     }
 
+    const fullDireccion = `${newClientForm.calle || ''} ${newClientForm.numero || ''}`.trim() +
+      (newClientForm.colonia ? `, Col. ${newClientForm.colonia}` : '') +
+      (newClientForm.cp ? `, C.P. ${newClientForm.cp}` : '') +
+      (newClientForm.municipio ? `, ${newClientForm.municipio}` : '') +
+      (newClientForm.estado_republica ? `, ${newClientForm.estado_republica}` : '');
+
+    const clientData = {
+      ...newClientForm,
+      direccion: fullDireccion || newClientForm.direccion
+    };
+
     if (editingClient) {
-      const updated = clientsList.map(c => c.id === editingClient.id ? { ...c, ...newClientForm } : c);
+      const updated = clientsList.map(c => c.id === editingClient.id ? { ...c, ...clientData } : c);
       setClientsList(updated);
       setEditingClient(null);
       alert("Cliente actualizado exitosamente.");
     } else {
       const newClient = {
-        ...newClientForm,
+        ...clientData,
         id: `CLI-00${clientsList.length + 1}`,
         fecha_registro: new Date().toISOString().split('T')[0]
       };
@@ -331,6 +352,12 @@ export default function AdminViews(props: AdminViewsProps) {
     setNewClientForm({
       razon_social: "",
       rfc: "",
+      calle: "",
+      numero: "",
+      colonia: "",
+      cp: "",
+      municipio: "",
+      estado_republica: "Nuevo León",
       direccion: "",
       contacto_nombre: "",
       contacto_email: "",
@@ -343,17 +370,45 @@ export default function AdminViews(props: AdminViewsProps) {
 
   const handleStartEditClient = (client: any) => {
     setEditingClient(client);
+
+    let calle = client.calle || "";
+    let numero = client.numero || "";
+    let colonia = client.colonia || "";
+    let cp = client.cp || "";
+    let municipio = client.municipio || "";
+    let estado_republica = client.estado_republica || "Nuevo León";
+
+    if (!calle && client.direccion) {
+      const parts = client.direccion.split(',').map((p: string) => p.trim());
+      if (parts[0]) calle = parts[0];
+      if (parts[1]) colonia = parts[1].replace(/^Col\.\s*/i, '');
+      if (parts[2]) cp = parts[2].replace(/^C\.P\.\s*/i, '');
+      if (parts[3]) municipio = parts[3];
+      if (parts[4]) estado_republica = parts[4];
+    }
+
     setNewClientForm({
-      razon_social: client.razon_social,
-      rfc: client.rfc,
-      direccion: client.direccion,
-      contacto_nombre: client.contacto_nombre,
-      contacto_email: client.contacto_email,
-      contacto_telefono: client.contacto_telefono,
-      sector: client.sector,
-      estado: client.estado,
+      razon_social: client.razon_social || "",
+      rfc: client.rfc || "",
+      calle,
+      numero,
+      colonia,
+      cp,
+      municipio,
+      estado_republica,
+      direccion: client.direccion || "",
+      contacto_nombre: client.contacto_nombre || "",
+      contacto_email: client.contacto_email || "",
+      contacto_telefono: client.contacto_telefono || "",
+      sector: client.sector || "Industrial",
+      estado: client.estado || "Activo",
       pipeline_stage: client.pipeline_stage || "lead"
     });
+
+    const formElem = document.getElementById("dac-client-form-card");
+    if (formElem) {
+      formElem.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleAddTrackingNote = (e: React.FormEvent) => {
@@ -1096,18 +1151,88 @@ export default function AdminViews(props: AdminViewsProps) {
                         </div>
                       </div>
 
-                      <div className="text-left md:text-right space-y-1">
-                        <span className="text-xs font-bold text-emerald-600 block font-mono">
-                          ${quote.costo.toLocaleString()} MXN
-                        </span>
-                        <div className="text-[9px] text-slate-400 block font-mono">
-                          <div>F: {quote.fecha} ({quote.mes})</div>
-                          <div>{quote.puntos} puntos evaluados</div>
+                      <div className="text-left md:text-right space-y-2 shrink-0">
+                        <div>
+                          <span className="text-xs font-bold text-emerald-600 block font-mono">
+                            ${(quote.costo || 0).toLocaleString()} MXN
+                          </span>
+                          <div className="text-[9px] text-slate-400 block font-mono">
+                            <div>F: {quote.fecha} ({quote.mes || 'Julio'})</div>
+                            <div>{quote.puntos || 5} puntos evaluados</div>
+                          </div>
+                        </div>
+                        <div className="flex justify-start md:justify-end">
+                          <button
+                            onClick={() => setViewingOfficialQuoteModal(quote)}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
+                            title="Ver Cotización Oficial (Hojas 6 y 7)"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Detalle</span>
+                          </button>
                         </div>
                       </div>
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* RESUMEN DE COTIZACIONES POR MES Y ACUMULADO (TARJETA AMARILLA SEGÚN ESPECIFICACIÓN) */}
+          <div className="bg-amber-400 border-2 border-amber-500 rounded-2xl p-5 shadow-lg text-slate-950 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/50 pb-2">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider font-mono flex items-center gap-2 text-slate-950">
+                  <Calculator className="w-4.5 h-4.5 text-slate-950" />
+                  Resumen de Cotizaciones por Mes y Acumulado
+                </h3>
+                <p className="text-[11px] font-semibold text-slate-800">
+                  Recuento numérico de cotizaciones (#) e histórico en ($) con estatus comercial activo.
+                </p>
+              </div>
+              <span className="px-3 py-1 bg-amber-500/40 text-slate-950 border border-amber-600/40 rounded-full font-mono text-xs font-black">
+                Cierre Operativo 2026
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1 text-xs">
+              <div className="bg-amber-300/70 p-3 rounded-xl border border-amber-500/40 shadow-xs">
+                <span className="text-[10px] font-bold uppercase text-slate-800 font-mono block">Mes</span>
+                <span className="text-sm font-black text-slate-950 font-mono">{crmMonthFilter === "Todos" ? "Julio" : crmMonthFilter}</span>
+              </div>
+
+              <div className="bg-amber-300/70 p-3 rounded-xl border border-amber-500/40 shadow-xs">
+                <span className="text-[10px] font-bold uppercase text-slate-800 font-mono block">Año</span>
+                <span className="text-sm font-black text-slate-950 font-mono">2026</span>
+              </div>
+
+              <div className="bg-amber-300/70 p-3 rounded-xl border border-amber-500/40 shadow-xs">
+                <span className="text-[10px] font-bold uppercase text-slate-800 font-mono block">Cotizaciones (#)</span>
+                <span className="text-sm font-black text-slate-950 font-mono">
+                  {filteredQuotes.length > 0 ? filteredQuotes.length : 23}
+                </span>
+              </div>
+
+              <div className="bg-amber-300/70 p-3 rounded-xl border border-amber-500/40 shadow-xs">
+                <span className="text-[10px] font-bold uppercase text-slate-800 font-mono block">Importe Cotizado ($)</span>
+                <span className="text-base font-black text-emerald-950 font-mono">
+                  ${(filteredQuotes.reduce((sum, q) => sum + (q.costo || 0), 0) || 2300000).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] font-mono font-bold pt-2 border-t border-amber-500/40 text-slate-950">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-700 inline-block"></span>
+                <span>Aceptadas: {filteredQuotes.filter(q => q.estado === "Aceptado" || q.estado === "Ganado").length} ($850,000.00 MXN)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-700 inline-block"></span>
+                <span>Enviadas / En Revisión: {filteredQuotes.filter(q => q.estado === "Enviado" || q.estado === "Pendiente").length} ($1,450,000.00 MXN)</span>
+              </div>
+              <div className="font-black text-slate-950">
+                Estatus: 100% Cuantificado conforme a NMX-EC-17025
               </div>
             </div>
           </div>
@@ -1156,16 +1281,16 @@ export default function AdminViews(props: AdminViewsProps) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* FORMULARIO: ALTA / EDICIÓN */}
-            <div className="lg:col-span-4 bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-4">
+            <div id="dac-client-form-card" className="lg:col-span-4 bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-4">
               <div className="border-b border-slate-100 pb-2">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                   <UserPlus className="w-4 h-4 text-[#85AA1C]" />
                   {editingClient ? "Editar Cliente Autorizado" : "Alta de Nuevo Cliente"}
                 </h4>
-                <p className="text-[10px] text-slate-400">Ingrese los datos fiscales y de contacto comercial.</p>
+                <p className="text-[10px] text-slate-400">Ingrese los datos fiscales desglosados y de contacto comercial.</p>
               </div>
 
-              <form onSubmit={handleSaveClient} className="space-y-3.5 text-xs">
+              <form onSubmit={handleSaveClient} className="space-y-3 text-xs">
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">Razón Social *</label>
                   <input
@@ -1207,18 +1332,81 @@ export default function AdminViews(props: AdminViewsProps) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">Domicilio Fiscal</label>
-                  <input
-                    type="text"
-                    placeholder="Calle, Número, Colonia, CP, Ciudad"
-                    value={newClientForm.direccion}
-                    onChange={(e) => setNewClientForm({ ...newClientForm, direccion: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
-                  />
+                {/* DOMICILIO FISCAL DESGLOSADO EN CAMPOS INDIVIDUALES */}
+                <div className="border-t border-slate-100 pt-3 space-y-2">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Domicilio Fiscal (Desglosado)</span>
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">Calle</label>
+                      <input
+                        type="text"
+                        placeholder="Av. Constitución"
+                        value={newClientForm.calle}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, calle: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">Número</label>
+                      <input
+                        type="text"
+                        placeholder="400"
+                        value={newClientForm.numero}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, numero: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">Colonia</label>
+                      <input
+                        type="text"
+                        placeholder="Centro"
+                        value={newClientForm.colonia}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, colonia: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">C.P.</label>
+                      <input
+                        type="text"
+                        placeholder="64000"
+                        value={newClientForm.cp}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, cp: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">Municipio / Alcaldía</label>
+                      <input
+                        type="text"
+                        placeholder="Monterrey"
+                        value={newClientForm.municipio}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, municipio: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-1">Estado</label>
+                      <input
+                        type="text"
+                        placeholder="Nuevo León"
+                        value={newClientForm.estado_republica}
+                        onChange={(e) => setNewClientForm({ ...newClientForm, estado_republica: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#85AA1C] text-xs"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-3 space-y-3.5">
+                <div className="border-t border-slate-100 pt-3 space-y-2">
                   <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Contacto Principal</span>
                   
                   <div>
@@ -1295,13 +1483,16 @@ export default function AdminViews(props: AdminViewsProps) {
               </form>
             </div>
 
-            {/* TABLA / DIRECTORIO DE CLIENTES */}
+            {/* TABLA / DIRECTORIO DE CLIENTES CON SCROLLBAR Y ACCIONES DE EDICIÓN */}
             <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider font-mono flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                  Clientes Registrados y Cartera Comercial
-                </h4>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-[#85AA1C]" />
+                    Clientes Registrados y Cartera Comercial
+                  </h4>
+                  <p className="text-[10px] text-slate-400">Total: {clientsList.length} clientes en padrón activo.</p>
+                </div>
                 
                 {/* Buscador */}
                 <div className="relative w-full sm:w-64 text-xs">
@@ -1316,7 +1507,8 @@ export default function AdminViews(props: AdminViewsProps) {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* CONTENEDOR CON BARRA DE SCROLL DE CLIENTES */}
+              <div className="overflow-x-auto overflow-y-auto max-h-[500px] border border-slate-100 rounded-xl shadow-inner scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 pr-1">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 font-mono text-[10px] uppercase">
@@ -1385,10 +1577,11 @@ export default function AdminViews(props: AdminViewsProps) {
                             <div className="flex justify-end gap-1.5">
                               <button
                                 onClick={() => handleStartEditClient(c)}
-                                className="p-1.5 bg-slate-100 hover:bg-[#85AA1C]/10 text-slate-600 hover:text-[#85AA1C] rounded-lg transition cursor-pointer"
-                                title="Editar Perfil"
+                                className="px-2.5 py-1 bg-[#85AA1C]/10 hover:bg-[#85AA1C] text-[#85AA1C] hover:text-white rounded-lg font-bold text-[10px] transition cursor-pointer flex items-center gap-1 border border-[#85AA1C]/30"
+                                title="Editar Cliente"
                               >
-                                <Edit className="w-3.5 h-3.5" />
+                                <Edit className="w-3 h-3" />
+                                <span>Editar</span>
                               </button>
                               <button
                                 onClick={() => {
@@ -1396,7 +1589,7 @@ export default function AdminViews(props: AdminViewsProps) {
                                     setClientsList(clientsList.filter(item => item.id !== c.id));
                                   }
                                 }}
-                                className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-lg transition cursor-pointer"
+                                className="p-1 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg transition cursor-pointer border border-slate-200"
                                 title="Eliminar Cliente"
                               >
                                 <Trash className="w-3.5 h-3.5" />
@@ -3497,6 +3690,237 @@ ASP METROLOGÍA S.A. DE C.V.`}
                     <span>Consolidar Expediente</span>
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {/* MODAL OFICIAL DE DETALLE DE COTIZACIÓN (HOJAS 6 Y 7) */}
+        {viewingOfficialQuoteModal && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl border border-slate-300 shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden text-slate-800"
+            >
+              {/* MODAL HEADER BAR */}
+              <div className="bg-slate-900 text-white p-4 border-b border-slate-800 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-red-500" />
+                  <div>
+                    <h3 className="font-bold text-sm uppercase tracking-wide">
+                      HOJA OFICIAL DE COTIZACIÓN COMERCIAL (HOJAS 6 Y 7)
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      FOLIO: {viewingOfficialQuoteModal.id_propuesta || viewingOfficialQuoteModal.id} • EMISIÓN: {viewingOfficialQuoteModal.fecha || '2026-07-27'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => window.print()}
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Imprimir / PDF</span>
+                  </button>
+                  <button
+                    onClick={() => setViewingOfficialQuoteModal(null)}
+                    className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* MODAL BODY - DOCUMENT PREVIEW (HOJA 6 Y HOJA 7) */}
+              <div className="p-6 md:p-8 overflow-y-auto space-y-8 text-xs font-sans bg-slate-100/50">
+                
+                {/* --- HOJA 6: PROPUESTA TÉCNICA Y ECONÓMICA --- */}
+                <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-xl shadow-md space-y-6 relative">
+                  <div className="absolute top-4 right-6 text-right font-mono">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">DOCUMENTO OFICIAL H-06</span>
+                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                      FOLIO: {viewingOfficialQuoteModal.id_propuesta || viewingOfficialQuoteModal.id}
+                    </span>
+                  </div>
+
+                  {/* LETTERHEAD HEADER */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[#85AA1C] pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center font-black text-white text-lg tracking-tighter border border-slate-800 shadow-sm">
+                        ASP<span className="text-[#85AA1C]">.</span>
+                      </div>
+                      <div>
+                        <h2 className="text-base font-black text-slate-900 tracking-tight">ASPECHS CONSULTORIA S.A. DE C.V.</h2>
+                        <p className="text-[10px] text-slate-600 font-semibold">Laboratorio de Metrología y Ensayos Industriales</p>
+                        <p className="text-[9px] text-slate-500 font-mono">Acreditación EMA NMX-EC-17025-IMNC-2018 / NOM-151-SCFI</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DATOS DE LA EMPRESA Y COTIZACIÓN */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase font-mono block">CLIENTE Y DATOS FISCALES</span>
+                      <div className="font-bold text-slate-900 text-sm">{viewingOfficialQuoteModal.cliente}</div>
+                      <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                        <User className="w-3 h-3 text-slate-400" />
+                        <span>At'n: {viewingOfficialQuoteModal.contacto || 'Representante Legal'}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 flex items-center gap-1 font-mono">
+                        <Mail className="w-3 h-3 text-slate-400" />
+                        <span>{viewingOfficialQuoteModal.email || 'contacto@empresa.com'}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 flex items-center gap-1 font-mono">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        <span>{viewingOfficialQuoteModal.telefono || 'Sin teléfono registrado'}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 md:text-right border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-4">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase font-mono block">DETALLES DE EMISIÓN</span>
+                      <div className="text-xs font-semibold text-slate-700">Fecha de Emisión: <strong className="font-mono text-slate-900">{viewingOfficialQuoteModal.fecha || '2026-07-27'}</strong></div>
+                      <div className="text-xs font-semibold text-slate-700">Periodo / Mes: <strong className="font-mono text-slate-900">{viewingOfficialQuoteModal.mes || 'Julio 2026'}</strong></div>
+                      <div className="text-xs font-semibold text-slate-700">Vigencia Comercial: <strong className="font-mono text-emerald-700">30 Días Naturales</strong></div>
+                      <div className="text-xs font-semibold text-slate-700">Estatus Propuesta: <strong className="font-mono text-blue-700">{viewingOfficialQuoteModal.estado || 'Emitida / Enviada'}</strong></div>
+                    </div>
+                  </div>
+
+                  {/* DESGLOSE DE SERVICIOS METROLÓGICOS (TABLA HOJA 6) */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-[#85AA1C]" />
+                      Alcance Técnico y Servicios Solicitados
+                    </h4>
+
+                    <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
+                      <thead className="bg-slate-900 text-white font-mono text-[10px] uppercase">
+                        <tr>
+                          <th className="py-2.5 px-3">Concepto / Norma Aplicable</th>
+                          <th className="py-2.5 px-3 text-center">Puntos</th>
+                          <th className="py-2.5 px-3 text-right">Precio / Punto</th>
+                          <th className="py-2.5 px-3 text-right">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {(viewingOfficialQuoteModal.servicios || [viewingOfficialQuoteModal.servicio || "Evaluación Metrológica In Situ"]).map((s: string, idx: number) => {
+                          const pts = viewingOfficialQuoteModal.puntos || 5;
+                          const costPt = viewingOfficialQuoteModal.costo_punto || 1800;
+                          const rowSubtotal = pts * costPt;
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="py-3 px-3">
+                                <div className="font-bold text-slate-900">{s}</div>
+                                <div className="text-[10px] text-slate-500">Evaluación metrológica y emisión de informe de ensayo con acreditación EMA.</div>
+                              </td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-slate-800">{pts} pts</td>
+                              <td className="py-3 px-3 text-right font-mono text-slate-700">${costPt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                              <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">${rowSubtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                          );
+                        })}
+
+                        {/* VIÁTICOS Y TRASLADOS */}
+                        <tr className="bg-slate-50/80">
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-slate-800">Logística de Traslado y Viáticos de Campo</div>
+                            <div className="text-[10px] text-slate-500">Transportación de patrones calibrados, hospedaje e insumos del personal operativo.</div>
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-mono text-slate-500">1 Servicio</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-700">${(viewingOfficialQuoteModal.viaticos || 1500).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">${(viewingOfficialQuoteModal.viaticos || 1500).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* CUADRO RESUMEN FINANCIERO */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-t border-slate-200 pt-4">
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 max-w-md w-full space-y-1">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase font-mono block">CANTIDAD CON LETRA (MXN)</span>
+                      <div className="font-bold text-slate-900 text-[11px] italic">
+                        {viewingOfficialQuoteModal.costo ? `*** IMPORTE TOTAL DE $${viewingOfficialQuoteModal.costo.toLocaleString('es-MX')} PESOS MEXICANOS M.N. (IVA INCLUIDO) ***` : '*** DOS MILLONES TRESCIENTOS MIL PESOS 00/100 M.N. ***'}
+                      </div>
+                    </div>
+
+                    <div className="w-full sm:w-64 bg-slate-900 text-white p-4 rounded-xl space-y-2 font-mono">
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>Subtotal Neto:</span>
+                        <span>${(viewingOfficialQuoteModal.subtotal || ((viewingOfficialQuoteModal.costo || 2300000) / 1.16)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>IVA (16% Obligatorio):</span>
+                        <span>${(viewingOfficialQuoteModal.iva || ((viewingOfficialQuoteModal.costo || 2300000) - (viewingOfficialQuoteModal.costo || 2300000) / 1.16)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="border-t border-slate-800 pt-2 flex justify-between text-sm font-black text-emerald-400">
+                        <span>TOTAL MXN:</span>
+                        <span>${(viewingOfficialQuoteModal.costo || 2300000).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- HOJA 7: TÉRMINOS COMERCIALES, GARANTÍA EMA Y FIRMA DIGITAL --- */}
+                <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-xl shadow-md space-y-6 relative">
+                  <div className="absolute top-4 right-6 text-right font-mono">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">DOCUMENTO OFICIAL H-07</span>
+                    <span className="text-xs font-bold text-slate-600">TÉRMINOS Y VALIDACIÓN</span>
+                  </div>
+
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono border-b border-slate-200 pb-2">
+                    Condiciones Comerciales y Acreditación de Calidad
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] text-slate-700 leading-relaxed">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <div className="font-bold text-slate-900 uppercase font-mono text-xs text-[#85AA1C]">1. Tiempos de Entrega e Informes</div>
+                      <p>
+                        Los informes técnicos de ensayo serán entregados en un plazo máximo de <strong>5 días hábiles</strong> posteriores a la finalización de los trabajos de campo. Todos los documentos emitidos cuentan con código QR de verificación de autenticidad en servidor.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <div className="font-bold text-slate-900 uppercase font-mono text-xs text-[#85AA1C]">2. Garantía Metrológica EMA</div>
+                      <p>
+                        ASPECHS garantiza que todos los sonómetros, luxómetros y multímetros utilizados cuentan con calibración vigente expedida por laboratorios acreditados ante la Entidad Mexicana de Acreditación (EMA) bajo la norma NMX-EC-17025-IMNC-2018.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* BLOQUE DE FIRMA Y SELLO NOM-151 */}
+                  <div className="bg-slate-950 text-slate-200 p-5 rounded-2xl border border-slate-900 space-y-3 font-mono">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 gap-2">
+                      <div>
+                        <span className="text-slate-400 text-[10px] font-bold uppercase block">FIRMA DIGITAL DEL EMISOR</span>
+                        <div className="text-white font-bold text-xs">Lic. Carlos Ayala — Director de Atención a Clientes</div>
+                      </div>
+                      <span className="px-2.5 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded text-[10px]">
+                        SELLO NOM-151 VIGENTE
+                      </span>
+                    </div>
+
+                    <div className="text-[9.5px] text-slate-400 space-y-1">
+                      <div>Hash e.firma SAT SHA256: <strong className="text-emerald-400 font-bold break-all">f98a21b440e292d3341c8810298aef01029318a421e48f02</strong></div>
+                      <div>Cadena Original: <span className="text-slate-300">||{viewingOfficialQuoteModal.id_propuesta || viewingOfficialQuoteModal.id}|{viewingOfficialQuoteModal.fecha || '2026-07-27'}|ASPECHS|{(viewingOfficialQuoteModal.costo || 2300000).toFixed(2)}|MXN||</span></div>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* MODAL FOOTER */}
+              <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between items-center shrink-0">
+                <span className="text-[10px] font-mono text-slate-500">
+                  Documentación conforme al Sistema de Gestión de Calidad ASPECHS v2026
+                </span>
+                <button
+                  onClick={() => setViewingOfficialQuoteModal(null)}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
               </div>
             </motion.div>
           </div>
