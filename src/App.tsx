@@ -120,7 +120,7 @@ export default function App() {
       'dir_quotes', 'dir_odt', 'dir_agenda', 'dir_engineers',
       'coord_agenda', 'coord_inventory', 'coord_validation',
       'tech_agenda', 'tech_epp', 'tech_mediciones', 'tech_muestras',
-      'admin_crm', 'admin_finance', 'admin_results'
+      'admin_crm', 'admin_finance', 'admin_results', 'dac_agenda'
     ].includes(tabId)) {
       return tabId;
     }
@@ -184,6 +184,7 @@ export default function App() {
         return [
           { id: 'dac_clients', label: 'Clientes (Alta/Edición)', icon: Users },
           { id: 'dac_quotes', label: 'Cotizaciones', icon: FileText },
+          { id: 'dac_agenda', label: 'Agenda y Calendarización', icon: Calendar },
           { id: 'dac_tracking', label: 'Seguimiento y Historial', icon: HelpCircle },
           { id: 'dac_tierras_fisicas', label: 'Reconocimiento y Evaluación de Resistencias', icon: Zap },
         ];
@@ -1871,6 +1872,8 @@ export default function App() {
                 reportTemplates={reportTemplates}
                 setReportTemplates={setReportTemplates}
                 submittedReports={submittedReports}
+                scheduledServices={scheduledServices}
+                setScheduledServices={setScheduledServices}
               />
             )}
 

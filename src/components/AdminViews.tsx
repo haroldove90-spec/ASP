@@ -69,6 +69,10 @@ interface AdminViewsProps {
   reportTemplates: any[];
   setReportTemplates?: (templates: any[]) => void;
   selectedRole?: string;
+
+  // Shared agenda / scheduled services states
+  scheduledServices?: any[];
+  setScheduledServices?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export default function AdminViews(props: AdminViewsProps) {
@@ -91,6 +95,63 @@ export default function AdminViews(props: AdminViewsProps) {
     reportTemplates,
     setReportTemplates
   } = props;
+
+  const scheduledServices = props.scheduledServices || [];
+  const setScheduledServices = props.setScheduledServices;
+
+  // --- DIRECTOR DE ATENCIÓN A CLIENTES (DAC) AGENDA STATES & HANDLERS ---
+  const [dacSelectedDay, setDacSelectedDay] = useState<string>("2026-07-20");
+  const [dacNewScheduleForm, setDacNewScheduleForm] = useState({
+    cliente_nombre: '',
+    servicio: 'Mapeo de Ruido NOM-011',
+    fecha: '2026-07-20'
+  });
+  const [dacEditingService, setDacEditingService] = useState<any | null>(null);
+
+  const handleDacScheduleWork = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dacNewScheduleForm.cliente_nombre || !dacNewScheduleForm.fecha || !dacNewScheduleForm.servicio) {
+      alert("Por favor complete el nombre de la empresa, la fecha y el tipo de servicio.");
+      return;
+    }
+    if (!setScheduledServices) return;
+
+    const newService = {
+      id_servicio: `SERV-${100 + scheduledServices.length + 1}`,
+      cliente_nombre: dacNewScheduleForm.cliente_nombre,
+      servicio: dacNewScheduleForm.servicio,
+      fecha: dacNewScheduleForm.fecha,
+      id_tecnico: '',
+      id_instrumento: '',
+      estado: 'Pendiente de Asignación'
+    };
+
+    setScheduledServices([newService, ...scheduledServices]);
+    setDacNewScheduleForm({
+      cliente_nombre: '',
+      servicio: 'Mapeo de Ruido NOM-011',
+      fecha: dacSelectedDay || '2026-07-20'
+    });
+    alert(`Trabajo calendarizado con éxito para "${newService.cliente_nombre}" el día ${newService.fecha}. El Gerente de Operaciones asignará al Ingeniero de Campo.`);
+  };
+
+  const handleDacSaveEditService = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dacEditingService || !setScheduledServices) return;
+
+    const updated = scheduledServices.map(s => 
+      s.id_servicio === dacEditingService.id_servicio ? dacEditingService : s
+    );
+    setScheduledServices(updated);
+    setDacEditingService(null);
+    alert("Datos de la calendarización actualizados correctamente.");
+  };
+
+  const handleDacDeleteService = (id_servicio: string) => {
+    if (!confirm(`¿Está seguro de eliminar o cancelar el trabajo ${id_servicio}?`)) return;
+    if (!setScheduledServices) return;
+    setScheduledServices(scheduledServices.filter(s => s.id_servicio !== id_servicio));
+  };
 
   // New shared/local result & templates UI states
   const [activeSubTab, setActiveSubTab] = useState<"results" | "cascaron">("results");
@@ -1351,6 +1412,340 @@ export default function AdminViews(props: AdminViewsProps) {
             </div>
 
           </div>
+        </motion.div>
+      )}
+
+      {/* DAC AGENDA / CALENDARIZACIÓN (DIRECTOR DE ATENCIÓN A CLIENTES) */}
+      {activeTab === 'dac_agenda' && (
+        <motion.div
+          key="dac_agenda"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          {/* Header Banner */}
+          <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-800 shadow-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#85AA1C]/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#85AA1C] font-bold bg-[#85AA1C]/10 border border-[#85AA1C]/20 px-2.5 py-0.5 rounded-full inline-block">
+                  Atribución: Director de Atención a Clientes
+                </span>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-[#85AA1C]" />
+                  Calendarización y Programación de Servicios
+                </h2>
+                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                  Usted puede agendar y programar nuevos trabajos registrando únicamente el <strong>Nombre de la Empresa</strong>, la <strong>Fecha del Servicio</strong> y el <strong>Tipo de Servicio</strong>.
+                  La asignación del Ingeniero de Campo correspondiente la realizará el Gerente de Operaciones.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-emerald-400">
+                  {scheduledServices.length} Servicios en Agenda
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Layout: Left = Monthly Calendar, Right = Form & List */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Interactive Calendar Grid */}
+            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-150">
+                <span className="text-xs font-bold text-slate-800 font-mono flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#85AA1C]" />
+                  Julio 2026 — Vista Mensual de Agenda
+                </span>
+                <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider">
+                  Haga clic en un día para seleccionar la fecha
+                </span>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 bg-slate-100 p-1.5 rounded-lg text-center font-mono text-[10px]">
+                {['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'].map(day => (
+                  <div key={day} className="py-1 font-bold text-slate-400 uppercase text-[9px]">{day}</div>
+                ))}
+
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={`empty-${i}`} className="bg-slate-50/50 min-h-[70px] rounded p-1"></div>
+                ))}
+
+                {Array.from({ length: 31 }).map((_, idx) => {
+                  const dayNum = idx + 1;
+                  const dateStr = `2026-07-${dayNum.toString().padStart(2, '0')}`;
+                  const dayServices = scheduledServices.filter(s => s.fecha === dateStr);
+                  const isSelected = dacSelectedDay === dateStr;
+
+                  return (
+                    <button
+                      key={dayNum}
+                      onClick={() => {
+                        setDacSelectedDay(dateStr);
+                        setDacNewScheduleForm(prev => ({ ...prev, fecha: dateStr }));
+                      }}
+                      className={`min-h-[70px] rounded p-1 text-left flex flex-col justify-between transition-all relative hover:border-[#85AA1C] ${
+                        isSelected 
+                          ? 'bg-lime-50 border-2 border-[#85AA1C] ring-2 ring-[#85AA1C]/20 shadow-sm' 
+                          : 'bg-white border border-slate-150'
+                      }`}
+                    >
+                      <span className={`font-bold text-[9px] ${isSelected ? 'text-[#85AA1C] font-black' : 'text-slate-500'}`}>{dayNum}</span>
+                      <div className="space-y-0.5 mt-1 overflow-hidden w-full">
+                        {dayServices.slice(0, 2).map(ds => (
+                          <div 
+                            key={ds.id_servicio} 
+                            className={`text-[7px] p-0.5 rounded leading-none font-sans font-bold truncate max-w-full ${
+                              ds.id_tecnico 
+                                ? 'bg-emerald-600 text-white' 
+                                : 'bg-amber-500 text-slate-950 font-extrabold'
+                            }`}
+                            title={`${ds.cliente_nombre}: ${ds.servicio} (${ds.id_tecnico ? 'Asignado' : 'Pendiente Asignación'})`}
+                          >
+                            {ds.id_servicio}: {ds.cliente_nombre.split(' ')[0]}
+                          </div>
+                        ))}
+                        {dayServices.length > 2 && (
+                          <div className="text-[7px] text-[#85AA1C] font-bold font-sans text-center mt-0.5">
+                            +{dayServices.length - 2} más
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Scheduling Panel for Director de Atención al Cliente */}
+            <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4">
+              <div className="border-b border-slate-200 pb-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-[#85AA1C]" />
+                  Calendarizar Nuevo Trabajo
+                </h4>
+                <p className="text-[10px] text-slate-500">
+                  Defina la empresa, fecha y tipo de servicio.
+                </p>
+              </div>
+
+              <form onSubmit={handleDacScheduleWork} className="space-y-3.5 text-xs">
+                <div className="space-y-1">
+                  <label className="block text-slate-600 font-bold uppercase text-[9px]">
+                    1. Nombre de la Empresa / Planta *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Ternium Planta Churubusco / Pemex Refinería"
+                    value={dacNewScheduleForm.cliente_nombre}
+                    onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, cliente_nombre: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-600 font-bold uppercase text-[9px]">
+                    2. Fecha del Servicio *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={dacNewScheduleForm.fecha}
+                    onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, fecha: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-600 font-bold uppercase text-[9px]">
+                    3. Tipo de Servicio *
+                  </label>
+                  <select
+                    value={dacNewScheduleForm.servicio}
+                    onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, servicio: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                  >
+                    <option value="Mapeo de Ruido NOM-011">Mapeo de Ruido NOM-011</option>
+                    <option value="Dosimetría de Ruido NOM-011">Dosimetría de Ruido NOM-011</option>
+                    <option value="Estudio de Iluminación NOM-025">Estudio de Iluminación NOM-025</option>
+                    <option value="Evaluación de Vibraciones NOM-024">Evaluación de Vibraciones NOM-024</option>
+                    <option value="Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)">Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)</option>
+                    <option value="Estudio de Calidad de Energía NOM-001">Estudio de Calidad de Energía NOM-001</option>
+                    <option value="Medición de Emisiones Atmosféricas NOM-043">Medición de Emisiones Atmosféricas NOM-043</option>
+                  </select>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200/60 p-2.5 rounded-lg text-[10px] text-amber-800 font-medium leading-relaxed">
+                  <strong>Nota sobre Ingeniero de Campo:</strong> Al calendarizar desde Atención a Clientes, el trabajo queda registrado como <em>"Pendiente de Asignación por Operaciones"</em>. El Gerente de Operaciones asignará al técnico en la agenda.
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-[#85AA1C] hover:bg-lime-600 text-white font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1.5 shadow-md shadow-lime-700/10 uppercase tracking-wider cursor-pointer"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Calendarizar Trabajo</span>
+                </button>
+              </form>
+            </div>
+
+          </div>
+
+          {/* Table of Scheduled Services with Edit/Delete for Director de Atención al Cliente */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+            <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-[#85AA1C]" />
+                  Control de Trabajos Calendarizados por Atención a Clientes
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Usted puede modificar la fecha, el nombre de la empresa o el servicio metrológico de cualquier registro.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-mono uppercase text-slate-400">
+                    <th className="p-3 font-bold">ID Servicio</th>
+                    <th className="p-3 font-bold">Empresa / Cliente</th>
+                    <th className="p-3 font-bold">Fecha del Servicio</th>
+                    <th className="p-3 font-bold">Tipo de Servicio</th>
+                    <th className="p-3 font-bold">Estado Asignación</th>
+                    <th className="p-3 font-bold text-center">Acciones (DAC)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                  {scheduledServices.map((service) => {
+                    const tech = usuarios.find(u => u.id_usuario === service.id_tecnico);
+                    return (
+                      <tr key={service.id_servicio} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3 font-mono font-bold text-emerald-700">{service.id_servicio}</td>
+                        <td className="p-3 font-bold text-slate-900">{service.cliente_nombre}</td>
+                        <td className="p-3 font-mono font-bold text-slate-700">{service.fecha}</td>
+                        <td className="p-3 text-slate-600 font-medium">{service.servicio}</td>
+                        <td className="p-3">
+                          {tech ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle className="w-3 h-3" />
+                              {tech.nombre_completo}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <Clock className="w-3 h-3" />
+                              Pendiente Asignación por Operaciones
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setDacEditingService(service);
+                              }}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Modificar Empresa, Fecha o Servicio"
+                            >
+                              <Edit className="w-3 h-3 text-slate-600" />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDacDeleteService(service.id_servicio)}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                              title="Cancelar/Eliminar Trabajo"
+                            >
+                              <Trash className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Edit Modal for DAC */}
+          {dacEditingService && (
+            <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
+                <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                    <Edit className="w-4 h-4 text-[#85AA1C]" />
+                    Modificar Trabajo ({dacEditingService.id_servicio})
+                  </h3>
+                  <button 
+                    onClick={() => setDacEditingService(null)} 
+                    className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleDacSaveEditService} className="space-y-3.5 text-xs">
+                  <div className="space-y-1">
+                    <label className="block text-slate-600 font-bold uppercase text-[9px]">Nombre de la Empresa / Cliente *</label>
+                    <input
+                      type="text"
+                      required
+                      value={dacEditingService.cliente_nombre}
+                      onChange={(e) => setDacEditingService({ ...dacEditingService, cliente_nombre: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-600 font-bold uppercase text-[9px]">Fecha del Servicio *</label>
+                    <input
+                      type="date"
+                      required
+                      value={dacEditingService.fecha}
+                      onChange={(e) => setDacEditingService({ ...dacEditingService, fecha: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-600 font-bold uppercase text-[9px]">Tipo de Servicio *</label>
+                    <select
+                      value={dacEditingService.servicio}
+                      onChange={(e) => setDacEditingService({ ...dacEditingService, servicio: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                    >
+                      <option value="Mapeo de Ruido NOM-011">Mapeo de Ruido NOM-011</option>
+                      <option value="Dosimetría de Ruido NOM-011">Dosimetría de Ruido NOM-011</option>
+                      <option value="Estudio de Iluminación NOM-025">Estudio de Iluminación NOM-025</option>
+                      <option value="Evaluación de Vibraciones NOM-024">Evaluación de Vibraciones NOM-024</option>
+                      <option value="Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)">Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)</option>
+                      <option value="Estudio de Calidad de Energía NOM-001">Estudio de Calidad de Energía NOM-001</option>
+                      <option value="Medición de Emisiones Atmosféricas NOM-043">Medición de Emisiones Atmosféricas NOM-043</option>
+                    </select>
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDacEditingService(null)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-[#85AA1C] hover:bg-lime-600 text-white font-bold rounded-lg text-xs cursor-pointer"
+                    >
+                      Guardar Cambios
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
