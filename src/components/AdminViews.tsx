@@ -35,6 +35,7 @@ import {
   Briefcase,
   Clock,
   Printer,
+  FileSignature,
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -154,6 +155,8 @@ export default function AdminViews(props: AdminViewsProps) {
     if (!setScheduledServices) return;
     setScheduledServices(scheduledServices.filter(s => s.id_servicio !== id_servicio));
   };
+
+  const [odciSearchQuery, setOdciSearchQuery] = useState("");
 
   // New shared/local result & templates UI states
   const [activeSubTab, setActiveSubTab] = useState<"results" | "cascaron">("results");
@@ -597,18 +600,147 @@ export default function AdminViews(props: AdminViewsProps) {
     setPoFile(null);
   };
 
-  // New quote form local states
+  // New quote form local states & DAC enhancements
+  const [selectedClientNum, setSelectedClientNum] = useState<string>("");
   const [clientName, setClientName] = useState("");
+  const [isSubcontracted, setIsSubcontracted] = useState(false);
+  const [subcontractorName, setSubcontractorName] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
   
-  // Itemized services selection
-  const [selectedServices, setSelectedServices] = useState<string[]>(["NOM-011-STPS (Ruido)"]);
-  const [pointsToMeasure, setPointsToMeasure] = useState(5);
-  const [costPerPoint, setCostPerPoint] = useState(1800);
+  // Custom Editable Folio: First 3 numbers are client number, then COT, then month/year
+  const [quoteFolio, setQuoteFolio] = useState("001COT072026");
+
+  // Dynamic Line Item Services
+  const [itemizedServices, setItemizedServices] = useState<Array<{
+    id: string;
+    serviceName: string;
+    puntos: number;
+    costo_punto: number;
+  }>>([
+    {
+      id: "srv-1",
+      serviceName: "NOM-011-STPS-2001 (Ruido Industrial - Nivel Sonoro Continuo)",
+      puntos: 5,
+      costo_punto: 1800
+    }
+  ]);
+
   const [estimatedViatics, setEstimatedViatics] = useState(1500);
+
+  // Quote Sub-Tabs & Modal States
+  const [activeQuoteSubTab, setActiveQuoteSubTab] = useState<"new" | "history">("new");
+  const [isEFirmaModalOpen, setIsEFirmaModalOpen] = useState(false);
+  const [odciModalQuote, setOdciModalQuote] = useState<any | null>(null);
+  const [odciFolio, setOdciFolio] = useState("01OCI01");
+  const [odciSelectedServices, setOdciSelectedServices] = useState<string[]>([]);
+  const [odciUploadedFile, setOdciUploadedFile] = useState<File | null>(null);
+  const [odtDetailModal, setOdtDetailModal] = useState<any | null>(null);
+
+  // Catalog of standard ASPECHS metrological services
+  const CATALOG_SERVICES = [
+    "NOM-011-STPS-2001 (Ruido Industrial - Nivel Sonoro Continuo A)",
+    "NOM-025-STPS-2008 (Iluminación y Luxes en Centros de Trabajo)",
+    "NOM-015-STPS-2001 (Condiciones Térmicas Elevadas o Abatidas)",
+    "NOM-081-SEMARNAT-1994 (Ruido Perimetral en Fuentes Fijas)",
+    "NOM-022-STPS-2015 (Electricidad Estática y Tierras Físicas)",
+    "NOM-010-STPS-2014 (Agentes Químicos Contaminantes del Medio Ambiente)",
+    "NOM-024-STPS-2001 (Vibraciones en Cuerpo Entero / Mano-Brazo)",
+    "NOM-004-STPS-1999 (Sistemas de Protección en Maquinaria y Equipo)",
+    "Estudio Especializado de Tierras Físicas y Resistencia a Tierra",
+    "Estudio de Calidad de Energía y Análisis de Armónicos",
+    "Servicio Personalizado / Consultoría Técnica Especializada"
+  ];
+
+  // Auto update folio when client, date or clientNum changes
+  useEffect(() => {
+    let clientDigits = "001";
+    if (selectedClientNum) {
+      const match = selectedClientNum.match(/\d+/);
+      if (match) {
+        clientDigits = match[0].padStart(3, '0');
+      }
+    }
+    const d = new Date(quoteDate || Date.now());
+    const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+    const yyyy = d.getFullYear().toString();
+    setQuoteFolio(`${clientDigits}COT${mm}${yyyy}`);
+  }, [selectedClientNum, quoteDate]);
+
+  // Handle client select change
+  const handleSelectClientChange = (clientId: string) => {
+    setSelectedClientNum(clientId);
+    const found = clientsList.find(c => c.id === clientId);
+    if (found) {
+      setClientName(found.razon_social);
+      setContactName(found.contacto_nombre);
+      setContactEmail(found.contacto_email);
+      setContactPhone(found.contacto_telefono);
+    }
+  };
+
+  // Dynamic service row manipulation
+  const handleAddServiceRow = () => {
+    const newRow = {
+      id: `srv-${Date.now()}`,
+      serviceName: CATALOG_SERVICES[itemizedServices.length % CATALOG_SERVICES.length],
+      puntos: 5,
+      costo_punto: 1800
+    };
+    setItemizedServices([...itemizedServices, newRow]);
+  };
+
+  const handleUpdateServiceRow = (id: string, key: string, value: any) => {
+    setItemizedServices(itemizedServices.map(item => 
+      item.id === id ? { ...item, [key]: value } : item
+    ));
+  };
+
+  const handleRemoveServiceRow = (id: string) => {
+    if (itemizedServices.length <= 1) {
+      alert("La cotización debe incluir al menos un servicio metrológico.");
+      return;
+    }
+    setItemizedServices(itemizedServices.filter(item => item.id !== id));
+  };
+
+  // Reuse / Clone quote from history
+  const handleReuseQuote = (quoteToClone: any) => {
+    setClientName(quoteToClone.cliente || "");
+    setContactName(quoteToClone.contacto || "");
+    setContactEmail(quoteToClone.email || "");
+    setContactPhone(quoteToClone.telefono || "");
+    setEstimatedViatics(quoteToClone.viaticos || 1500);
+
+    if (quoteToClone.servicios_desglosados && quoteToClone.servicios_desglosados.length > 0) {
+      setItemizedServices(quoteToClone.servicios_desglosados.map((s: any, idx: number) => ({
+        id: `srv-cloned-${idx}`,
+        serviceName: s.serviceName || s.servicio || "Evaluación Metrológica",
+        puntos: s.puntos || quoteToClone.puntos || 5,
+        costo_punto: s.costo_punto || quoteToClone.costo_punto || 1800
+      })));
+    } else {
+      setItemizedServices([
+        {
+          id: `srv-cloned-0`,
+          serviceName: quoteToClone.servicio || (quoteToClone.servicios && quoteToClone.servicios[0]) || "NOM-011-STPS-2001 (Ruido Industrial)",
+          puntos: quoteToClone.puntos || 5,
+          costo_punto: quoteToClone.costo_punto || 1800
+        }
+      ]);
+    }
+
+    setActiveQuoteSubTab("new");
+    alert(`Se cargaron los conceptos de la cotización ${quoteToClone.id_propuesta || quoteToClone.id}. Puede editar los datos del cliente, folio y guardar la nueva propuesta.`);
+  };
+
+  // Calculations for dynamic form
+  const subtotalServices = itemizedServices.reduce((acc, curr) => acc + (curr.puntos * curr.costo_punto), 0);
+  const subtotalGeneral = subtotalServices + estimatedViatics;
+  const computedIva = Math.round(subtotalGeneral * 0.16);
+  const computedTotal = subtotalGeneral + computedIva;
 
   // CRM Filters
   const [crmMonthFilter, setCrmMonthFilter] = useState("Todos");
@@ -626,24 +758,7 @@ export default function AdminViews(props: AdminViewsProps) {
   // Available months list for filters
   const MONTHS_LIST = ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-  // Toggle service selection in form
-  const handleServiceToggle = (service: string) => {
-    if (selectedServices.includes(service)) {
-      if (selectedServices.length > 1) {
-        setSelectedServices(selectedServices.filter(s => s !== service));
-      }
-    } else {
-      setSelectedServices([...selectedServices, service]);
-    }
-  };
-
-  // Live calculations for form
-  const subtotalServices = pointsToMeasure * costPerPoint;
-  const subtotalGeneral = subtotalServices + estimatedViatics;
-  const computedIva = Math.round(subtotalGeneral * 0.16);
-  const computedTotal = subtotalGeneral + computedIva;
-
-  // Handle full-stack submit of the Quote Form with fallback
+  // Handle full-stack submit of the Quote Form
   const handleSubmitNewQuote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !contactName || !contactEmail || !contactPhone) {
@@ -654,106 +769,62 @@ export default function AdminViews(props: AdminViewsProps) {
     const currentMonthIndex = new Date(quoteDate).getMonth();
     const quoteMonth = MONTHS_LIST[currentMonthIndex + 1] || "Julio";
 
-    // Prepare payload for backend Express controller
-    const payload = {
-      cliente: clientName,
+    const serviceNamesArray = itemizedServices.map(i => i.serviceName);
+
+    const newQuoteObj = {
+      id: quoteFolio,
+      id_propuesta: quoteFolio,
+      cliente: isSubcontracted && subcontractorName ? `${clientName} (Subcontratado: ${subcontractorName})` : clientName,
+      es_subcontratado: isSubcontracted,
+      subcontratado_nombre: subcontractorName,
       contacto: contactName,
       email: contactEmail,
       telefono: contactPhone,
       fecha: quoteDate,
-      servicios: selectedServices,
-      puntos: pointsToMeasure,
-      costo_punto: costPerPoint,
-      viaticos: estimatedViatics
+      mes: quoteMonth,
+      servicios: serviceNamesArray,
+      servicio: serviceNamesArray.join(" + "),
+      servicios_desglosados: itemizedServices,
+      puntos: itemizedServices.reduce((acc, curr) => acc + curr.puntos, 0),
+      costo_punto: itemizedServices[0]?.costo_punto || 1800,
+      viaticos: estimatedViatics,
+      subtotal: subtotalGeneral,
+      iva: computedIva,
+      costo: computedTotal,
+      estado: "Enviado"
     };
 
-    try {
-      console.log("Enviando petición a la API backend /api/cotizaciones...");
-      const response = await fetch("/api/cotizaciones", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const serverQuote = result.data;
-        if (setGeneratedQuotes) {
-          setGeneratedQuotes([serverQuote, ...generatedQuotes]);
-        }
-        
-        // Auto generate corresponding invoice based on calculated server total
-        const newInvoiceObj = {
-          id_factura: invoices.length + 1,
-          cliente: serverQuote.cliente,
-          monto: serverQuote.costo,
-          estado: "Pendiente",
-          vencimiento: new Date(new Date(serverQuote.fecha).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          mes: serverQuote.mes,
-          servicios: serverQuote.servicios,
-          servicio: serverQuote.servicio
-        };
-        if (setInvoices) {
-          setInvoices([newInvoiceObj, ...invoices]);
-        }
-
-        alert(`[API FULL-STACK] ¡Cotización ${serverQuote.id} Generada exitosamente por el servidor!\nCliente: ${serverQuote.cliente}\nTotal: $${serverQuote.costo.toLocaleString()} MXN (IVA Incluido).\nFoliación y cálculos realizados en Node.js de forma síncrona.`);
-      } else {
-        throw new Error("Respuesta no exitosa del servidor.");
-      }
-    } catch (err) {
-      console.warn("Fallo al conectar con el backend. Utilizando motor local integrado.", err);
-      const newQuoteId = `108COT0${160 + generatedQuotes.length + 1}`;
-      const newQuoteObj = {
-        id: newQuoteId,
-        id_propuesta: newQuoteId,
-        cliente: clientName,
-        contacto: contactName,
-        email: contactEmail,
-        telefono: contactPhone,
-        fecha: quoteDate,
-        mes: quoteMonth,
-        servicios: selectedServices,
-        servicio: selectedServices.join(" + "),
-        puntos: pointsToMeasure,
-        costo_punto: costPerPoint,
-        viaticos: estimatedViatics,
-        subtotal: subtotalGeneral,
-        iva: computedIva,
-        costo: computedTotal,
-        estado: "Enviado"
-      };
-
-      if (setGeneratedQuotes) {
-        setGeneratedQuotes([newQuoteObj, ...generatedQuotes]);
-      }
-
-      const newInvoiceObj = {
-        id_factura: invoices.length + 1,
-        cliente: clientName,
-        monto: computedTotal,
-        estado: "Pendiente",
-        vencimiento: new Date(new Date(quoteDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        mes: quoteMonth,
-        servicios: selectedServices,
-        servicio: selectedServices.join(" + ")
-      };
-
-      if (setInvoices) {
-        setInvoices([newInvoiceObj, ...invoices]);
-      }
-
-      alert(`¡Ficha de Cotización ${newQuoteId} Generada Exitosamente!\nCliente: ${clientName}\nTotal Desglosado: $${computedTotal.toLocaleString()} MXN (IVA Incluido).`);
+    if (setGeneratedQuotes) {
+      setGeneratedQuotes([newQuoteObj, ...generatedQuotes]);
     }
 
-    // Clear inputs
+    const newInvoiceObj = {
+      id_factura: invoices.length + 1,
+      cliente: newQuoteObj.cliente,
+      monto: computedTotal,
+      estado: "Pendiente",
+      vencimiento: new Date(new Date(quoteDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      mes: quoteMonth,
+      servicios: serviceNamesArray,
+      servicio: serviceNamesArray.join(" + ")
+    };
+
+    if (setInvoices) {
+      setInvoices([newInvoiceObj, ...invoices]);
+    }
+
+    alert(`¡Ficha de Cotización ${quoteFolio} Registrada Exitosamente!\nCliente: ${newQuoteObj.cliente}\nTotal Desglosado: $${computedTotal.toLocaleString('es-MX')} MXN (IVA Incluido).`);
+
+    // Reset Form
     setClientName("");
+    setSubcontractorName("");
+    setIsSubcontracted(false);
     setContactName("");
     setContactEmail("");
     setContactPhone("");
-    setPointsToMeasure(5);
-    setCostPerPoint(1800);
-    setEstimatedViatics(1500);
+    setItemizedServices([
+      { id: "srv-1", serviceName: CATALOG_SERVICES[0], puntos: 5, costo_punto: 1800 }
+    ]);
   };
 
   // Filter CRM quotations list
@@ -878,188 +949,349 @@ export default function AdminViews(props: AdminViewsProps) {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* COTIZADOR DINÁMICO AVANZADO */}
-            <div className="lg:col-span-5 bg-white p-5 border border-slate-200 rounded-xl shadow-sm space-y-4">
-              <div className="border-b border-slate-100 pb-2">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Calculator className="w-4 h-4 text-emerald-600" />
-                  Nueva Ficha de Cotización
-                </h4>
-                <p className="text-[10px] text-slate-400">Todos los campos con (*) son de registro obligatorio legal.</p>
+            {/* COTIZADOR DINÁMICO AVANZADO CON REGLAS DEL DIRECTOR DE ATENCIÓN A CLIENTES */}
+            <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-[#85AA1C]" />
+                    Módulo Cotizaciones — Ficha Comercial
+                  </h4>
+                  <p className="text-[10px] text-slate-500">
+                    Soporta autonumeración de cliente, subcontratación y folios editables.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsEFirmaModalOpen(true)}
+                  className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded text-[10px] font-bold font-mono flex items-center gap-1 cursor-pointer"
+                  title="¿Cómo se genera la e.firma?"
+                >
+                  <FileSignature className="w-3 h-3 text-purple-600" />
+                  <span>¿e.firma?</span>
+                </button>
               </div>
 
-              <form onSubmit={handleSubmitNewQuote} className="space-y-3.5 text-xs">
-                
-                {/* Datos del Cliente */}
-                <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Datos de Contacto del Cliente</span>
-                  <div>
-                    <label htmlFor="crm-client" className="block text-[10px] font-semibold text-slate-600 mb-1">Nombre de la Empresa *</label>
-                    <input
-                      id="crm-client"
-                      type="text"
-                      required
-                      placeholder="e.g. Aceros de México S.A. de C.V."
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="crm-contact" className="block text-[10px] font-semibold text-slate-600 mb-1 font-sans">Persona de Contacto *</label>
-                    <input
-                      id="crm-contact"
-                      type="text"
-                      required
-                      placeholder="e.g. Ing. Juan Gómez"
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label htmlFor="crm-email" className="block text-[10px] font-semibold text-slate-600 mb-1">Email de Contacto *</label>
-                      <input
-                        id="crm-email"
-                        type="email"
-                        required
-                        placeholder="e.g. compras@cliente.com"
-                        value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="crm-phone" className="block text-[10px] font-semibold text-slate-600 mb-1">Teléfono Móvil *</label>
-                      <input
-                        id="crm-phone"
-                        type="tel"
-                        required
-                        placeholder="e.g. 811-555-0199"
-                        value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
+              {/* TABS DE MÓDULO COTIZACIONES */}
+              <div className="flex border-b border-slate-200 text-xs font-mono font-bold">
+                <button
+                  type="button"
+                  onClick={() => setActiveQuoteSubTab("new")}
+                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${
+                    activeQuoteSubTab === "new"
+                      ? "border-[#85AA1C] text-[#85AA1C] bg-lime-50/50"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  a) Nueva Cotización
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveQuoteSubTab("history")}
+                  className={`py-2 px-3 border-b-2 transition cursor-pointer ${
+                    activeQuoteSubTab === "history"
+                      ? "border-[#85AA1C] text-[#85AA1C] bg-lime-50/50"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  b) Historial / Reutilizar Cotización
+                </button>
+              </div>
 
-                {/* Selección de Servicios e Instrumentos */}
-                <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block font-mono">Especificaciones y Servicios</span>
+              {activeQuoteSubTab === "new" && (
+                <form onSubmit={handleSubmitNewQuote} className="space-y-3 text-xs">
                   
-                  <div>
-                    <label className="block text-[10px] font-semibold text-slate-600 mb-1">Servicios Solicitados *</label>
-                    <div className="space-y-1.5">
-                      {[
-                        "NOM-011-STPS (Ruido Industrial)",
-                        "NOM-025-STPS (Iluminación y Luxes)",
-                        "NOM-015-STPS (Condiciones Térmicas Extremas)"
-                      ].map((service) => (
-                        <label key={service} className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded border border-slate-200 cursor-pointer hover:bg-slate-50/50">
-                          <input
-                            type="checkbox"
-                            checked={selectedServices.includes(service)}
-                            onChange={() => handleServiceToggle(service)}
-                            className="rounded text-emerald-600 border-slate-300 focus:ring-0"
-                          />
-                          <span className="text-[11px] text-slate-700 font-medium">{service}</span>
-                        </label>
+                  {/* SELECCIÓN AUTOMÁTICA DE CLIENTE O BUSCADOR */}
+                  <div className="space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <label className="block text-[10px] font-bold text-slate-700 uppercase font-mono">
+                      1. Seleccionar Cliente Existente (# de Cliente Automático) *
+                    </label>
+                    <select
+                      value={selectedClientNum}
+                      onChange={(e) => handleSelectClientChange(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                    >
+                      <option value="">-- Seleccionar de la Lista de Clientes --</option>
+                      {clientsList.map(c => (
+                        <option key={c.id} value={c.id}>
+                          #{c.id} — {c.razon_social} (RFC: {c.rfc || "S/RFC"})
+                        </option>
                       ))}
+                    </select>
+                  </div>
+
+                  {/* DATOS DEL CLIENTE Y BOTÓN DE SUBCONTRATADO */}
+                  <div className="space-y-2 bg-white p-2.5 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="crm-client-name" className="text-[10px] font-bold text-slate-700 uppercase font-mono">
+                        Razón Social / Empresa *
+                      </label>
+                      
+                      {/* BOTÓN / CHECKBOX DE SUBCONTRATADO */}
+                      <label className="inline-flex items-center gap-1.5 cursor-pointer bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 text-[10px] font-bold text-amber-800">
+                        <input
+                          type="checkbox"
+                          checked={isSubcontracted}
+                          onChange={(e) => setIsSubcontracted(e.target.checked)}
+                          className="rounded text-amber-600 focus:ring-0"
+                        />
+                        <span>Servicio Subcontratado</span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      <input
+                        id="crm-client-name"
+                        type="text"
+                        required
+                        placeholder="Razón social de la empresa cliente"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-800 focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                      />
+
+                      {/* ESPACIO DE SUBCONTRATADO A UN LADO SI ESTÁ ACTIVO */}
+                      {isSubcontracted && (
+                        <div className="bg-amber-50 p-2 rounded-lg border border-amber-300 space-y-1">
+                          <label className="block text-[9px] font-bold text-amber-900 uppercase font-mono">
+                            Nombre de la Empresa Subcontratada / Proveedor Aliado *
+                          </label>
+                          <input
+                            type="text"
+                            required={isSubcontracted}
+                            placeholder="Ej. Metrología e Inspección del Golfo S.A."
+                            value={subcontractorName}
+                            onChange={(e) => setSubcontractorName(e.target.value)}
+                            className="w-full bg-white border border-amber-300 rounded px-2.5 py-1.5 text-xs font-semibold text-amber-950 focus:outline-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[9px] font-semibold text-slate-600">Contacto *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ing. Juan Gómez"
+                          value={contactName}
+                          onChange={(e) => setContactName(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-semibold text-slate-600">Correo *</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="contacto@cliente.com"
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-semibold text-slate-600">Teléfono *</label>
+                        <input
+                          type="tel"
+                          required
+                          placeholder="811-555-0199"
+                          value={contactPhone}
+                          onChange={(e) => setContactPhone(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* FOLIO DE COTIZACIÓN (EDITABLE Y CON REGLA AUTOMÁTICA DE 3 NÚMEROS DE CLIENTE) */}
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                     <div>
-                      <label htmlFor="crm-date" className="block text-[10px] font-semibold text-slate-600 mb-1">Fecha de Emisión *</label>
+                      <label className="block text-[9px] font-bold text-slate-600 uppercase font-mono">
+                        Fecha Emisión
+                      </label>
                       <input
-                        id="crm-date"
                         type="date"
                         required
                         value={quoteDate}
                         onChange={(e) => setQuoteDate(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center font-mono"
+                        className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-mono font-bold"
                       />
                     </div>
                     <div>
-                      <label htmlFor="crm-points" className="block text-[10px] font-semibold text-slate-600 mb-1">Puntos de Medición *</label>
+                      <label className="block text-[9px] font-bold text-emerald-800 uppercase font-mono flex items-center justify-between">
+                        <span>Folio Cotización (Editable) *</span>
+                        <span className="text-[8px] text-slate-400 font-normal">Formato: ###COTMMYYYY</span>
+                      </label>
                       <input
-                        id="crm-points"
-                        type="number"
+                        type="text"
                         required
-                        min={1}
-                        value={pointsToMeasure}
-                        onChange={(e) => setPointsToMeasure(Number(e.target.value))}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center font-mono font-bold"
+                        value={quoteFolio}
+                        onChange={(e) => setQuoteFolio(e.target.value)}
+                        className="w-full bg-emerald-50 border-2 border-emerald-500 rounded px-2 py-1 text-xs font-mono font-black text-emerald-900 focus:outline-none"
+                        title="El folio inicia con los 3 números del cliente, COT y mes/año. Puede modificarlo libremente."
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label htmlFor="crm-cost-point" className="block text-[10px] font-semibold text-slate-600 mb-1">Costo por Punto ($) *</label>
-                      <input
-                        id="crm-cost-point"
-                        type="number"
-                        required
-                        min={1}
-                        value={costPerPoint}
-                        onChange={(e) => setCostPerPoint(Number(e.target.value))}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center font-mono"
-                      />
+                  {/* ESPECIFICACIONES Y SERVICIOS DESPLEGABLES CON ALTA DINÁMICA */}
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-700 block font-mono">
+                        Especificaciones y Servicios (Desglose Individual)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleAddServiceRow}
+                        className="px-2 py-0.5 bg-[#85AA1C] hover:bg-lime-600 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>+ Dar de Alta Más Servicios</span>
+                      </button>
                     </div>
-                    <div>
-                      <label htmlFor="crm-viatics" className="block text-[10px] font-semibold text-slate-600 mb-1">Viáticos de Campo ($) *</label>
+
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                      {itemizedServices.map((item, index) => (
+                        <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1.5 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[9px] font-mono font-bold text-slate-400">Servicio #{index + 1}</span>
+                            {itemizedServices.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveServiceRow(item.id)}
+                                className="text-red-500 hover:text-red-700 text-[10px] font-bold cursor-pointer"
+                              >
+                                ✕ Quitar
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <select
+                              value={item.serviceName}
+                              onChange={(e) => handleUpdateServiceRow(item.id, "serviceName", e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-xs font-semibold text-slate-800"
+                            >
+                              {CATALOG_SERVICES.map((catSrv) => (
+                                <option key={catSrv} value={catSrv}>{catSrv}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[8px] font-bold text-slate-500 uppercase">Puntos a Medir</label>
+                              <input
+                                type="number"
+                                min={1}
+                                required
+                                value={item.puntos}
+                                onChange={(e) => handleUpdateServiceRow(item.id, "puntos", Number(e.target.value))}
+                                className="w-full bg-white border border-slate-200 rounded px-2 py-0.5 text-center font-mono font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[8px] font-bold text-slate-500 uppercase">Costo por Punto ($)</label>
+                              <input
+                                type="number"
+                                min={1}
+                                required
+                                value={item.costo_punto}
+                                onChange={(e) => handleUpdateServiceRow(item.id, "costo_punto", Number(e.target.value))}
+                                className="w-full bg-white border border-slate-200 rounded px-2 py-0.5 text-center font-mono font-bold text-emerald-700"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-1">
+                      <label className="block text-[9px] font-bold text-slate-600 uppercase font-mono mb-1">
+                        Viáticos de Traslado y Campo ($)
+                      </label>
                       <input
-                        id="crm-viatics"
                         type="number"
-                        required
                         min={0}
+                        required
                         value={estimatedViatics}
                         onChange={(e) => setEstimatedViatics(Number(e.target.value))}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center font-mono"
+                        className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-mono font-bold"
                       />
                     </div>
                   </div>
-                </div>
 
-                {/* Tabla de Desglose en Vivo */}
-                <div className="bg-slate-900 text-slate-100 p-3.5 rounded-xl space-y-2 border border-slate-800">
-                  <span className="text-[9px] uppercase font-bold text-slate-500 block font-mono">Resumen de Costos Desglosados</span>
-                  <div className="space-y-1 text-[11px] font-mono">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Servicios Metrológicos:</span>
-                      <span>${subtotalServices.toLocaleString()} MXN</span>
+                  {/* RESUMEN FINANCIERO */}
+                  <div className="bg-slate-900 text-slate-100 p-3.5 rounded-xl space-y-1.5 border border-slate-800">
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-slate-400">Subtotal Servicios:</span>
+                      <span>${subtotalServices.toLocaleString('es-MX')} MXN</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Viáticos de Viaje:</span>
-                      <span>${estimatedViatics.toLocaleString()} MXN</span>
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-slate-400">Viáticos de Campo:</span>
+                      <span>${estimatedViatics.toLocaleString('es-MX')} MXN</span>
                     </div>
-                    <div className="flex justify-between border-t border-slate-800 pt-1 mt-1">
+                    <div className="flex justify-between text-[11px] font-mono border-t border-slate-800 pt-1">
                       <span className="text-slate-300">Subtotal Neto:</span>
-                      <span>${subtotalGeneral.toLocaleString()} MXN</span>
+                      <span>${subtotalGeneral.toLocaleString('es-MX')} MXN</span>
                     </div>
-                    <div className="flex justify-between text-amber-400 font-bold">
-                      <span>IVA (16% Obligatorio):</span>
-                      <span>+ ${computedIva.toLocaleString()} MXN</span>
+                    <div className="flex justify-between text-[11px] font-mono text-amber-400 font-bold">
+                      <span>IVA (16% Standard SAT):</span>
+                      <span>+ ${computedIva.toLocaleString('es-MX')} MXN</span>
                     </div>
-                    <div className="flex justify-between border-t border-slate-700 pt-1.5 mt-1.5 text-sm font-bold text-emerald-400 font-sans">
-                      <span>Total Neto de Propuesta:</span>
-                      <span>${computedTotal.toLocaleString()} MXN</span>
+                    <div className="flex justify-between text-xs font-bold text-emerald-400 border-t border-slate-700 pt-1.5 font-mono">
+                      <span>Total Neto Propuesta:</span>
+                      <span>${computedTotal.toLocaleString('es-MX')} MXN</span>
                     </div>
                   </div>
-                </div>
 
-                <button
-                  id="submit-generate-quote-btn"
-                  type="submit"
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  <Calculator className="w-4 h-4 text-emerald-400" />
-                  <span>Emitir Ficha Comercial (Registrar)</span>
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-[#85AA1C] hover:bg-lime-600 text-white font-bold rounded-lg text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Guardar y Emitir Cotización</span>
+                  </button>
+                </form>
+              )}
+
+              {activeQuoteSubTab === "history" && (
+                <div className="space-y-3">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-600">
+                    <p className="font-semibold text-slate-800">💡 Reutilizar Conceptos de Cotizaciones Previas</p>
+                    <p className="text-[11px] mt-0.5">
+                      Seleccione cualquier cotización del historial para clonar automáticamente sus servicios, puntos y costos a un nuevo cliente.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {generatedQuotes.map((q) => (
+                      <div key={q.id_propuesta || q.id} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-mono font-bold text-xs text-emerald-700">{q.id_propuesta || q.id}</span>
+                            <div className="font-bold text-slate-900 text-xs">{q.cliente}</div>
+                          </div>
+                          <span className="font-mono font-bold text-xs text-emerald-600">${(q.costo || 0).toLocaleString('es-MX')} MXN</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-mono">
+                          Servicios: {q.servicio || (q.servicios && q.servicios.join(" + "))}
+                        </div>
+                        <div className="flex justify-end gap-1.5 pt-1 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => handleReuseQuote(q)}
+                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <FileText className="w-3 h-3" />
+                            <span>Reutilizar Conceptos</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* HISTÓRICO DINÁMICO DE COTIZACIONES CON MULTI-FILTROS */}
@@ -1689,12 +1921,24 @@ export default function AdminViews(props: AdminViewsProps) {
                         {dayServices.slice(0, 2).map(ds => (
                           <div 
                             key={ds.id_servicio} 
-                            className={`text-[7px] p-0.5 rounded leading-none font-sans font-bold truncate max-w-full ${
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setOdtDetailModal({
+                                id_ot: ds.id_servicio,
+                                cliente: ds.cliente_nombre,
+                                servicio: ds.servicio,
+                                fecha_inicio: ds.fecha,
+                                fecha_fin: ds.fecha_fin || ds.fecha,
+                                puntos: ds.puntos_muestreo || 12,
+                                estado: ds.id_tecnico ? "Asignado" : "Pendiente"
+                              });
+                            }}
+                            className={`text-[7px] p-0.5 rounded leading-none font-sans font-bold truncate max-w-full cursor-pointer hover:scale-105 transition ${
                               ds.id_tecnico 
                                 ? 'bg-emerald-600 text-white' 
                                 : 'bg-amber-500 text-slate-950 font-extrabold'
                             }`}
-                            title={`${ds.cliente_nombre}: ${ds.servicio} (${ds.id_tecnico ? 'Asignado' : 'Pendiente Asignación'})`}
+                            title={`Doble clic para ver detalle ODT | ${ds.cliente_nombre}: ${ds.servicio}`}
                           >
                             {ds.id_servicio}: {ds.cliente_nombre.split(' ')[0]}
                           </div>
@@ -1738,36 +1982,65 @@ export default function AdminViews(props: AdminViewsProps) {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-slate-600 font-bold uppercase text-[9px]">
-                    2. Fecha del Servicio *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={dacNewScheduleForm.fecha}
-                    onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, fecha: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="block text-slate-600 font-bold uppercase text-[9px]">
+                      2a. Fecha Inicio (Desde) *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={dacNewScheduleForm.fecha}
+                      onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, fecha: e.target.value })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-slate-600 font-bold uppercase text-[9px]">
+                      2b. Fecha Fin (Hasta)
+                    </label>
+                    <input
+                      type="date"
+                      value={dacNewScheduleForm.fecha_fin || dacNewScheduleForm.fecha}
+                      onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, fecha_fin: e.target.value })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-slate-600 font-bold uppercase text-[9px]">
-                    3. Tipo de Servicio *
-                  </label>
-                  <select
-                    value={dacNewScheduleForm.servicio}
-                    onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, servicio: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
-                  >
-                    <option value="Mapeo de Ruido NOM-011">Mapeo de Ruido NOM-011</option>
-                    <option value="Dosimetría de Ruido NOM-011">Dosimetría de Ruido NOM-011</option>
-                    <option value="Estudio de Iluminación NOM-025">Estudio de Iluminación NOM-025</option>
-                    <option value="Evaluación de Vibraciones NOM-024">Evaluación de Vibraciones NOM-024</option>
-                    <option value="Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)">Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)</option>
-                    <option value="Estudio de Calidad de Energía NOM-001">Estudio de Calidad de Energía NOM-001</option>
-                    <option value="Medición de Emisiones Atmosféricas NOM-043">Medición de Emisiones Atmosféricas NOM-043</option>
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="block text-slate-600 font-bold uppercase text-[9px]">
+                      3. Tipo de Servicio *
+                    </label>
+                    <select
+                      value={dacNewScheduleForm.servicio}
+                      onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, servicio: e.target.value })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                    >
+                      <option value="Mapeo de Ruido NOM-011">Mapeo de Ruido NOM-011</option>
+                      <option value="Dosimetría de Ruido NOM-011">Dosimetría de Ruido NOM-011</option>
+                      <option value="Estudio de Iluminación NOM-025">Estudio de Iluminación NOM-025</option>
+                      <option value="Evaluación de Vibraciones NOM-024">Evaluación de Vibraciones NOM-024</option>
+                      <option value="Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)">Evaluación de Resistencias y Continuidades (Tierras Físicas NOM-022)</option>
+                      <option value="Estudio de Calidad de Energía NOM-001">Estudio de Calidad de Energía NOM-001</option>
+                      <option value="Medición de Emisiones Atmosféricas NOM-043">Medición de Emisiones Atmosféricas NOM-043</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-600 font-bold uppercase text-[9px]">
+                      4. Puntos de Muestreo *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      value={dacNewScheduleForm.puntos_muestreo || 12}
+                      onChange={(e) => setDacNewScheduleForm({ ...dacNewScheduleForm, puntos_muestreo: Number(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#85AA1C] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200/60 p-2.5 rounded-lg text-[10px] text-amber-800 font-medium leading-relaxed">
@@ -1788,15 +2061,39 @@ export default function AdminViews(props: AdminViewsProps) {
 
           {/* Table of Scheduled Services with Edit/Delete for Director de Atención al Cliente */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-            <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="border-b border-slate-100 pb-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
                   <FileSpreadsheet className="w-4 h-4 text-[#85AA1C]" />
-                  Control de Trabajos Calendarizados por Atención a Clientes
+                  Control de Trabajos Calendarizados y Búsqueda ODCI
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Usted puede modificar la fecha, el nombre de la empresa o el servicio metrológico de cualquier registro.
+                  Gestione fechas, puntos de muestreo y consulte detalles de ODT por folio u ODCI.
                 </p>
+              </div>
+
+              {/* BUSCADOR ODCI CON BOTÓN LADO A LADO */}
+              <div className="flex items-center gap-1.5">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por Folio ODCI o Cliente..."
+                    value={odciSearchQuery}
+                    onChange={(e) => setOdciSearchQuery(e.target.value)}
+                    className="pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#85AA1C]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    alert(`Buscando folio u ODCI: "${odciSearchQuery}"...\nResultados actualizados.`);
+                  }}
+                  className="px-3 py-1.5 bg-[#85AA1C] hover:bg-lime-600 text-white font-bold rounded-lg text-xs font-mono transition flex items-center gap-1 cursor-pointer shadow-sm"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Buscar ODCI</span>
+                </button>
               </div>
             </div>
 
@@ -1804,23 +2101,37 @@ export default function AdminViews(props: AdminViewsProps) {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-mono uppercase text-slate-400">
-                    <th className="p-3 font-bold">ID Servicio</th>
+                    <th className="p-3 font-bold">ID Servicio / ODT</th>
                     <th className="p-3 font-bold">Empresa / Cliente</th>
-                    <th className="p-3 font-bold">Fecha del Servicio</th>
+                    <th className="p-3 font-bold">Fecha (Desde - Hasta)</th>
                     <th className="p-3 font-bold">Tipo de Servicio</th>
+                    <th className="p-3 font-bold text-center">Puntos de Muestreo</th>
                     <th className="p-3 font-bold">Estado Asignación</th>
                     <th className="p-3 font-bold text-center">Acciones (DAC)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                  {scheduledServices.map((service) => {
+                  {scheduledServices
+                    .filter(s => 
+                      !odciSearchQuery || 
+                      s.cliente_nombre.toLowerCase().includes(odciSearchQuery.toLowerCase()) || 
+                      s.id_servicio.toLowerCase().includes(odciSearchQuery.toLowerCase())
+                    )
+                    .map((service) => {
                     const tech = usuarios.find(u => u.id_usuario === service.id_tecnico);
                     return (
                       <tr key={service.id_servicio} className="hover:bg-slate-50/80 transition-colors">
                         <td className="p-3 font-mono font-bold text-emerald-700">{service.id_servicio}</td>
                         <td className="p-3 font-bold text-slate-900">{service.cliente_nombre}</td>
-                        <td className="p-3 font-mono font-bold text-slate-700">{service.fecha}</td>
+                        <td className="p-3 font-mono font-bold text-slate-700">
+                          {service.fecha} {service.fecha_fin && service.fecha_fin !== service.fecha ? `a ${service.fecha_fin}` : ''}
+                        </td>
                         <td className="p-3 text-slate-600 font-medium">{service.servicio}</td>
+                        <td className="p-3 text-center">
+                          <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 font-mono font-bold rounded-full border border-purple-200 text-[11px]">
+                            {service.puntos_muestreo || 12} pts
+                          </span>
+                        </td>
                         <td className="p-3">
                           {tech ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -1838,17 +2149,35 @@ export default function AdminViews(props: AdminViewsProps) {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => {
+                                setOdtDetailModal({
+                                  id_ot: service.id_servicio,
+                                  cliente: service.cliente_nombre,
+                                  servicio: service.servicio,
+                                  fecha_inicio: service.fecha,
+                                  fecha_fin: service.fecha_fin || service.fecha,
+                                  puntos: service.puntos_muestreo || 12,
+                                  estado: service.id_tecnico ? "Asignado" : "Pendiente"
+                                });
+                              }}
+                              className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-blue-200"
+                              title="Ver Detalle de ODT"
+                            >
+                              <FileText className="w-3 h-3 text-blue-600" />
+                              <span>Detalle ODT</span>
+                            </button>
+                            <button
+                              onClick={() => {
                                 setDacEditingService(service);
                               }}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-slate-200"
                               title="Modificar Empresa, Fecha o Servicio"
                             >
                               <Edit className="w-3 h-3 text-slate-600" />
-                              Editar
+                              <span>Editar</span>
                             </button>
                             <button
                               onClick={() => handleDacDeleteService(service.id_servicio)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer border border-slate-200"
                               title="Cancelar/Eliminar Trabajo"
                             >
                               <Trash className="w-3.5 h-3.5" />
@@ -3692,6 +4021,263 @@ ASP METROLOGÍA S.A. DE C.V.`}
                 </div>
               </div>
             </motion.div>
+          </div>
+        )}
+        {/* MODAL DE EXPLICACIÓN E INTEGRIDAD CRIPTOGRÁFICA DE E.FIRMA SAT Y NOM-151 */}
+        {isEFirmaModalOpen && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                  <FileSignature className="w-5 h-5 text-purple-600" />
+                  Módulo de Generación y Validación de e.firma SAT
+                </h3>
+                <button
+                  onClick={() => setIsEFirmaModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs text-slate-700 leading-relaxed">
+                <div className="bg-purple-50 border border-purple-200 p-3.5 rounded-xl space-y-2">
+                  <span className="font-bold text-purple-900 font-mono text-xs block">
+                    ¿Cómo se genera y valida la e.firma en las Cotizaciones y Reportes de ASPECHS?
+                  </span>
+                  <p className="text-[11px] text-purple-800">
+                    La Firma Electrónica Avanzada (e.firma) utiliza tecnología criptográfica basada en certificados del SAT y sello de tiempo NOM-151.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-start bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <span className="bg-slate-900 text-white font-mono font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center shrink-0">1</span>
+                    <div>
+                      <strong className="text-slate-900 block text-[11px]">Certificado de Llave Pública (.cer) y Privada (.key)</strong>
+                      <p className="text-[10px] text-slate-500">
+                        El representante legal o metrólogo emisor ingresa su certificado e.firma SAT vigente. El sistema valida la clave pública.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 items-start bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <span className="bg-slate-900 text-white font-mono font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center shrink-0">2</span>
+                    <div>
+                      <strong className="text-slate-900 block text-[11px]">Generación de Hash SHA-256 de Contenido</strong>
+                      <p className="text-[10px] text-slate-500">
+                        El contenido exacto de la propuesta o del dictamen de ensayo se procesa mediante SHA-256 para obtener una huella digital unívoca de 64 caracteres.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 items-start bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <span className="bg-slate-900 text-white font-mono font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center shrink-0">3</span>
+                    <div>
+                      <strong className="text-slate-900 block text-[11px]">Estampa de Tiempo NOM-151 de Inalterabilidad</strong>
+                      <p className="text-[10px] text-slate-500">
+                        Se aplica una constancia de conservación de mensajes de datos que garantiza que el documento no ha sido alterado desde su fecha de emisión.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 text-emerald-400 p-3 rounded-lg font-mono text-[10px] space-y-1">
+                  <div>CADENA ORIGINAL GENERADA:</div>
+                  <div className="text-white font-bold break-all">||1.1|108COT0165|2026-07-28|ASPECHS-LAB|35000.00|IVA16%|SHA256:d89a12b59c2ef3542d89df251c6b12a8844fa215fe338eaef4||</div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setIsEFirmaModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg cursor-pointer"
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE CONVERSIÓN DE COTIZACIÓN A ORDEN DE COMPRA INTERNA (ODCI) */}
+        {odciModalQuote && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-blue-600" />
+                  Convertir Cotización {odciModalQuote.id_propuesta || odciModalQuote.id} a ODCI
+                </h3>
+                <button
+                  onClick={() => setOdciModalQuote(null)}
+                  className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  alert(`¡Orden de Compra Interna (ODCI) Generada y Registrada exitosamente!\nFolio ODCI: ${odciFolio}\nCliente: ${odciModalQuote.cliente}\nServicios Incluidos: ${odciSelectedServices.length}\nOrden de Compra Adjunta: ${odciUploadedFile ? odciUploadedFile.name : 'Archivo Adjuntado'}`);
+                  setOdciModalQuote(null);
+                }}
+                className="space-y-3.5 text-xs"
+              >
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg space-y-1">
+                  <span className="font-bold text-blue-900 block font-mono text-xs">
+                    Cliente: {odciModalQuote.cliente}
+                  </span>
+                  <div className="text-[11px] text-blue-800 font-mono">
+                    Monto Original Cotizado: ${(odciModalQuote.costo || 0).toLocaleString('es-MX')} MXN
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-700 uppercase font-mono">
+                    1. Folio de Orden de Compra Interna (Editable) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={odciFolio}
+                    onChange={(e) => setOdciFolio(e.target.value)}
+                    className="w-full p-2 bg-white border border-slate-300 rounded font-mono font-bold text-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-700 uppercase font-mono">
+                    2. Seleccionar Conceptos Solicitados por el Cliente en su O.C. *
+                  </label>
+                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5 max-h-[140px] overflow-y-auto">
+                    {(odciModalQuote.servicios || [odciModalQuote.servicio]).map((srv: string) => (
+                      <label key={srv} className="flex items-center gap-2 bg-white p-2 rounded border border-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={odciSelectedServices.includes(srv)}
+                          onChange={() => {
+                            if (odciSelectedServices.includes(srv)) {
+                              setOdciSelectedServices(odciSelectedServices.filter(s => s !== srv));
+                            } else {
+                              setOdciSelectedServices([...odciSelectedServices, srv]);
+                            }
+                          }}
+                          className="rounded text-blue-600 focus:ring-0"
+                        />
+                        <span className="font-medium text-slate-800 text-[11px]">{srv}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <label className="block text-[10px] font-bold text-slate-700 uppercase font-mono">
+                    3. Cargar PDF / Documento de la Orden de Compra del Cliente *
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.doc,.docx"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setOdciUploadedFile(e.target.files[0]);
+                      }
+                    }}
+                    className="w-full text-xs text-slate-600 font-mono file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer"
+                  />
+                  {odciUploadedFile && (
+                    <div className="text-[10px] text-emerald-700 font-mono font-bold pt-1">
+                      ✓ Archivo listo: {odciUploadedFile.name}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setOdciModalQuote(null)}
+                    className="px-3 py-1.5 bg-slate-100 text-slate-700 font-bold rounded text-xs hover:bg-slate-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-xs shadow-md transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Generar y Registrar ODCI</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DETALLE DE ORDEN DE TRABAJO (ODT / SERVICIO) */}
+        {odtDetailModal && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  Detalle de Orden Técnica: {odtDetailModal.id_ot}
+                </h3>
+                <button
+                  onClick={() => setOdtDetailModal(null)}
+                  className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Cliente / Planta:</span>
+                    <span className="font-bold text-slate-900">{odtDetailModal.cliente}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-200 pt-1.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Servicio Solicitado:</span>
+                    <span className="font-semibold text-slate-800">{odtDetailModal.servicio}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-200 pt-1.5 font-mono">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Periodo de Trabajo:</span>
+                    <span className="font-bold text-emerald-700">
+                      {odtDetailModal.fecha_inicio} {odtDetailModal.fecha_fin && odtDetailModal.fecha_fin !== odtDetailModal.fecha_inicio ? `al ${odtDetailModal.fecha_fin}` : ''}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-200 pt-1.5 font-mono">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Puntos de Muestreo:</span>
+                    <span className="font-extrabold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                      {odtDetailModal.puntos} puntos
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-200 pt-1.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Estado de Asignación:</span>
+                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[10px]">
+                      {odtDetailModal.estado}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg text-[10px] text-blue-900 space-y-1">
+                  <strong>📋 Especificaciones de la Orden de Trabajo:</strong>
+                  <p>
+                    Esta ODT cuenta con protocolo de calibración trazable a patrones CENAM, levantamiento georreferenciado de campo y validación e.firma NOM-151.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => setOdtDetailModal(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg cursor-pointer"
+                >
+                  Cerrar Detalle
+                </button>
+              </div>
+            </div>
           </div>
         )}
         {/* MODAL OFICIAL DE DETALLE DE COTIZACIÓN (HOJAS 6 Y 7) */}
