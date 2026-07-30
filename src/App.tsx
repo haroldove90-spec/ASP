@@ -1843,6 +1843,7 @@ export default function App() {
                 handleResetFieldForm={handleResetFieldForm}
                 
                 scheduledServices={scheduledServices}
+                setScheduledServices={setScheduledServices}
                 isJornadaIniciada={jornadaIniciada}
                 horaInicioJornada={jornadaStartTime}
                 handleToggleJornada={handleToggleJornada}

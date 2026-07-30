@@ -64,6 +64,7 @@ interface TechnicianViewsProps {
   
   // Logistics & Journal states
   scheduledServices: any[];
+  setScheduledServices?: React.Dispatch<React.SetStateAction<any[]>>;
   isJornadaIniciada: boolean;
   horaInicioJornada: string;
   handleToggleJornada: () => void;
@@ -108,6 +109,7 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
     handleFieldSubmitForm,
     handleResetFieldForm,
     scheduledServices,
+    setScheduledServices,
     isJornadaIniciada,
     horaInicioJornada,
     handleToggleJornada,
@@ -297,6 +299,74 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
               </button>
             </div>
           </div>
+
+          {/* NOTIFICACIONES Y ALERTAS DE ASIGNACIÓN DE ODT DE CAMPO */}
+          {(() => {
+            const myAssignedOdts = scheduledServices.filter(s => s.id_tecnico === activePersona.id_usuario);
+            const pendingAlerts = myAssignedOdts.filter(s => s.estado === 'Asignado' || !s.aceptado_tecnico);
+
+            if (pendingAlerts.length === 0) return null;
+
+            return (
+              <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-5 space-y-3 shadow-xl">
+                <div className="flex items-center justify-between border-b border-amber-800/50 pb-2">
+                  <h3 className="text-xs font-bold uppercase text-amber-400 tracking-wider flex items-center gap-2 font-mono">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                    Alertas de Nuevas Asignaciones de ODT ({pendingAlerts.length})
+                  </h3>
+                  <span className="text-[10px] text-amber-300 font-mono font-bold">Respuesta Requerida</span>
+                </div>
+
+                <div className="space-y-3">
+                  {pendingAlerts.map(odt => (
+                    <div key={odt.id_servicio} className="bg-slate-900/90 border border-amber-500/30 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold text-[10px] rounded">
+                            {odt.id_servicio}
+                          </span>
+                          <strong className="text-white text-xs">{odt.cliente_nombre}</strong>
+                        </div>
+                        <p className="text-[11px] text-slate-300 font-semibold">{odt.servicio}</p>
+                        <div className="flex items-center gap-3 text-[10px] text-slate-400 font-mono">
+                          <span>📅 Fecha: <strong className="text-amber-300">{odt.fecha}</strong></span>
+                          <span>🛠 Equipos: {odt.id_instrumento || "Asignado"}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!setScheduledServices) return;
+                            setScheduledServices(prev => prev.map(s => s.id_servicio === odt.id_servicio ? { ...s, estado: 'Asignado (Aceptado)', aceptado_tecnico: true } : s));
+                            alert(`¡Has ACEPTADO la asignación de la ODT ${odt.id_servicio} para ${odt.cliente_nombre}!`);
+                          }}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition shadow-md flex items-center gap-1 cursor-pointer"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>Aceptar Asignación</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const razon = prompt(`Indique el motivo de rechazo para la ODT ${odt.id_servicio}:`);
+                            if (razon === null) return;
+                            if (!setScheduledServices) return;
+                            setScheduledServices(prev => prev.map(s => s.id_servicio === odt.id_servicio ? { ...s, estado: 'Rechazado por Técnico', motivo_rechazo: razon, aceptado_tecnico: false } : s));
+                            alert(`Has RECHAZADO la asignación de la ODT ${odt.id_servicio}. Se notificó a Coordinación.`);
+                          }}
+                          className="px-3 py-1.5 bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-800 font-bold text-xs rounded-lg transition cursor-pointer"
+                        >
+                          <span>Rechazar</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* VISITAS EN PLANTA AGENDADAS */}
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
