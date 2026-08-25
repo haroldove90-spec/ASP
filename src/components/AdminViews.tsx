@@ -1405,60 +1405,64 @@ export default function AdminViews(props: AdminViewsProps) {
                     No se encontraron cotizaciones con los filtros activos.
                   </div>
                 ) : (
-                  filteredQuotes.map((quote) => (
-                    <div key={quote.id_propuesta} className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                            {quote.id_propuesta}
-                          </span>
-                          <strong className="text-slate-900 text-xs">{quote.cliente}</strong>
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-mono space-y-0.5">
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-slate-400" />
-                            <span>{quote.contacto || "Sin contacto"} • {quote.telefono || "N/A"}</span>
+                  filteredQuotes.map((quote, qIndex) => {
+                    const quoteKey = quote.id_propuesta || quote.id || quote.id_cotizacion || `quote-${qIndex}`;
+                    const quoteFolio = quote.id_propuesta || quote.id || quote.id_cotizacion || `COT-2026-${String(qIndex + 1).padStart(3, '0')}`;
+                    return (
+                      <div key={quoteKey} className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                              {quoteFolio}
+                            </span>
+                            <strong className="text-slate-900 text-xs">{quote.cliente}</strong>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-slate-400" />
-                            <span>{quote.email || "N/A"}</span>
+                          <div className="text-[10px] text-slate-500 font-mono space-y-0.5">
+                            <div className="flex items-center gap-1">
+                              <User className="w-3 h-3 text-slate-400" />
+                              <span>{quote.contacto || "Sin contacto"} • {quote.telefono || "N/A"}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              <span>{quote.email || "N/A"}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(Array.isArray(quote.servicios) ? quote.servicios : [quote.servicio]).filter(Boolean).map((servItem: any, sIdx: number) => {
+                              const servLabel = typeof servItem === 'string' ? servItem : (servItem?.servicio || servItem?.nombre || 'Servicio Metrológico');
+                              return (
+                                <span key={`${quoteKey}-${sIdx}-${servLabel}`} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded text-[9px] font-semibold font-mono">
+                                  {servLabel}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {(Array.isArray(quote.servicios) ? quote.servicios : [quote.servicio]).filter(Boolean).map((servItem: any, sIdx: number) => {
-                            const servLabel = typeof servItem === 'string' ? servItem : (servItem?.servicio || servItem?.nombre || 'Servicio Metrológico');
-                            return (
-                              <span key={`${quote.id_propuesta || quote.id || 'q'}-${sIdx}-${servLabel}`} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded text-[9px] font-semibold font-mono">
-                                {servLabel}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
 
-                      <div className="text-left md:text-right space-y-2 shrink-0">
-                        <div>
-                          <span className="text-xs font-bold text-emerald-600 block font-mono">
-                            ${(quote.costo || 0).toLocaleString()} MXN
-                          </span>
-                          <div className="text-[9px] text-slate-400 block font-mono">
-                            <div>F: {quote.fecha} ({quote.mes || 'Julio'})</div>
-                            <div>{quote.puntos || 5} puntos evaluados</div>
+                        <div className="text-left md:text-right space-y-2 shrink-0">
+                          <div>
+                            <span className="text-xs font-bold text-emerald-600 block font-mono">
+                              ${(quote.costo || 0).toLocaleString()} MXN
+                            </span>
+                            <div className="text-[9px] text-slate-400 block font-mono">
+                              <div>F: {quote.fecha} ({quote.mes || 'Julio'})</div>
+                              <div>{quote.puntos || 5} puntos evaluados</div>
+                            </div>
+                          </div>
+                          <div className="flex justify-start md:justify-end">
+                            <button
+                              onClick={() => setViewingOfficialQuoteModal(quote)}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Ver Cotización Oficial (Hojas 6 y 7)"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>Detalle</span>
+                            </button>
                           </div>
                         </div>
-                        <div className="flex justify-start md:justify-end">
-                          <button
-                            onClick={() => setViewingOfficialQuoteModal(quote)}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
-                            title="Ver Cotización Oficial (Hojas 6 y 7)"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>Detalle</span>
-                          </button>
-                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
