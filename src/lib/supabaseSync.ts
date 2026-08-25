@@ -29,6 +29,36 @@ function isValidUuid(id?: string | null): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim());
 }
 
+// Helper: Generates a deterministic 12-char hex string (only 0-9 and a-f) for UUID compatibility
+function toDeterministicHex(seed: string): string {
+  let hash1 = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash1 = ((hash1 << 5) - hash1) + seed.charCodeAt(i);
+    hash1 |= 0;
+  }
+  let hash2 = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    hash2 = ((hash2 << 5) + hash2) + seed.charCodeAt(i);
+    hash2 |= 0;
+  }
+  const h1 = Math.abs(hash1).toString(16).padStart(8, '0');
+  const h2 = Math.abs(hash2).toString(16).padStart(8, '0');
+  return (h1 + h2).slice(0, 12).toLowerCase();
+}
+
+/**
+ * Normaliza el estado operativo para cumplir con check constraint en 'instrumentos':
+ * ('Operativo', 'En Calibración', 'Fuera de Servicio', 'Baja')
+ */
+export function normalizeEstadoOperativo(raw?: string | null): "Operativo" | "En Calibración" | "Fuera de Servicio" | "Baja" {
+  if (!raw) return "Operativo";
+  const s = String(raw).trim().toLowerCase();
+  if (s.includes("baja")) return "Baja";
+  if (s.includes("fuera") || s.includes("aver") || s.includes("inactiv") || s.includes("dañ")) return "Fuera de Servicio";
+  if (s.includes("calib") || s.includes("mant") || s.includes("ajuste")) return "En Calibración";
+  return "Operativo";
+}
+
 /**
  * Normaliza el estado de la cotización para cumplir estrictamente con el CHECK constraint
  * cotizaciones_estatus_check: ('Generada', 'Enviada', 'Aprobada', 'Rechazada', 'Facturada')
@@ -288,8 +318,8 @@ export async function fetchOdtsFromSupabase(): Promise<{ odts: any[], error: any
 export function mapInstrumentToSupabase(inst: Instrumento) {
   let idInst = inst.id_instrumento;
   if (!isValidUuid(idInst)) {
-    // Generar un UUID determinista si no es UUID
-    idInst = `01000000-0000-0000-0000-${inst.codigo_interno.replace(/[^a-zA-Z0-9]/g, '').padEnd(12, '0').slice(0, 12).toLowerCase()}`;
+    // Generar un UUID determinista válido con caracteres hexadecimales
+    idInst = `02000000-0000-0000-0000-${toDeterministicHex(inst.codigo_interno || inst.nombre || "inst")}`;
   }
 
   return {
@@ -301,7 +331,7 @@ export function mapInstrumentToSupabase(inst: Instrumento) {
     numero_serie: inst.numero_serie,
     ubicacion: inst.ubicacion || "Laboratorio Central ASP",
     intervalo_calibracion_meses: Number(inst.intervalo_calibracion_meses || 12),
-    estado_operativo: inst.estado_operativo || "Operativo",
+    estado_operativo: normalizeEstadoOperativo(inst.estado_operativo),
     actualizado_en: new Date().toISOString()
   };
 }
@@ -309,9 +339,9 @@ export function mapInstrumentToSupabase(inst: Instrumento) {
 export async function saveInstrumentoToSupabase(inst: Instrumento): Promise<SupabaseSyncResult> {
   try {
     const row = mapInstrumentToSupabase(inst);
-    const { error } = await supabase.from("instrumentos").upsert([row], { onConflict: "id_instrumento" });
+    const { error } = await supabase.from("instrumentos").upsert([row], { onConflict: "codigo_interno" });
     if (!error) return { success: true, message: `Instrumento ${row.codigo_interno} guardado en Supabase.`, count: 1 };
-    const res = await directRestUpsert("instrumentos", "id_instrumento", [row]);
+    const res = await directRestUpsert("instrumentos", "codigo_interno", [row]);
     if (res.success) return { success: true, message: `Instrumento ${row.codigo_interno} guardado en Supabase.`, count: 1 };
     return { success: false, message: `Error: ${error?.message || JSON.stringify(error)}`, error };
   } catch (err: any) {
@@ -323,11 +353,11 @@ export async function syncAllInstrumentosToSupabase(instruments: Instrumento[]):
   if (!instruments || instruments.length === 0) return { success: true, message: "No hay instrumentos para sincronizar.", count: 0 };
   try {
     const rows = instruments.map(mapInstrumentToSupabase);
-    const { error } = await supabase.from("instrumentos").upsert(rows, { onConflict: "id_instrumento" });
+    const { error } = await supabase.from("instrumentos").upsert(rows, { onConflict: "codigo_interno" });
     if (!error) {
       return { success: true, message: `¡${rows.length} instrumentos sincronizados con Supabase!`, count: rows.length };
     }
-    const res = await directRestUpsert("instrumentos", "id_instrumento", rows);
+    const res = await directRestUpsert("instrumentos", "codigo_interno", rows);
     if (res.success) {
       return { success: true, message: `¡${rows.length} instrumentos sincronizados con Supabase!`, count: rows.length };
     }
@@ -377,7 +407,7 @@ export async function fetchInstrumentosFromSupabase(): Promise<{ instruments: In
 export function mapUserToSupabase(user: Usuario) {
   let idUser = user.id_usuario;
   if (!isValidUuid(idUser)) {
-    idUser = `01000000-0000-0000-0000-${(user.email || 'user').replace(/[^a-zA-Z0-9]/g, '').padEnd(12, '0').slice(0, 12).toLowerCase()}`;
+    idUser = `01000000-0000-0000-0000-${toDeterministicHex(user.email || user.nombre_completo || "user")}`;
   }
 
   return {

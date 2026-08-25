@@ -74,6 +74,8 @@ import {
   saveCotizacionToSupabase, 
   syncAllQuotesToSupabase, 
   fetchCotizacionesFromSupabase,
+  fetchOdtsFromSupabase,
+  syncAllOdtsToSupabase,
   testSupabaseConnection,
   syncAllModulesToSupabase
 } from './lib/supabaseSync';
@@ -339,7 +341,23 @@ export default function App() {
           syncAllQuotesToSupabase(generatedQuotes).catch(e => console.error("Error auto-syncing to Supabase:", e));
         }
       } catch (err) {
-        console.warn("Supabase initial sync info:", err);
+        console.warn("Supabase initial quotes sync info:", err);
+      }
+
+      try {
+        const { odts: remoteOdts } = await fetchOdtsFromSupabase();
+        if (remoteOdts && remoteOdts.length > 0) {
+          setScheduledServices(prev => {
+            const remoteMap = new Set(remoteOdts.map(o => o.id_servicio || o.id_odt));
+            const localOnly = prev.filter(o => !remoteMap.has(o.id_servicio || o.id_odt));
+            if (localOnly.length > 0) {
+              syncAllOdtsToSupabase(localOnly).catch(e => console.error("Error auto-uploading local odts:", e));
+            }
+            return [...remoteOdts, ...localOnly];
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase initial odts sync info:", err);
       }
     }
     syncQuotesWithSupabaseOnMount();
