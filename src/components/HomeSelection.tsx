@@ -53,8 +53,8 @@ const ROLES_LIST: RoleConfig[] = [
     id: "ceo",
     name: "CEO / Alta Dirección",
     icon: Briefcase,
-    personaId: "",
-    defaultEmail: "",
+    personaId: "01000000-0000-0000-0000-000000000001",
+    defaultEmail: "daniel.trevino@aspechs.com.mx",
     puesto: "CEO"
   },
   {
@@ -596,7 +596,48 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
     }
   };
 
-  // Helper to trigger database bootstrapping for the user right from the UI
+  // Helper to sync all 19 predefined official credentials to Supabase
+  const handleSyncAllCredentialsToSupabase = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      // 1. Upsert all roles
+      const rolesToInsert = ROLES_LIST.map(r => ({
+        id_rol: r.id,
+        nombre: r.name,
+        descripcion: `Rol oficial autorizado en ASP/EcH&S: ${r.puesto}`
+      }));
+      
+      const { error: rErr } = await supabase.from("roles").upsert(rolesToInsert, { onConflict: "id_rol" });
+      if (rErr) throw rErr;
+
+      // 2. Upsert all predefined users
+      const usersToInsert = PREDEFINED_USERS_MAPPING.map(u => ({
+        id_usuario: u.id,
+        nombre_completo: u.nombre,
+        email: u.email,
+        password_hash: u.password || "ASPPass2026!",
+        id_rol: u.rol,
+        puesto: u.puesto,
+        firma_electronica_fingerprint: u.firma,
+        esta_activo: true,
+        ultimo_acceso: new Date().toISOString()
+      }));
+
+      const { error: uErr } = await supabase.from("usuarios").upsert(usersToInsert, { onConflict: "email" });
+      if (uErr) throw uErr;
+
+      setSuccessMessage(`¡Éxito! Se guardaron y activaron las credenciales de ${usersToInsert.length} usuarios oficiales en tu base de datos de Supabase.`);
+    } catch (err: any) {
+      console.error("Error sincronizando usuarios con Supabase:", err);
+      setErrorMessage(`No se pudo sincronizar automáticamente (${err.message || "Error"}). Si aún no has ejecutado el script SQL en Supabase, pulsa "Ver Script SQL para Supabase", cópialo y ejecútalo en el SQL Editor.`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper to trigger database bootstrapping for a single user
   const handleBootstrapUserInSupabase = async () => {
     if (!email) return;
     setIsLoading(true);
@@ -606,9 +647,10 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
         id: "e88b48f9-4d6d-478a-aef4-4f40d12ea661",
         nombre: "Roberto Fernández",
         email: "roberto.fernandez@aspechs.com.mx",
-        rol: "DIR_OP",
+        rol: "dir_op",
         puesto: "Director de Operaciones",
-        firma: "SHA256:f16b23...88ca4192 (e.firma SAT)"
+        firma: "SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a",
+        password: "RobertoF2026!"
       };
 
       // 1. Insert role if not exists
@@ -616,27 +658,29 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
         id_rol: suggested.rol,
         nombre: selectedRoleConfig?.name || suggested.puesto,
         descripcion: "Perfil autorizado en matriz RBAC de ASP/EcH&S."
-      });
+      }, { onConflict: "id_rol" });
+
+      if (rErr) throw rErr;
 
       // 2. Insert user profile
-      const { error: uErr } = await supabase.from("usuarios").insert({
+      const { error: uErr } = await supabase.from("usuarios").upsert({
         id_usuario: suggested.id,
         nombre_completo: suggested.nombre,
         email: suggested.email,
-        password_hash: "ASPPass2026!", // raw fallback
+        password_hash: suggested.password || "ASPPass2026!",
         id_rol: suggested.rol,
         puesto: suggested.puesto,
         firma_electronica_fingerprint: suggested.firma,
         esta_activo: true,
         ultimo_acceso: new Date().toISOString()
-      });
+      }, { onConflict: "email" });
 
       if (uErr) throw uErr;
 
-      setSuccessMessage(`¡Se ha creado el usuario '${suggested.nombre}' en tu Supabase con éxito! Ya puedes iniciar sesión.`);
+      setSuccessMessage(`¡Se ha guardado y activado el usuario '${suggested.nombre}' en tu Supabase con éxito!`);
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(`No se pudo crear: ${err.message}. Asegúrate de haber ejecutado la tabla 'roles' y 'usuarios' primero usando el script SQL.`);
+      setErrorMessage(`No se pudo guardar: ${err.message}. Asegúrate de haber ejecutado el script SQL en Supabase SQL Editor primero.`);
     } finally {
       setIsLoading(false);
     }
@@ -745,14 +789,44 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
                 })}
               </div>
 
-              {/* Toggle script SQL button */}
-              <button
-                onClick={() => setShowSqlViewer(!showSqlViewer)}
-                className="mt-8 flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors duration-200 shadow-sm cursor-pointer"
-              >
-                <Code className="w-4 h-4 text-[#85AA1C]" />
-                <span>{showSqlViewer ? "Ocultar Script SQL para Supabase" : "Ver Script SQL para Supabase"}</span>
-              </button>
+              {/* Actions Bar for Supabase Synchronization and SQL Script */}
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 w-full max-w-2xl">
+                <button
+                  type="button"
+                  onClick={handleSyncAllCredentialsToSupabase}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-[#85AA1C] hover:bg-[#739418] disabled:bg-slate-300 rounded-xl transition-all duration-200 shadow-sm hover:shadow cursor-pointer"
+                >
+                  <CloudLightning className="w-4 h-4" />
+                  <span>{isLoading ? "Sincronizando..." : "⚡ Activar y Guardar Credenciales en Supabase"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowSqlViewer(!showSqlViewer)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors duration-200 shadow-sm cursor-pointer"
+                >
+                  <Code className="w-4 h-4 text-[#85AA1C]" />
+                  <span>{showSqlViewer ? "Ocultar Script SQL" : "📋 Ver Script SQL para Supabase"}</span>
+                </button>
+              </div>
+
+              {/* Status feedback banner in main view */}
+              {successMessage && (
+                <div className="mt-4 max-w-xl w-full bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex gap-2.5 items-center text-xs text-emerald-800 font-medium">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <p>{successMessage}</p>
+                </div>
+              )}
+
+              {errorMessage && (
+                <div className="mt-4 max-w-xl w-full bg-red-50 border border-red-200 rounded-xl p-3 flex gap-2.5 items-start text-xs text-red-700 font-medium">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                  <div className="space-y-1">
+                    <p>{errorMessage}</p>
+                  </div>
+                </div>
+              )}
             </motion.div>
           ) : (
             // FORM VIEW: PORTAL ACCESS CARD

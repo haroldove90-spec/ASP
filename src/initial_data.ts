@@ -142,6 +142,16 @@ export const ROLE_PERMISSIONS_MAP: Record<string, string[]> = {
 // Usuarios Predefinidos (Con e.firma)
 export const INITIAL_USUARIOS: Usuario[] = [
   {
+    id_usuario: "01000000-0000-0000-0000-000000000001",
+    nombre_completo: "Ing. Daniel Treviño Reyes",
+    email: "daniel.trevino@aspechs.com.mx",
+    id_rol: "ceo",
+    puesto: "CEO",
+    firma_electronica_fingerprint: "SHA256:CEO_DT_88129A (e.firma SAT)",
+    esta_activo: true,
+    ultimo_acceso: "2026-07-20T12:00:00Z"
+  },
+  {
     id_usuario: "01000000-0000-0000-0000-000000000002",
     nombre_completo: "Lic. Carlos Ayala",
     email: "carlos.ayala@aspechs.com.mx",
