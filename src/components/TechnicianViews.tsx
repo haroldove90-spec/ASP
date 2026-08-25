@@ -19,6 +19,10 @@ import {
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, generarHashIntegridad } from '../initial_data';
 import TierrasFisicasModule from './TierrasFisicasModule';
+import { 
+  saveOdtToSupabase, 
+  syncAllOdtsToSupabase 
+} from '../lib/supabaseSync';
 
 interface TechnicianViewsProps {
   activePersona: Usuario;
@@ -118,6 +122,18 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
 
   const [repSignatureInput, setRepSignatureInput] = useState<string>("");
   const [repNameInput, setRepNameInput] = useState<string>("");
+  const [isTechSyncing, setIsTechSyncing] = useState(false);
+
+  const handleTechSyncAgenda = async () => {
+    setIsTechSyncing(true);
+    const res = await syncAllOdtsToSupabase(scheduledServices);
+    setIsTechSyncing(false);
+    if (res.success) {
+      alert(`☁️ ${res.message}\n\nLos servicios asignados y de agenda están respaldados en Supabase (public.ordenes_trabajo).`);
+    } else {
+      alert(`❌ Error al sincronizar con Supabase: ${res.message}`);
+    }
+  };
 
   const [techChecklist, setTechChecklist] = useState({
     baterias: false,
@@ -370,10 +386,22 @@ export default function TechnicianViews(props: TechnicianViewsProps) {
 
           {/* VISITAS EN PLANTA AGENDADAS */}
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
-            <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1.5 border-b border-slate-900 pb-2">
-              <MapPin className="text-blue-500 w-4 h-4" />
-              Visitas Agendadas a Plantas / Sitios
-            </h3>
+            <div className="flex items-center justify-between border-b border-slate-900 pb-2">
+              <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                <MapPin className="text-blue-500 w-4 h-4" />
+                Visitas Agendadas a Plantas / Sitios
+              </h3>
+              <button
+                type="button"
+                onClick={handleTechSyncAgenda}
+                disabled={isTechSyncing}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-950 hover:bg-blue-900 text-blue-200 border border-blue-800 rounded-lg text-xs font-bold transition cursor-pointer"
+                title="Sincronizar visitas agendadas con Supabase"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isTechSyncing ? 'animate-spin' : ''}`} />
+                <span>{isTechSyncing ? "Sincronizando..." : "Sincronizar con Supabase"}</span>
+              </button>
+            </div>
 
             <div className="space-y-3">
               {scheduledServices.filter(s => s.id_tecnico === activePersona.id_usuario).map(serv => (

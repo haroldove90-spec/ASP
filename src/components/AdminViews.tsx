@@ -36,11 +36,19 @@ import {
   Clock,
   Printer,
   FileSignature,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Usuario } from '../initial_data';
 import TierrasFisicasModule from './TierrasFisicasModule';
+import { 
+  saveOdtToSupabase, 
+  syncAllOdtsToSupabase, 
+  saveCotizacionToSupabase,
+  syncAllQuotesToSupabase,
+  testSupabaseConnection 
+} from '../lib/supabaseSync';
 
 interface AdminViewsProps {
   activePersona: Usuario;
@@ -110,8 +118,31 @@ export default function AdminViews(props: AdminViewsProps) {
     fecha: '2026-07-20'
   });
   const [dacEditingService, setDacEditingService] = useState<any | null>(null);
+  const [isAdminSyncing, setIsAdminSyncing] = useState<boolean>(false);
 
-  const handleDacScheduleWork = (e: React.FormEvent) => {
+  const handleManualSyncAdminAgenda = async () => {
+    setIsAdminSyncing(true);
+    const res = await syncAllOdtsToSupabase(scheduledServices);
+    setIsAdminSyncing(false);
+    if (res.success) {
+      alert(`☁️ ${res.message}\n\nLos ${scheduledServices.length} servicios y citas de la agenda están respaldados en Supabase en 'public.ordenes_trabajo'.`);
+    } else {
+      alert(`❌ Error al sincronizar con Supabase:\n${res.message}`);
+    }
+  };
+
+  const handleManualSyncAdminQuotes = async () => {
+    setIsAdminSyncing(true);
+    const res = await syncAllQuotesToSupabase(generatedQuotes);
+    setIsAdminSyncing(false);
+    if (res.success) {
+      alert(`☁️ ${res.message}\n\nLas ${generatedQuotes.length} cotizaciones comerciales están sincronizadas con Supabase en 'public.cotizaciones'.`);
+    } else {
+      alert(`❌ Error al sincronizar cotizaciones con Supabase:\n${res.message}`);
+    }
+  };
+
+  const handleDacScheduleWork = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dacNewScheduleForm.cliente_nombre || !dacNewScheduleForm.fecha || !dacNewScheduleForm.servicio) {
       alert("Por favor complete el nombre de la empresa, la fecha y el tipo de servicio.");
@@ -135,7 +166,15 @@ export default function AdminViews(props: AdminViewsProps) {
       servicio: 'Mapeo de Ruido NOM-011',
       fecha: dacSelectedDay || '2026-07-20'
     });
-    alert(`Trabajo calendarizado con éxito para "${newService.cliente_nombre}" el día ${newService.fecha}. El Gerente de Operaciones asignará al Ingeniero de Campo.`);
+
+    // Sincronizar en tiempo real con Supabase
+    saveOdtToSupabase(newService).then(res => {
+      if (res.success) {
+        console.log("Cita DAC guardada en Supabase:", res.message);
+      }
+    }).catch(err => console.error("Error guardando cita DAC en Supabase:", err));
+
+    alert(`Trabajo calendarizado con éxito para "${newService.cliente_nombre}" el día ${newService.fecha}.\n\n☁️ Registrado y guardado en Supabase (public.ordenes_trabajo). El Gerente de Operaciones asignará al Ingeniero de Campo.`);
   };
 
   const handleDacSaveEditService = (e: React.FormEvent) => {
@@ -146,8 +185,12 @@ export default function AdminViews(props: AdminViewsProps) {
       s.id_servicio === dacEditingService.id_servicio ? dacEditingService : s
     );
     setScheduledServices(updated);
+
+    // Guardar cambios en Supabase
+    saveOdtToSupabase(dacEditingService).catch(err => console.error("Error actualizando ODT en Supabase:", err));
+
     setDacEditingService(null);
-    alert("Datos de la calendarización actualizados correctamente.");
+    alert("Datos de la calendarización actualizados y sincronizados con Supabase correctamente.");
   };
 
   const handleDacDeleteService = (id_servicio: string) => {
@@ -813,7 +856,14 @@ export default function AdminViews(props: AdminViewsProps) {
       setInvoices([newInvoiceObj, ...invoices]);
     }
 
-    alert(`¡Ficha de Cotización ${quoteFolio} Registrada Exitosamente!\nCliente: ${newQuoteObj.cliente}\nTotal Desglosado: $${computedTotal.toLocaleString('es-MX')} MXN (IVA Incluido).`);
+    // Guardar en Supabase en la tabla public.cotizaciones
+    saveCotizacionToSupabase(newQuoteObj, activePersona?.id_usuario).then(res => {
+      if (res.success) {
+        console.log("Cotización guardada en Supabase:", res.message);
+      }
+    }).catch(err => console.error("Error guardando cotización en Supabase:", err));
+
+    alert(`¡Ficha de Cotización ${quoteFolio} Registrada Exitosamente!\nCliente: ${newQuoteObj.cliente}\nTotal Desglosado: $${computedTotal.toLocaleString('es-MX')} MXN (IVA Incluido).\n\n☁️ Guardada y sincronizada en Supabase (public.cotizaciones).`);
 
     // Reset Form
     setClientName("");
@@ -1865,7 +1915,17 @@ export default function AdminViews(props: AdminViewsProps) {
                   La asignación del Ingeniero de Campo correspondiente la realizará el Gerente de Operaciones.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleManualSyncAdminAgenda}
+                  disabled={isAdminSyncing}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                  title="Sincronizar agenda con la tabla public.ordenes_trabajo de Supabase"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isAdminSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isAdminSyncing ? "Sincronizando..." : "Sincronizar Supabase"}</span>
+                </button>
                 <span className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-emerald-400">
                   {scheduledServices.length} Servicios en Agenda
                 </span>

@@ -70,7 +70,13 @@ import CoordinatorViews from './components/CoordinatorViews';
 import TechnicianViews from './components/TechnicianViews';
 import AdminViews from './components/AdminViews';
 import HomeSelection from './components/HomeSelection';
-import { saveCotizacionToSupabase, syncAllQuotesToSupabase, fetchCotizacionesFromSupabase } from './lib/supabaseSync';
+import { 
+  saveCotizacionToSupabase, 
+  syncAllQuotesToSupabase, 
+  fetchCotizacionesFromSupabase,
+  testSupabaseConnection,
+  syncAllModulesToSupabase
+} from './lib/supabaseSync';
 
 export default function App() {
   // Session / Active Role state for dynamic landing page
@@ -361,6 +367,55 @@ export default function App() {
 
   // Mobile Sidebar State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Global Supabase Connection & Sync State
+  const [supabaseStatus, setSupabaseStatus] = useState<'testing' | 'connected' | 'error'>('testing');
+  const [supabaseMessage, setSupabaseMessage] = useState<string>('Verificando conexión con Supabase...');
+  const [isSyncingGlobal, setIsSyncingGlobal] = useState<boolean>(false);
+
+  // Verificar conexión con Supabase al montar la app
+  useEffect(() => {
+    let isMounted = true;
+    testSupabaseConnection().then(res => {
+      if (!isMounted) return;
+      if (res.connected) {
+        setSupabaseStatus('connected');
+        setSupabaseMessage(`Conectado (${res.latencyMs}ms) - ${res.tables.ordenes_trabajo} citas, ${res.tables.cotizaciones} cotizaciones, ${res.tables.instrumentos} instrumentos`);
+      } else {
+        setSupabaseStatus('error');
+        setSupabaseMessage(res.error || 'Error de conexión con Supabase');
+      }
+    }).catch(err => {
+      if (!isMounted) return;
+      setSupabaseStatus('error');
+      setSupabaseMessage('Error al contactar Supabase: ' + (err?.message || String(err)));
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleGlobalSyncAll = async () => {
+    setIsSyncingGlobal(true);
+    setSupabaseStatus('testing');
+    setSupabaseMessage('Sincronizando todos los módulos con Supabase...');
+    
+    const res = await syncAllModulesToSupabase({
+      odts: scheduledServices,
+      quotes: generatedQuotes,
+      instruments,
+      usuarios
+    });
+
+    setIsSyncingGlobal(false);
+    if (res.success) {
+      setSupabaseStatus('connected');
+      setSupabaseMessage('Sincronizado exitosamente con Supabase');
+      alert(`☁️ Conexión Exitosa con Supabase\n\n${res.message}\n\n• Agenda & Programación (${scheduledServices.length} registros en public.ordenes_trabajo)\n• Cotizaciones Comerciales (${generatedQuotes.length} registros en public.cotizaciones)\n• Inventario de Metrología (${instruments.length} instrumentos en public.instrumentos)\n• Personal (${usuarios.length} usuarios en public.usuarios)`);
+    } else {
+      setSupabaseStatus('error');
+      setSupabaseMessage(res.message);
+      alert(`❌ Resultado de Sincronización:\n${res.message}`);
+    }
+  };
 
   // Persona State
   const [currentPersonaId, setCurrentPersonaId] = useState<string>(() => {
@@ -1549,7 +1604,45 @@ export default function App() {
           </div>
 
           {/* SIMULADOR DE PERSONA / CAMBIO DE ROL */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-stretch sm:self-auto">
+          <div className="flex flex-wrap items-center gap-3 self-stretch sm:self-auto">
+            {/* Botón de Sincronización e Indicador Supabase */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-1 shadow-xs">
+              <div 
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
+                  supabaseStatus === 'connected' 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : supabaseStatus === 'testing'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-red-100 text-red-800'
+                }`}
+                title={supabaseMessage}
+              >
+                <span className={`w-2 h-2 rounded-full ${
+                  supabaseStatus === 'connected' 
+                    ? 'bg-emerald-500' 
+                    : supabaseStatus === 'testing' 
+                      ? 'bg-amber-500 animate-ping' 
+                      : 'bg-red-500'
+                }`}></span>
+                <span className="hidden sm:inline">
+                  {supabaseStatus === 'connected' ? 'Supabase Conectado' : supabaseStatus === 'testing' ? 'Verificando...' : 'Error Supabase'}
+                </span>
+                <span className="sm:hidden">
+                  {supabaseStatus === 'connected' ? 'Supabase OK' : 'Supabase'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleGlobalSyncAll}
+                disabled={isSyncingGlobal}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
+                title="Probar conexión y sincronizar todos los módulos (Agenda, Cotizaciones, Instrumentos, Personal) con Supabase"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-[#85AA1C] ${isSyncingGlobal ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline">{isSyncingGlobal ? "Sincronizando..." : "Sincronizar Supabase"}</span>
+              </button>
+            </div>
+
             {/* Cerrar Sesión / Volver */}
             <button
               onClick={handleLogout}

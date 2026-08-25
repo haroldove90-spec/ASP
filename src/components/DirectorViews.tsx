@@ -42,7 +42,16 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion, AuditLog } from '../initial_data';
-import { saveCotizacionToSupabase, syncAllQuotesToSupabase, fetchCotizacionesFromSupabase } from '../lib/supabaseSync';
+import { 
+  saveCotizacionToSupabase, 
+  syncAllQuotesToSupabase, 
+  fetchCotizacionesFromSupabase,
+  saveOdtToSupabase,
+  syncAllOdtsToSupabase,
+  fetchOdtsFromSupabase,
+  saveUsuarioToSupabase,
+  syncAllUsuariosToSupabase
+} from '../lib/supabaseSync';
 
 interface DirectorViewsProps {
   activePersona: Usuario;
@@ -395,7 +404,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
     }
   };
 
-  const handleCreateOdt = (e: React.FormEvent) => {
+  const handleCreateOdt = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOdtForm.cliente_nombre || !newOdtForm.fecha || !newOdtForm.id_tecnico || !newOdtForm.id_instrumento) {
       alert("Por favor complete todos los campos obligatorios.");
@@ -421,10 +430,22 @@ export default function DirectorViews(props: DirectorViewsProps) {
       id_instrumento: '',
       estado: 'Asignado'
     });
-    alert(`Orden de Trabajo ${newOdt.id_servicio} creada y programada correctamente para el ${newOdt.fecha}.`);
+
+    // Guardar en tiempo real en Supabase (public.ordenes_trabajo)
+    setIsSyncingQuotes(true);
+    setSyncStatusMessage("Guardando ODT en Supabase...");
+    const res = await saveOdtToSupabase(newOdt);
+    setIsSyncingQuotes(false);
+    if (res.success) {
+      setSyncStatusMessage(`✅ ODT ${newOdt.id_servicio} guardada en Supabase.`);
+      alert(`✅ Orden de Trabajo ${newOdt.id_servicio} creada y programada correctamente para el ${newOdt.fecha}.\n\n☁️ Guardada y sincronizada en Supabase (public.ordenes_trabajo).`);
+    } else {
+      setSyncStatusMessage(`⚠️ ODT guardada localmente.`);
+      alert(`Orden de Trabajo ${newOdt.id_servicio} guardada localmente.\n\nNota de Supabase: ${res.message}`);
+    }
   };
 
-  const handleScheduleDayEvent = (e: React.FormEvent) => {
+  const handleScheduleDayEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCalendarDay) return;
     if (!newScheduleForm.cliente_nombre || !newScheduleForm.id_tecnico || !newScheduleForm.id_instrumento) {
@@ -450,10 +471,50 @@ export default function DirectorViews(props: DirectorViewsProps) {
       id_tecnico: '',
       id_instrumento: '',
     });
-    alert(`Servicio agendado con éxito para el día ${selectedCalendarDay}.`);
+
+    // Guardar en tiempo real en Supabase (public.ordenes_trabajo)
+    setIsSyncingQuotes(true);
+    setSyncStatusMessage("Sincronizando cita con Supabase...");
+    const res = await saveOdtToSupabase(newOdt);
+    setIsSyncingQuotes(false);
+    if (res.success) {
+      setSyncStatusMessage(`✅ Cita ${newOdt.id_servicio} guardada en Supabase.`);
+      alert(`✅ Servicio agendado con éxito para el día ${selectedCalendarDay}.\n\n☁️ Registrado y guardado en Supabase (public.ordenes_trabajo).`);
+    } else {
+      setSyncStatusMessage(`⚠️ Cita agendada localmente.`);
+      alert(`Servicio agendado para el día ${selectedCalendarDay} en la agenda local.\n\nNota de Supabase: ${res.message}`);
+    }
   };
 
-  const handleCreateEngineer = (e: React.FormEvent) => {
+  const handleManualSyncAgenda = async () => {
+    setIsSyncingQuotes(true);
+    setSyncStatusMessage("Sincronizando agenda con Supabase...");
+    const res = await syncAllOdtsToSupabase(scheduledServices);
+    setIsSyncingQuotes(false);
+    if (res.success) {
+      setSyncStatusMessage(`✅ ${res.message}`);
+      alert(`☁️ ${res.message}\n\nLas ${scheduledServices.length} citas y servicios de la agenda están respaldados en Supabase en la tabla 'public.ordenes_trabajo'.`);
+    } else {
+      setSyncStatusMessage(`❌ Error al sincronizar agenda: ${res.message}`);
+      alert(`❌ Error al sincronizar agenda con Supabase:\n${res.message}`);
+    }
+  };
+
+  const handleManualSyncEngineers = async () => {
+    setIsSyncingQuotes(true);
+    setSyncStatusMessage("Sincronizando personal con Supabase...");
+    const res = await syncAllUsuariosToSupabase(usuarios);
+    setIsSyncingQuotes(false);
+    if (res.success) {
+      setSyncStatusMessage(`✅ ${res.message}`);
+      alert(`☁️ ${res.message}\n\nLos ${usuarios.length} ingenieros y usuarios están sincronizados con Supabase (public.usuarios).`);
+    } else {
+      setSyncStatusMessage(`❌ Error: ${res.message}`);
+      alert(`❌ Error al sincronizar personal con Supabase:\n${res.message}`);
+    }
+  };
+
+  const handleCreateEngineer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEngineerForm.nombre_completo || !newEngineerForm.email || !newEngineerForm.cedula) {
       alert("Por favor complete todos los campos obligatorios.");
@@ -483,6 +544,14 @@ export default function DirectorViews(props: DirectorViewsProps) {
       cedula: '',
       especialidad: 'Especialista en Acústica NOM-011'
     });
+
+    // Guardar en Supabase
+    saveUsuarioToSupabase(newEng).then(res => {
+      if (res.success) {
+        console.log("Usuario guardado en Supabase:", res.message);
+      }
+    }).catch(err => console.error("Error guardando usuario:", err));
+
     alert(`Ingeniero de Campo ${newEng.nombre_completo} registrado de alta en el sistema exitosamente.`);
   };
   const [projectTechFilter, setProjectTechFilter] = useState<string>("Todos");
@@ -2827,13 +2896,25 @@ export default function DirectorViews(props: DirectorViewsProps) {
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">Control, asignación y seguimiento de servicios técnicos y de levantamiento físico de campo.</p>
             </div>
-            <button
-              onClick={() => setIsAddOdtOpen(true)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nueva ODT</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleManualSyncAgenda}
+                disabled={isSyncingQuotes}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                title="Sincronizar todas las ODT con Supabase (public.ordenes_trabajo)"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isSyncingQuotes ? 'animate-spin' : ''}`} />
+                <span>{isSyncingQuotes ? "Sincronizando..." : "Sincronizar con Supabase"}</span>
+              </button>
+              <button
+                onClick={() => setIsAddOdtOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nueva ODT</span>
+              </button>
+            </div>
           </div>
 
           {/* Add ODT Form */}
@@ -3044,12 +3125,26 @@ export default function DirectorViews(props: DirectorViewsProps) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-              <Calendar className="text-emerald-600 w-4.5 h-4.5" />
-              Agenda y Calendario de Servicios
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Control visual e interactivo de asignaciones de campo de todo el personal metrológico. Haga clic en un día del calendario para programar.</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Calendar className="text-emerald-600 w-4.5 h-4.5" />
+                Agenda y Calendario de Servicios
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Control visual e interactivo de asignaciones de campo de todo el personal metrológico. Haga clic en un día del calendario para programar.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleManualSyncAgenda}
+                disabled={isSyncingQuotes}
+                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                title="Sincronizar todas las citas con la tabla public.ordenes_trabajo de Supabase"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isSyncingQuotes ? 'animate-spin' : ''}`} />
+                <span>{isSyncingQuotes ? "Sincronizando..." : "Sincronizar con Supabase"}</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -3249,13 +3344,25 @@ export default function DirectorViews(props: DirectorViewsProps) {
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">Monitoreo de disponibilidad, ubicación y registro formal de ingenieros de campo acreditados.</p>
             </div>
-            <button
-              onClick={() => setIsAddEngineerOpen(true)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Dar de Alta Ingeniero</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleManualSyncEngineers}
+                disabled={isSyncingQuotes}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                title="Sincronizar todo el personal con Supabase (public.usuarios)"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isSyncingQuotes ? 'animate-spin' : ''}`} />
+                <span>{isSyncingQuotes ? "Sincronizando..." : "Sincronizar con Supabase"}</span>
+              </button>
+              <button
+                onClick={() => setIsAddEngineerOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Dar de Alta Ingeniero</span>
+              </button>
+            </div>
           </div>
 
           {/* Form Modal for Creating Engineer */}

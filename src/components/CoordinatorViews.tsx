@@ -26,10 +26,19 @@ import {
   Award,
   TrendingUp,
   ClipboardList,
-  CheckSquare
+  CheckSquare,
+  RefreshCw
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion } from '../initial_data';
+import { 
+  saveOdtToSupabase, 
+  syncAllOdtsToSupabase, 
+  saveInstrumentoToSupabase, 
+  syncAllInstrumentosToSupabase, 
+  saveCertificadoToSupabase, 
+  syncAllCertificadosToSupabase
+} from '../lib/supabaseSync';
 
 interface CoordinatorViewsProps {
   activePersona: Usuario;
@@ -133,6 +142,29 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
   const [poInputCode, setPoInputCode] = useState("");
   const [poInputCost, setPoInputCost] = useState(0);
   const [poInputDate, setPoInputDate] = useState("");
+  const [isCoordSyncing, setIsCoordSyncing] = useState(false);
+
+  const handleManualSyncAgenda = async () => {
+    setIsCoordSyncing(true);
+    const res = await syncAllOdtsToSupabase(scheduledServices);
+    setIsCoordSyncing(false);
+    if (res.success) {
+      alert(`☁️ ${res.message}\n\nLos ${scheduledServices.length} servicios de la agenda están respaldados en Supabase (public.ordenes_trabajo).`);
+    } else {
+      alert(`❌ Error al sincronizar agenda: ${res.message}`);
+    }
+  };
+
+  const handleManualSyncInventory = async () => {
+    setIsCoordSyncing(true);
+    const res = await syncAllInstrumentosToSupabase(instruments);
+    setIsCoordSyncing(false);
+    if (res.success) {
+      alert(`☁️ ${res.message}\n\nLos ${instruments.length} instrumentos de metrología están sincronizados en Supabase (public.instrumentos).`);
+    } else {
+      alert(`❌ Error al sincronizar inventario: ${res.message}`);
+    }
+  };
 
   const availableAdvisors = useMemo(() => {
     if (!usuarios || usuarios.length === 0) return [];
@@ -840,9 +872,21 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
                     <Calendar className="text-emerald-600 w-4 h-4" />
                     Planificador de Servicios en Planta (Julio 2026)
                   </h3>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 font-mono font-bold px-2 py-0.5 rounded">
-                    Agenda Mensual
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleManualSyncAgenda}
+                      disabled={isCoordSyncing}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-md text-[11px] font-bold transition cursor-pointer"
+                      title="Sincronizar asignaciones con Supabase (public.ordenes_trabajo)"
+                    >
+                      <RefreshCw className={`w-3 h-3 text-emerald-700 ${isCoordSyncing ? 'animate-spin' : ''}`} />
+                      <span>{isCoordSyncing ? "Sincronizando..." : "Sincronizar Supabase"}</span>
+                    </button>
+                    <span className="text-[10px] bg-slate-100 text-slate-600 font-mono font-bold px-2 py-0.5 rounded">
+                      Agenda Mensual
+                    </span>
+                  </div>
                 </div>
 
                 {/* CALENDARIO */}
@@ -2316,12 +2360,24 @@ export default function CoordinatorViews(props: CoordinatorViewsProps) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-              <Calendar className="text-[#85AA1C] w-4.5 h-4.5" />
-              Programación de Servicios Ocupacionales
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Calendario metrológico de asignaciones, disponibilidad de viáticos y control de rutas para analistas de ASP.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Calendar className="text-[#85AA1C] w-4.5 h-4.5" />
+                Programación de Servicios Ocupacionales
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Calendario metrológico de asignaciones, disponibilidad de viáticos y control de rutas para analistas de ASP.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleManualSyncAgenda}
+              disabled={isCoordSyncing}
+              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition cursor-pointer"
+              title="Sincronizar agenda con Supabase (public.ordenes_trabajo)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-700 ${isCoordSyncing ? 'animate-spin' : ''}`} />
+              <span>{isCoordSyncing ? "Sincronizando..." : "Sincronizar con Supabase"}</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs text-slate-700">
