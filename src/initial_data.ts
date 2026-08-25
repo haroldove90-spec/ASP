@@ -143,13 +143,13 @@ export const ROLE_PERMISSIONS_MAP: Record<string, string[]> = {
 export const INITIAL_USUARIOS: Usuario[] = [
   {
     id_usuario: "01000000-0000-0000-0000-000000000001",
-    nombre_completo: "Ing. Daniel Treviño Reyes",
-    email: "daniel.trevino@aspechs.com.mx",
+    nombre_completo: "Harold Anguiano Morales",
+    email: "haroldo90@aspechs.com.mx",
     id_rol: "ceo",
     puesto: "CEO",
-    firma_electronica_fingerprint: "SHA256:CEO_DT_88129A (e.firma SAT)",
+    firma_electronica_fingerprint: "SHA256:CEO_HA_99810A (e.firma SAT)",
     esta_activo: true,
-    ultimo_acceso: "2026-07-20T12:00:00Z"
+    ultimo_acceso: "2026-08-25T12:00:00Z"
   },
   {
     id_usuario: "01000000-0000-0000-0000-000000000002",
@@ -167,7 +167,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     email: "roberto.fernandez@aspechs.com.mx",
     id_rol: "dir_op",
     puesto: "Director de Operaciones",
-    firma_electronica_fingerprint: "SHA256:f16b23...88ca4192 (e.firma SAT)",
+    firma_electronica_fingerprint: "SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a",
     esta_activo: true,
     ultimo_acceso: "2026-07-14T12:05:12Z"
   },
@@ -317,254 +317,30 @@ export const INITIAL_USUARIOS: Usuario[] = [
     email: "alejandro.torres@aspechs.com.mx",
     id_rol: "sys_admin",
     puesto: "Coordinador de Ciberseguridad y TI",
-    firma_electronica_fingerprint: "SHA256:d89a12...931cb921 (e.firma SAT)",
+    firma_electronica_fingerprint: "SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe",
     esta_activo: true,
     ultimo_acceso: "2026-07-14T13:10:45Z"
   },
   {
-    id_usuario: "77000000-0000-0000-0000-000000000099",
-    nombre_completo: "Ing. Harold Anguiano",
-    email: "harold.anguiano@aspechs.com.mx",
-    id_rol: "sys_admin",
-    puesto: "Administrador del Sistema",
-    firma_electronica_fingerprint: "SHA256:HA_99810A_ADMIN (e.firma SAT)",
+    id_usuario: "01000000-0000-0000-0000-000000000099",
+    nombre_completo: "Ing. Daniel Treviño Reyes",
+    email: "daniel.trevino@aspechs.com.mx",
+    id_rol: "ceo",
+    puesto: "Dirección General",
+    firma_electronica_fingerprint: "SHA256:CEO_DT_88129A (e.firma SAT)",
     esta_activo: true,
-    ultimo_acceso: "2026-07-23T06:20:00Z"
-  },
-  {
-    id_usuario: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
-    nombre_completo: "Ing. Carlos Slim Jr.",
-    email: "carlos.slim@aspechs.com.mx",
-    id_rol: "ger_tec",
-    puesto: "Responsable Técnico del Laboratorio",
-    firma_electronica_fingerprint: "SHA256:a215fe...338eaef4 (e.firma SAT)",
-    esta_activo: true,
-    ultimo_acceso: "2026-07-14T11:45:00Z"
-  },
-  {
-    id_usuario: "3cd40182-ef35-42d8-9df2-51c6b12a8844",
-    nombre_completo: "Lucía Juárez",
-    email: "lucia.juarez@aspechs.com.mx",
-    id_rol: "ing_campo",
-    puesto: "Analista Metrólogo Senior",
-    firma_electronica_fingerprint: "SHA256:9cb812...0df63a29 (e.firma SAT)",
-    esta_activo: true,
-    ultimo_acceso: "2026-07-14T09:15:30Z"
+    ultimo_acceso: "2026-07-20T12:00:00Z"
   }
 ];
 
-// Instrumentos Iniciales
-export const INITIAL_INSTRUMENTOS: Instrumento[] = [
-  {
-    id_instrumento: "inst-001",
-    codigo_interno: "EQ-TERM-102",
-    nombre: "Termohigrómetro Digital",
-    marca: "Fluke Calibration",
-    modelo: "DewK 1620A",
-    numero_serie: "FK-99281726",
-    ubicacion: "Laboratorio de Pesas y Medidas - Sala A",
-    intervalo_calibracion_meses: 12,
-    estado_operativo: "Operativo"
-  },
-  {
-    id_instrumento: "inst-002",
-    codigo_interno: "EQ-BAL-500",
-    nombre: "Balanza Analítica de Precisión",
-    marca: "Mettler Toledo",
-    modelo: "XPR205",
-    numero_serie: "MT-88371625",
-    ubicacion: "Cabina Climatizada - Microanálisis",
-    intervalo_calibracion_meses: 12,
-    estado_operativo: "Operativo"
-  },
-  {
-    id_instrumento: "inst-003",
-    codigo_interno: "EQ-ESPEC-088",
-    nombre: "Espectrofotómetro UV-Vis",
-    marca: "Thermo Scientific",
-    modelo: "Evolution 220",
-    numero_serie: "TS-77382910",
-    ubicacion: "Laboratorio Químico de Ensayos",
-    intervalo_calibracion_meses: 6,
-    estado_operativo: "En Calibración"
-  },
-  {
-    id_instrumento: "inst-004",
-    codigo_interno: "EQ-PH-201",
-    nombre: "Potenciómetro / pH-metro",
-    marca: "Ohaus",
-    modelo: "Starter 3100",
-    numero_serie: "OH-66112233",
-    ubicacion: "Estación de Muestreo de H&S",
-    intervalo_calibracion_meses: 6,
-    estado_operativo: "Fuera de Servicio"
-  },
-  {
-    id_instrumento: "inst-005",
-    codigo_interno: "EQ-SON-055",
-    nombre: "Sonómetro Integrador Clase 1",
-    marca: "Quest Technologies",
-    modelo: "SoundPro SE",
-    numero_serie: "QP-10928374",
-    ubicacion: "Almacén de Equipos de Higiene",
-    intervalo_calibracion_meses: 12,
-    estado_operativo: "Operativo"
-  },
-  {
-    id_instrumento: "inst-006",
-    codigo_interno: "EQ-SON-091",
-    nombre: "Sonómetro Integrador Clase 2",
-    marca: "Larson Davis",
-    modelo: "LxT LXT1",
-    numero_serie: "LD-55291",
-    ubicacion: "Módulo de Seguridad Industrial",
-    intervalo_calibracion_meses: 12,
-    estado_operativo: "Operativo"
-  }
-];
+// Instrumentos Iniciales (Limpio para nuevos registros)
+export const INITIAL_INSTRUMENTOS: Instrumento[] = [];
 
-// Certificados Iniciales
-export const INITIAL_CERTIFICADOS: CertificadoCalibracion[] = [
-  {
-    id_certificado: "cert-001",
-    id_instrumento: "inst-001",
-    numero_certificado: "EMA-FLUKE-2025-4491",
-    laboratorio_emisor: "Metrología Acreditada S.A. de C.V. (Acreditación EMA M-98)",
-    fecha_calibracion: "2025-08-15",
-    fecha_vencimiento: "2026-08-15", // Vence pronto! (julio 2026)
-    url_documento: "https://certificados.aspechs.com/EMA-FLUKE-2025-4491.pdf",
-    archivo_hash_sha256: "3f786850e387550fdab836ed7e6dc881de23001b3296acb03c834a3179df1433",
-    estado_aprobacion: "Aprobado",
-    aprobado_por: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    fecha_aprobacion: "2025-08-17T10:00:00Z",
-    justificacion_aprobacion: "Cumple con las desviaciones estándar admisibles y calibración trazable a patrón primario de CNM.",
-    sello_digital_nom151: "NOM151:CONSTANCIA-2025-08-17-PSC-0921"
-  },
-  {
-    id_certificado: "cert-002",
-    id_instrumento: "inst-002",
-    numero_certificado: "EMA-METTLER-2025-1029",
-    laboratorio_emisor: "Patrones Nacionales de México S.A. (Acreditación EMA M-12)",
-    fecha_calibracion: "2026-02-10",
-    fecha_vencimiento: "2027-02-10", // Vigente y lejano
-    url_documento: "https://certificados.aspechs.com/EMA-METTLER-2025-1029.pdf",
-    archivo_hash_sha256: "8e21a20bf102f4ccdd92ea689ff891df92e23a4b0870f7a93412be1d9bf1ef87",
-    estado_aprobacion: "Aprobado",
-    aprobado_por: "e88b48f9-4d6d-478a-aef4-4f40d12ea661", // Roberto Fernández
-    fecha_aprobacion: "2026-02-12T14:30:00Z",
-    justificacion_aprobacion: "Aprobación ejecutiva para inicio de operaciones en línea de fármacos. Se validó trazabilidad de pesas patrón.",
-    sello_digital_nom151: "NOM151:CONSTANCIA-2026-02-12-PSC-3312"
-  },
-  {
-    id_certificado: "cert-003",
-    id_instrumento: "inst-003",
-    numero_certificado: "EMA-THERMO-2024-8112",
-    laboratorio_emisor: "Calibraciones del Norte S.A. de C.V. (Acreditación EMA M-45)",
-    fecha_calibracion: "2024-05-10",
-    fecha_vencimiento: "2024-11-10", // Vencido hace mucho
-    url_documento: "https://certificados.aspechs.com/EMA-THERMO-2024-8112.pdf",
-    archivo_hash_sha256: "ef931cb921938ac5f59c8b931e129450ad89a12a215fe338eaef47c8b931e129",
-    estado_aprobacion: "Aprobado",
-    aprobado_por: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
-    fecha_aprobacion: "2024-05-12T11:00:00Z",
-    justificacion_aprobacion: "Historial de deriva térmica correcto. Certificado anterior aprobado.",
-    sello_digital_nom151: "NOM151:CONSTANCIA-2024-05-12-PSC-8112"
-  },
-  {
-    id_certificado: "cert-004",
-    id_instrumento: "inst-004",
-    numero_certificado: "EMA-OHAUS-2024-0012",
-    laboratorio_emisor: "Patrones Nacionales de México S.A. (Acreditación EMA M-12)",
-    fecha_calibracion: "2024-01-05",
-    fecha_vencimiento: "2024-07-05", // Vencido
-    url_documento: "https://certificados.aspechs.com/EMA-OHAUS-2024-0012.pdf",
-    archivo_hash_sha256: "df938c5f59e88b48f94d6d478aaef44f40d12ea66191d1c8eac7744b92ba782d",
-    estado_aprobacion: "Aprobado",
-    aprobado_por: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
-    fecha_aprobacion: "2024-01-08T09:20:00Z",
-    justificacion_aprobacion: "Liberado para mediciones de pH en efluentes industriales. Se requiere recertificación.",
-    sello_digital_nom151: "NOM151:CONSTANCIA-2024-01-08-PSC-0012"
-  },
-  {
-    id_certificado: "cert-005",
-    id_instrumento: "inst-005",
-    numero_certificado: "EMA-QUEST-2026-0922",
-    laboratorio_emisor: "Acústica y Vibraciones de México (Acreditación EMA M-77)",
-    fecha_calibracion: "2026-01-15",
-    fecha_vencimiento: "2027-01-15", // Vigente!
-    url_documento: "https://certificados.aspechs.com/EMA-QUEST-2026-0922.pdf",
-    archivo_hash_sha256: "fa4b6850e387550fdab836ed7e6dc881de23001b3296acb03c834a3179dfa999",
-    estado_aprobacion: "Aprobado",
-    aprobado_por: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
-    fecha_aprobacion: "2026-01-17T11:00:00Z",
-    justificacion_aprobacion: "Calibración aprobada para sonómetro de levantamiento en sitio (NOM-011-STPS). Desviación menor a 0.2 dB.",
-    sello_digital_nom151: "NOM151:CONSTANCIA-2026-01-17-PSC-0922"
-  },
-  {
-    id_certificado: "cert-006",
-    id_instrumento: "inst-006",
-    numero_certificado: "EMA-LARSON-2024-4421",
-    laboratorio_emisor: "Acústica y Vibraciones de México (Acreditación EMA M-77)",
-    fecha_calibracion: "2024-03-01",
-    fecha_vencimiento: "2025-03-01", // Vencido!
-    url_documento: "https://certificados.aspechs.com/EMA-LARSON-2024-4421.pdf",
-    archivo_hash_sha256: "bc991cb921938ac5f59c8b931e129450ad89a12a215fe338eaef47c8b931e211",
-    estado_aprobacion: "Aprobado",
-    aprobado_por: "a6c8b931-e129-450a-8bf8-d30c50d4f128",
-    fecha_aprobacion: "2024-03-04T12:00:00Z",
-    justificacion_aprobacion: "Certificación anterior del sonómetro secundario. Requiere calibración urgente para uso en campo.",
-    sello_digital_nom151: "NOM151:CONSTANCIA-2024-03-04-PSC-4421"
-  }
-];
+// Certificados Iniciales (Limpio para nuevos registros)
+export const INITIAL_CERTIFICADOS: CertificadoCalibracion[] = [];
 
-// Logs Iniciales de la Bitácora
-export const INITIAL_AUDIT_LOGS: AuditLog[] = [
-  {
-    id_log: 1,
-    id_usuario: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59", // Sofía Méndez
-    usuario_nombre: "Sofía Méndez",
-    usuario_rol: "SYS_ADMIN",
-    tabla_afectada: "roles_permisos",
-    registro_id: "DIR_OP",
-    accion: "INSERT",
-    valor_anterior: null,
-    valor_nuevo: '{"id_rol": "DIR_OP", "id_permiso": "auditoria:leer"}',
-    justificacion_tecnica: "Inicialización del esquema de seguridad y asignación de privilegios de lectura de bitácora inalterable al Director de Operaciones.",
-    hash_integridad: "6a9f116dc82a6cdbe81e053a47b19a12e848cb6c04fcf1f5b02324ca9df273a5",
-    ip_origen: "192.168.10.45",
-    timestamp: "2026-07-13T09:00:00Z"
-  },
-  {
-    id_log: 2,
-    id_usuario: "a6c8b931-e129-450a-8bf8-d30c50d4f128", // Carlos Slim Jr.
-    usuario_nombre: "Ing. Carlos Slim Jr.",
-    usuario_rol: "LAB_SUP",
-    tabla_afectada: "instrumentos",
-    registro_id: "inst-001",
-    accion: "UPDATE",
-    valor_anterior: '{"id_instrumento": "inst-001", "estado_operativo": "En Calibración"}',
-    valor_nuevo: '{"id_instrumento": "inst-001", "estado_operativo": "Operativo"}',
-    justificacion_tecnica: "Retorno del termohigrómetro a servicio operativo tras recibir y validar el certificado de calibración EMA-FLUKE-2025-4491 con derivas admisibles.",
-    hash_integridad: "fb92043caee42e58a9cc2a3179df1433f16b23087a3296acb03c834a3179df14",
-    ip_origen: "192.168.20.101",
-    timestamp: "2026-07-13T10:15:22Z"
-  },
-  {
-    id_log: 3,
-    id_usuario: "e88b48f9-4d6d-478a-aef4-4f40d12ea661", // Roberto Fernández
-    usuario_nombre: "Roberto Fernández",
-    usuario_rol: "DIR_OP",
-    tabla_afectada: "certificados_calibracion",
-    registro_id: "cert-002",
-    accion: "SIGN",
-    valor_anterior: '{"id_certificado": "cert-002", "estado_aprobacion": "Pendiente"}',
-    valor_nuevo: '{"id_certificado": "cert-002", "estado_aprobacion": "Aprobado", "aprobado_por": "Roberto Fernández"}',
-    justificacion_tecnica: "Aprobación y firma digital del certificado de la balanza analítica para dar inicio a la auditoría de calidad NMX-17025 de fin de mes.",
-    hash_integridad: "a215fe338eaef47c8b931e129450ad89a12a215fe338eaef4d89a12a215fe338",
-    ip_origen: "200.74.99.182",
-    timestamp: "2026-07-14T12:10:00Z"
-  }
-];
+// Logs Iniciales de la Bitácora (Limpio)
+export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
 // Helper para simular generación de hash SHA-256 para integridad de la bitácora (representando NOM-151)
 export function generarHashIntegridad(

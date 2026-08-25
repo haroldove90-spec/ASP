@@ -54,7 +54,7 @@ const ROLES_LIST: RoleConfig[] = [
     name: "CEO / Alta Dirección",
     icon: Briefcase,
     personaId: "01000000-0000-0000-0000-000000000001",
-    defaultEmail: "daniel.trevino@aspechs.com.mx",
+    defaultEmail: "haroldo90@aspechs.com.mx",
     puesto: "CEO"
   },
   {
@@ -158,17 +158,19 @@ const ROLES_LIST: RoleConfig[] = [
 const PREDEFINED_USERS_MAPPING = [
   {
     id: "01000000-0000-0000-0000-000000000001",
-    nombre: "Ing. Daniel Treviño Reyes",
-    email: "daniel.trevino@aspechs.com.mx",
+    nombre: "Harold Anguiano Morales",
+    email: "haroldo90@aspechs.com.mx",
+    username: "haroldo90",
     rol: "ceo",
     puesto: "CEO",
-    firma: "SHA256:CEO_DT_88129A (e.firma SAT)",
-    password: "DanielT2026!"
+    firma: "SHA256:CEO_HA_99810A (e.firma SAT)",
+    password: "Chevropar#1970"
   },
   {
     id: "01000000-0000-0000-0000-000000000002",
     nombre: "Lic. Carlos Ayala",
     email: "carlos.ayala@aspechs.com.mx",
+    username: "carlos.ayala",
     rol: "dir_at_cl",
     puesto: "Director de Atención a Clientes",
     firma: "SHA256:DAC_CA_22910B (e.firma SAT)",
@@ -178,15 +180,17 @@ const PREDEFINED_USERS_MAPPING = [
     id: "e88b48f9-4d6d-478a-aef4-4f40d12ea661",
     nombre: "Lic. Roberto Fernández Alanís",
     email: "roberto.fernandez@aspechs.com.mx",
+    username: "roberto.fernandez",
     rol: "dir_op",
     puesto: "Director de Operaciones",
-    firma: "SHA256:f16b23...88ca4192 (e.firma SAT)",
+    firma: "SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a",
     password: "RobertoF2026!"
   },
   {
     id: "01000000-0000-0000-0000-000000000004",
     nombre: "Ing. Adalberto Ledezma",
     email: "adalberto.ledezma@aspechs.com.mx",
+    username: "adalberto.ledezma",
     rol: "ger_tec",
     puesto: "Gerente Técnico",
     firma: "SHA256:GT_AL_91032C (e.firma SAT)",
@@ -196,6 +200,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000005",
     nombre: "Bio. Isela Ramos Lozano",
     email: "isela.ramos@aspechs.com.mx",
+    username: "isela.ramos",
     rol: "ger_cal",
     puesto: "Gerente de Calidad",
     firma: "SHA256:GC_IR_10293D (e.firma SAT)",
@@ -205,6 +210,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000006",
     nombre: "Ing. Jasiel Navarro",
     email: "jasiel.navarro@aspechs.com.mx",
+    username: "jasiel.navarro",
     rol: "jefe_rep",
     puesto: "Gerente de Reportes",
     firma: "SHA256:JR_JN_40210E (e.firma SAT)",
@@ -214,6 +220,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000007",
     nombre: "Abraham Navarro",
     email: "abraham.navarro@aspechs.com.mx",
+    username: "abraham.navarro",
     rol: "jefe_alm",
     puesto: "Jefe de Almacén",
     firma: "SHA256:JA_AN_50321F (e.firma SAT)",
@@ -223,6 +230,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000008",
     nombre: "Ing. Mauricio Iván Córdoba",
     email: "mauricio.cordoba@aspechs.com.mx",
+    username: "mauricio.cordoba",
     rol: "coord_lab",
     puesto: "Coordinador de Laboratorio",
     firma: "SHA256:CL_MC_60432A (e.firma SAT)",
@@ -232,6 +240,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000009",
     nombre: "Ing. Juan José Gallegos",
     email: "juan.gallegos@aspechs.com.mx",
+    username: "juan.gallegos",
     rol: "jefe_op",
     puesto: "Gerente de Operaciones",
     firma: "SHA256:JO_JG_70543B (e.firma SAT)",
@@ -241,6 +250,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000010",
     nombre: "Ing. Gerardo Daniel Sánchez",
     email: "gerardo.sanchez@aspechs.com.mx",
+    username: "gerardo.sanchez",
     rol: "ing_campo",
     puesto: "Ingeniero en Fuentes Fijas",
     firma: "SHA256:IC_GS_80654C (e.firma SAT)",
@@ -250,6 +260,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000011",
     nombre: "Ing. Andrés Manuel Gómez",
     email: "andres.gomez@aspechs.com.mx",
+    username: "andres.gomez",
     rol: "ing_campo",
     puesto: "Ingeniero en Fuentes Fijas",
     firma: "SHA256:IC_AG_90765D (e.firma SAT)",
@@ -259,6 +270,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000012",
     nombre: "Ing. Carlos Sánchez Leal",
     email: "carlos.sanchez@aspechs.com.mx",
+    username: "carlos.sanchez",
     rol: "ing_campo",
     puesto: "Ingeniero en Fuentes Fijas",
     firma: "SHA256:IC_CS_10876E (e.firma SAT)",
@@ -268,6 +280,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000013",
     nombre: "Ing. Roberto Paulino Hdz",
     email: "roberto.paulino@aspechs.com.mx",
+    username: "roberto.paulino",
     rol: "ing_campo",
     puesto: "Ingeniero en Ambiente Laboral",
     firma: "SHA256:IC_RP_20987F (e.firma SAT)",
@@ -277,6 +290,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000014",
     nombre: "Ing. Francisco Cupil",
     email: "francisco.cupil@aspechs.com.mx",
+    username: "francisco.cupil",
     rol: "ing_campo",
     puesto: "Ingeniero en Termo y OSP",
     firma: "SHA256:IC_FC_31098A (e.firma SAT)",
@@ -286,6 +300,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000015",
     nombre: "Ing. Misael Baltasar",
     email: "misael.baltasar@aspechs.com.mx",
+    username: "misael.baltasar",
     rol: "ing_campo",
     puesto: "Ingeniero en Termo y OSP",
     firma: "SHA256:IC_MB_42109B (e.firma SAT)",
@@ -295,6 +310,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000016",
     nombre: "Ing. Natalia Alfaro",
     email: "natalia.alfaro@aspechs.com.mx",
+    username: "natalia.alfaro",
     rol: "ing_campo",
     puesto: "Ingeniero en Termo y OSP",
     firma: "SHA256:IC_NA_53210C (e.firma SAT)",
@@ -304,6 +320,7 @@ const PREDEFINED_USERS_MAPPING = [
     id: "01000000-0000-0000-0000-000000000017",
     nombre: "Ing. Baltazar",
     email: "baltazar.hdz@aspechs.com.mx",
+    username: "baltazar.hdz",
     rol: "ing_campo",
     puesto: "Ingeniero en Ambiente Laboral",
     firma: "SHA256:IC_IB_64321D (e.firma SAT)",
@@ -313,19 +330,21 @@ const PREDEFINED_USERS_MAPPING = [
     id: "91d1c8ea-c774-4b92-ba78-2dfa938c5f59",
     nombre: "Alejandro Torres",
     email: "alejandro.torres@aspechs.com.mx",
+    username: "alejandro.torres",
     rol: "sys_admin",
     puesto: "Coordinador de Ciberseguridad y TI",
-    firma: "SHA256:d89a12...931cb921 (e.firma SAT)",
+    firma: "SHA256:d89a12a3296acb03c834a3179df1432f59c8b931e129450ad89a12a215fe",
     password: "ASPPass2026!"
   },
   {
-    id: "77000000-0000-0000-0000-000000000099",
-    nombre: "Ing. Harold Anguiano",
-    email: "harold.anguiano@aspechs.com.mx",
-    rol: "sys_admin",
-    puesto: "Administrador del Sistema (sys_admin)",
-    firma: "SHA256:HA_99810A_ADMIN (e.firma SAT)",
-    password: "Chevropar#1970"
+    id: "01000000-0000-0000-0000-000000000099",
+    nombre: "Ing. Daniel Treviño Reyes",
+    email: "daniel.trevino@aspechs.com.mx",
+    username: "daniel.trevino",
+    rol: "ceo",
+    puesto: "Dirección General",
+    firma: "SHA256:CEO_DT_88129A (e.firma SAT)",
+    password: "DanielT2026!"
   }
 ];
 
@@ -741,28 +760,6 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
                 </h2>
               </div>
 
-              {/* PDF Download Callout Bar (Ocultado temporalmente por solicitud del usuario) */}
-              {/* Directory PDF Download Banner */}
-              <div className="w-full bg-white border border-slate-200 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-[#85AA1C]/10 text-[#85AA1C] rounded-xl border border-[#85AA1C]/20">
-                    <FileText className="w-5 h-5 text-[#85AA1C]" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-xs font-bold text-slate-800">Directorio Oficial de Personal y Credenciales (e.firma)</h3>
-                    <p className="text-[11px] text-slate-500">Descargue el archivo PDF ejecutivo con las credenciales de acceso para compartir con su cliente.</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => downloadCredentialsPdf(PREDEFINED_USERS_MAPPING)}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-[#85AA1C] hover:bg-[#729218] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer shrink-0"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Descargar Credenciales (PDF)</span>
-                </button>
-              </div>
-
               {/* Roles Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
                 {ROLES_LIST.map((role, idx) => {
@@ -786,28 +783,6 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
                     </motion.button>
                   );
                 })}
-              </div>
-
-              {/* Actions Bar for Supabase Synchronization and SQL Script */}
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 w-full max-w-2xl">
-                <button
-                  type="button"
-                  onClick={handleSyncAllCredentialsToSupabase}
-                  disabled={isLoading}
-                  className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-[#85AA1C] hover:bg-[#739418] disabled:bg-slate-300 rounded-xl transition-all duration-200 shadow-sm hover:shadow cursor-pointer"
-                >
-                  <CloudLightning className="w-4 h-4" />
-                  <span>{isLoading ? "Sincronizando..." : "⚡ Activar y Guardar Credenciales en Supabase"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowSqlViewer(!showSqlViewer)}
-                  className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors duration-200 shadow-sm cursor-pointer"
-                >
-                  <Code className="w-4 h-4 text-[#85AA1C]" />
-                  <span>{showSqlViewer ? "Ocultar Script SQL" : "📋 Ver Script SQL para Supabase"}</span>
-                </button>
               </div>
 
               {/* Status feedback banner in main view */}

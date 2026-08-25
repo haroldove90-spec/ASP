@@ -128,6 +128,7 @@ export default function App() {
     switch (roleId) {
       case 'ceo':
         if (tabId === 'ceo_dashboard') return 'dir_dashboard';
+        if (tabId === 'ceo_employees') return 'sa_users';
         if (tabId === 'ceo_reports') return 'dir_calibration';
         if (tabId === 'ceo_admin') return 'dir_config';
         break;
@@ -169,6 +170,7 @@ export default function App() {
       case 'ceo':
         return [
           { id: 'ceo_dashboard', label: 'Dashboard Ejecutivo', icon: TrendingUp },
+          { id: 'ceo_employees', label: 'Empleados', icon: Users },
           { id: 'ceo_reports', label: 'Reportes Globales', icon: ClipboardList },
           { id: 'ceo_admin', label: 'Administración (Consulta)', icon: Sliders },
         ];
@@ -244,7 +246,7 @@ export default function App() {
         ];
       case 'sys_admin':
         return [
-          { id: 'sa_users', label: 'Usuarios y Accesos', icon: Users },
+          { id: 'sa_users', label: 'Empleados', icon: Users },
           { id: 'sa_roles', label: 'Roles y Permisos', icon: Key },
           { id: 'sa_catalogs', label: 'Administrar Catálogos', icon: Sliders },
           { id: 'sa_config', label: 'Parámetros del Sistema', icon: Settings },
@@ -268,10 +270,7 @@ export default function App() {
   const [fieldArea, setFieldArea] = useState<string>("");
   const [fieldStartTime, setFieldStartTime] = useState<string>("");
   const [fieldEndTime, setFieldEndTime] = useState<string>("");
-  const [fieldReadings, setFieldReadings] = useState<Array<{ db: number; conditions: string }>>([
-    { db: 84.5, conditions: "Operación de calderas baja, viento de 1.2 m/s" },
-    { db: 87.2, conditions: "Operación de calderas media, ventilación activa" }
-  ]);
+  const [fieldReadings, setFieldReadings] = useState<Array<{ db: number; conditions: string }>>([]);
   const [fieldRepName, setFieldRepName] = useState<string>("");
   const [fieldRepPuesto, setFieldRepPuesto] = useState<string>("");
   const [fieldIsLocked, setFieldIsLocked] = useState<boolean>(false);
@@ -281,122 +280,7 @@ export default function App() {
   // Submitted reports for the coordinator validation queue
   const [submittedReports, setSubmittedReports] = useState<any[]>(() => {
     const saved = localStorage.getItem('aspechs_submitted_reports');
-    if (saved) return JSON.parse(saved);
-
-    // Initial pre-populated records for the interactive demo
-    return [
-      {
-        id_reporte: "REP-NOM011-2026-001",
-        tecnico: "Lucía Juárez",
-        fecha: "2026-07-13",
-        estado: "Aprobado",
-        aprobado_por: "Carlos Slim Jr.",
-        justificacion_coordinador: "Se aprueba el reporte tras verificar calibración vigente del sonómetro y firmas digitales completas.",
-        timestamp_revision: "2026-07-13T16:40:00Z",
-        payload: {
-          id_reporte: "REP-NOM011-2026-001",
-          datos_sitio: {
-            empresa_cliente: "Metalúrgica del Norte S.A.",
-            ubicacion_planta: "Planta Apodaca, Nave 3",
-            coordenadas_gps: "25.7785, -100.1873",
-            fecha_medicion: "2026-07-13",
-            checkin_hora: "10:15:30"
-          },
-          epp_verificado: {
-            casco: true,
-            tapones_auditivos_orejeras: true,
-            calzado_seguridad: true,
-            chaleco_reflejante: true,
-            timestamp_epp_check: "2026-07-13T10:18:22Z"
-          },
-          instrumento_utilizado: {
-            id_instrumento: "inst-005",
-            codigo_interno: "EQ-SON-055",
-            nombre: "Sonómetro Integrador Clase 1",
-            marca: "Quest Technologies",
-            modelo: "SoundPro SE",
-            certificado_calibracion_vigente: "EMA-QUEST-2026-0922",
-            fecha_vencimiento_calibracion: "2027-01-15"
-          },
-          punto_medicion: {
-            id_punto: "P-01",
-            area_descripcion: "Taller de Torno y Fresado",
-            hora_inicio: "10:20:00",
-            hora_fin: "11:00:00"
-          },
-          lecturas: [
-            { db: 86.4, conditions: "Torno operando a máxima carga. Temp 28°C" },
-            { db: 85.9, conditions: "Torno operando a carga media. Temp 28.2°C" }
-          ],
-          firmas_conformidad: {
-            firma_tecnico: "Lucía Juárez (LAB_TECH)",
-            huella_digital_tecnico: "e.firma:SHA256:9cb812...0df63a29",
-            firma_representante_planta: "Ing. Roberto Cantú",
-            puesto_representante: "Coordinador de Higiene Industrial",
-            timestamp_firmas: "2026-07-13T11:05:12Z"
-          },
-          nom151_integridad: {
-            hash_documento_sha256: "SHA256:39a1b12b59c2ef3542d89df251c6b12a8844fa215fe338eaef4",
-            constancia_psc: "NOM151:CONSTANCIA-2026-07-13-FIELD-0012",
-            esta_bloqueado: true
-          }
-        }
-      },
-      {
-        id_reporte: "REP-NOM011-2026-002",
-        tecnico: "Lucía Juárez",
-        fecha: "2026-07-14",
-        estado: "Pendiente",
-        payload: {
-          id_reporte: "REP-NOM011-2026-002",
-          datos_sitio: {
-            empresa_cliente: "Cervecería de Querétaro S.A.",
-            ubicacion_planta: "Área de Embotellado Línea 4",
-            coordenadas_gps: "20.5888, -100.3899",
-            fecha_medicion: "2026-07-14",
-            checkin_hora: "08:45:00"
-          },
-          epp_verificado: {
-            casco: true,
-            tapones_auditivos_orejeras: true,
-            calzado_seguridad: true,
-            chaleco_reflejante: true,
-            timestamp_epp_check: "2026-07-14T08:48:10Z"
-          },
-          instrumento_utilizado: {
-            id_instrumento: "inst-005",
-            codigo_interno: "EQ-SON-055",
-            nombre: "Sonómetro Integrador Clase 1",
-            marca: "Quest Technologies",
-            modelo: "SoundPro SE",
-            certificado_calibracion_vigente: "EMA-QUEST-2026-0922",
-            fecha_vencimiento_calibracion: "2027-01-15"
-          },
-          punto_medicion: {
-            id_punto: "P-02",
-            area_descripcion: "Embotellado y Empaque",
-            hora_inicio: "08:50:00",
-            hora_fin: "09:30:00"
-          },
-          lecturas: [
-            { db: 91.2, conditions: "Línea de envasado a velocidad nominal. Temp 21°C" },
-            { db: 92.0, conditions: "Fallas menores en transportador, ruido de fricción elevado" }
-          ],
-          firmas_conformidad: {
-            firma_tecnico: "Lucía Juárez (LAB_TECH)",
-            huella_digital_tecnico: "e.firma:SHA256:9cb812...0df63a29",
-            firma_representante_planta: "Lic. Laura Ortega",
-            puesto_representante: "Supervisora de Seguridad",
-            timestamp_firmas: "2026-07-14T09:35:15Z"
-          },
-          nom151_integridad: {
-            hash_documento_sha256: "SHA256:f16b23087a3296acb03c834a3179df1432f59c8b931e129450ad89a12a",
-            constancia_psc: "NOM151:CONSTANCIA-2026-07-14-FIELD-0982",
-            esta_bloqueado: true
-          }
-        }
-      }
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
@@ -420,10 +304,7 @@ export default function App() {
   // Cotizador States for Admin/Ventas
   const [generatedQuotes, setGeneratedQuotes] = useState<any[]>(() => {
     const saved = localStorage.getItem('aspechs_generated_quotes');
-    return saved ? JSON.parse(saved) : [
-      { id: "COT-001", cliente: "Vidriera del Norte", servicio: "NOM-011-STPS (Ruido)", puntos: 10, costo: 24500, fecha: "2026-07-10", estado: "Enviado" },
-      { id: "COT-002", cliente: "Papelera de Occidente", servicio: "NOM-015-STPS (Térmicas)", puntos: 4, costo: 15200, fecha: "2026-07-12", estado: "Aceptado" },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
@@ -433,12 +314,7 @@ export default function App() {
   // Invoice control state for Admin/Ventas and Director
   const [invoices, setInvoices] = useState<any[]>(() => {
     const saved = localStorage.getItem('aspechs_invoices');
-    return saved ? JSON.parse(saved) : [
-      { id_factura: 1, cliente: "Vidriera del Norte", monto: 24500, estado: "Pendiente", vencimiento: "2026-08-10" },
-      { id_factura: 2, cliente: "Papelera de Occidente", monto: 15200, estado: "Pagado", vencimiento: "2026-07-30" },
-      { id_factura: 3, cliente: "Cementos de Hidalgo", monto: 45000, estado: "Pagado", vencimiento: "2026-06-15" },
-      { id_factura: 4, cliente: "Metales de Saltillo", monto: 18900, estado: "Vencido", vencimiento: "2026-07-01" },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
@@ -448,10 +324,7 @@ export default function App() {
   // Service Calendar Tasks for Coordinador
   const [scheduledServices, setScheduledServices] = useState<any[]>(() => {
     const saved = localStorage.getItem('aspechs_scheduled_services');
-    return saved ? JSON.parse(saved) : [
-      { id_servicio: "SERV-101", cliente_nombre: "Arneses del Eje S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-15", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
-      { id_servicio: "SERV-102", cliente_nombre: "Química de Coahuila S.A.", servicio: "Mapeo de Ruido NOM-011", fecha: "2026-07-16", id_tecnico: "3cd40182-ef35-42d8-9df2-51c6b12a8844", id_instrumento: "inst-005", estado: "Asignado" },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
@@ -463,7 +336,7 @@ export default function App() {
 
   // Persona State
   const [currentPersonaId, setCurrentPersonaId] = useState<string>(() => {
-    return localStorage.getItem('aspechs_current_persona_id') || "e88b48f9-4d6d-478a-aef4-4f40d12ea661";
+    return localStorage.getItem('aspechs_current_persona_id') || "01000000-0000-0000-0000-000000000001";
   });
 
   useEffect(() => {

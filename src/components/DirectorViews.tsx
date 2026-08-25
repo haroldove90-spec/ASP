@@ -28,7 +28,13 @@ import {
   Compass,
   FileCheck,
   UserPlus,
-  Settings
+  Settings,
+  Eye,
+  Trash2,
+  Edit,
+  X,
+  UserX,
+  CheckCircle2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion, AuditLog } from '../initial_data';
@@ -213,7 +219,25 @@ export default function DirectorViews(props: DirectorViewsProps) {
   const firstDayIndex = new Date(calYear, calMonth - 1, 1).getDay();
   const daysInMonthCount = new Date(calYear, calMonth, 0).getDate();
 
-  // --- SYSTEM ADMIN STATES ---
+  // --- SYSTEM ADMIN / EMPLOYEES STATES ---
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUserForView, setSelectedUserForView] = useState<Usuario | null>(null);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<Usuario | null>(null);
+  const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
+  const [editUserForm, setEditUserForm] = useState<{
+    nombre_completo: string;
+    email: string;
+    puesto: string;
+    id_rol: string;
+    esta_activo: boolean;
+  }>({
+    nombre_completo: '',
+    email: '',
+    puesto: '',
+    id_rol: '',
+    esta_activo: true
+  });
+
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [newUserForm, setNewUserForm] = useState({
     nombre_completo: '',
@@ -1614,39 +1638,68 @@ export default function DirectorViews(props: DirectorViewsProps) {
         </motion.div>
       )}
 
-      {/* SYSTEM ADMIN VIEWS */}
-      {activeTab === 'sa_users' && (
+      {/* SYSTEM ADMIN & CEO EMPLOYEES VIEWS */}
+      {(activeTab === 'sa_users' || activeTab === 'ceo_employees') && (
         <motion.div
           key="sa_users"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {/* HEADER DEL MÓDULO EMPLEADOS */}
           <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
                 <Users className="text-[#85AA1C] w-4.5 h-4.5" />
-                Control de Usuarios, Accesos y Firmas Digitales (LFPDPPP)
+                Directorio y Gestión de Empleados (Credenciales & e.firma SAT)
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">Registro oficial de personal, auditoría de credenciales del SAT y revocación inmediata de privilegios.</p>
+              <p className="text-xs text-slate-500 mt-0.5">Control de empleados autorizados, perfiles de seguridad RBAC, edición y revocación de accesos.</p>
             </div>
-            <button
-              onClick={() => setIsAddUserOpen(!isAddUserOpen)}
-              className="px-4 py-2 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{isAddUserOpen ? "Ocultar Formulario" : "Registrar Nuevo Usuario"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsAddUserOpen(!isAddUserOpen)}
+                className="px-4 py-2 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isAddUserOpen ? "Ocultar Formulario" : "Registrar Empleado"}</span>
+              </button>
+            </div>
           </div>
 
-          {/* FORMULARIO DE REGISTRO */}
+          {/* BARRA DE FILTRO Y BÚSQUEDA */}
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3.5 border border-slate-200 rounded-xl shadow-xs">
+            <div className="relative w-full sm:w-96">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Buscar empleado por nombre, correo, puesto o rol..."
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#85AA1C]"
+              />
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end text-xs text-slate-500">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 font-bold text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                {usuarios.filter(u => u.esta_activo).length} Activos
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200 font-bold text-[10px]">
+                Total: {usuarios.length}
+              </span>
+            </div>
+          </div>
+
+          {/* FORMULARIO DE REGISTRO NUEVO EMPLEADO */}
           {isAddUserOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               className="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4 text-xs"
             >
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-150 pb-2">Asignar Credenciales y Certificado Digital</h4>
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-150 pb-2 flex items-center gap-1.5">
+                <UserPlus className="w-4 h-4 text-[#85AA1C]" />
+                Registrar Nuevo Empleado & Asignar e.firma SAT
+              </h4>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -1654,7 +1707,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
                     alert("Complete todos los campos requeridos.");
                     return;
                   }
-                  const newUser = {
+                  const newUser: Usuario = {
                     id_usuario: "USR-" + Math.random().toString(36).substring(2, 6).toUpperCase(),
                     nombre_completo: newUserForm.nombre_completo,
                     email: newUserForm.email,
@@ -1665,46 +1718,52 @@ export default function DirectorViews(props: DirectorViewsProps) {
                     firma_electronica_fingerprint: "SHA256:E89C" + Math.random().toString(16).substring(2, 10).toUpperCase() + "E981BA2"
                   };
                   setUsuarios([...usuarios, newUser]);
+                  setNewUserForm({
+                    nombre_completo: '',
+                    email: '',
+                    id_rol: 'ing_campo',
+                    puesto: 'Técnico de Campo'
+                  });
                   setIsAddUserOpen(false);
-                  alert(`¡Usuario registrado de forma exitosa! Se emitió un certificado criptográfico local vinculado a la e.firma del SAT del usuario.`);
+                  alert(`¡Empleado ${newUser.nombre_completo} registrado exitosamente con certificado digital!`);
                 }}
                 className="grid grid-cols-1 md:grid-cols-4 gap-4"
               >
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Nombre Completo (SAT)</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Nombre Completo (e.firma SAT)</label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Ing. Carlos Salinas"
+                    placeholder="Ej. Harold Anguiano Morales"
                     value={newUserForm.nombre_completo}
                     onChange={(e) => setNewUserForm({ ...newUserForm, nombre_completo: e.target.value })}
                     className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Correo Institucional / SAT</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Correo Institucional / Usuario</label>
                   <input
                     type="email"
                     required
-                    placeholder="Ej. carlos.salinas@asp.com"
+                    placeholder="Ej. haroldo90@asp.com"
                     value={newUserForm.email}
                     onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
                     className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Puesto Operativo</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Puesto Operativo / Cargo</label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Coordinador de Metrología"
+                    placeholder="Ej. Director General / CEO"
                     value={newUserForm.puesto}
                     onChange={(e) => setNewUserForm({ ...newUserForm, puesto: e.target.value })}
                     className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Rol de Acceso (RBAC)</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Rol de Seguridad (RBAC)</label>
                   <select
                     value={newUserForm.id_rol}
                     onChange={(e) => setNewUserForm({ ...newUserForm, id_rol: e.target.value })}
@@ -1725,79 +1784,419 @@ export default function DirectorViews(props: DirectorViewsProps) {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
                   >
                     <UserPlus className="w-4 h-4" />
-                    <span>Registrar & Emitir Acceso</span>
+                    <span>Guardar Empleado</span>
                   </button>
                 </div>
               </form>
             </motion.div>
           )}
 
-          {/* LISTADO DE USUARIOS REGISTRADOS */}
+          {/* LISTADO DE EMPLEADOS REGISTRADOS */}
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
             <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center text-xs">
-              <span className="font-bold text-slate-700 uppercase font-mono">Personal de ASP de Alta en el Directorio</span>
-              <span className="bg-slate-200 text-slate-700 font-bold font-mono px-2 py-0.5 rounded text-[10px]">{usuarios.length} cuentas</span>
+              <span className="font-bold text-slate-700 uppercase font-mono">Personal de ASP Registrado en el Directorio</span>
+              <span className="bg-slate-200 text-slate-700 font-bold font-mono px-2 py-0.5 rounded text-[10px]">
+                {usuarios.filter(u => 
+                  u.nombre_completo.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                  u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                  u.puesto.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                  u.id_rol.toLowerCase().includes(userSearchTerm.toLowerCase())
+                ).length} registros encontrados
+              </span>
             </div>
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-900 text-white uppercase tracking-wider text-[10px] font-mono">
-                <tr>
-                  <th className="px-4 py-3">ID / Personal</th>
-                  <th className="px-4 py-3">Puesto / Rol</th>
-                  <th className="px-4 py-3">Huella de e.firma SAT</th>
-                  <th className="px-4 py-3">Último Acceso</th>
-                  <th className="px-4 py-3 text-center">Estado</th>
-                  <th className="px-4 py-3 text-right">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-150 text-slate-700 font-sans">
-                {usuarios.map(user => (
-                  <tr key={user.id_usuario} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-slate-950">{user.nombre_completo}</div>
-                      <div className="text-[10px] text-slate-500 font-mono font-light">{user.email}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-slate-800">{user.puesto}</div>
-                      <span className="text-[9.5px] px-1.5 py-0.2 bg-slate-100 border rounded font-mono font-bold text-slate-600">{user.id_rol}</span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-[10.5px] text-slate-500 select-all">
-                      {user.firma_electronica_fingerprint}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">
-                      {user.ultimo_acceso || "Nunca"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
-                        user.esta_activo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
-                      }`}>
-                        <span className={`w-1 h-1 rounded-full ${user.esta_activo ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                        {user.esta_activo ? 'Activo' : 'Suspendido'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          const updated = usuarios.map(u => u.id_usuario === user.id_usuario ? { ...u, esta_activo: !u.esta_activo } : u);
-                          setUsuarios(updated);
-                          alert(`Se ha ${user.esta_activo ? 'desactivado' : 'activado'} la cuenta del usuario de forma inmediata.`);
-                        }}
-                        className={`px-2 py-0.5 border rounded text-[10px] font-bold cursor-pointer ${
-                          user.esta_activo 
-                            ? 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700' 
-                            : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
-                        }`}
-                      >
-                        {user.esta_activo ? 'Suspender' : 'Activar'}
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-900 text-white uppercase tracking-wider text-[10px] font-mono">
+                  <tr>
+                    <th className="px-4 py-3">Empleado</th>
+                    <th className="px-4 py-3">Puesto / Rol</th>
+                    <th className="px-4 py-3">Huella e.firma SAT</th>
+                    <th className="px-4 py-3">Último Acceso</th>
+                    <th className="px-4 py-3 text-center">Estado</th>
+                    <th className="px-4 py-3 text-right">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-150 text-slate-700 font-sans">
+                  {usuarios
+                    .filter(u => 
+                      u.nombre_completo.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                      u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                      u.puesto.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                      u.id_rol.toLowerCase().includes(userSearchTerm.toLowerCase())
+                    )
+                    .map(user => (
+                    <tr key={user.id_usuario} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-slate-950 flex items-center gap-1.5">
+                          <span>{user.nombre_completo}</span>
+                          {user.id_rol === 'ceo' && (
+                            <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded border border-amber-300">
+                              CEO
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono">{user.email}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-slate-800">{user.puesto}</div>
+                        <span className="text-[9.5px] px-1.5 py-0.2 bg-slate-100 border rounded font-mono font-bold text-slate-600">
+                          {INITIAL_ROLES.find(r => r.id_rol === user.id_rol)?.nombre || user.id_rol}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-slate-500 select-all">
+                        {user.firma_electronica_fingerprint || "No registrada"}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">
+                        {user.ultimo_acceso || "Nunca"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                          user.esta_activo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
+                        }`}>
+                          <span className={`w-1 h-1 rounded-full ${user.esta_activo ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                          {user.esta_activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* VER */}
+                          <button
+                            title="Ver ficha del empleado"
+                            onClick={() => setSelectedUserForView(user)}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* EDITAR */}
+                          <button
+                            title="Editar empleado"
+                            onClick={() => {
+                              setSelectedUserForEdit(user);
+                              setEditUserForm({
+                                nombre_completo: user.nombre_completo,
+                                email: user.email,
+                                puesto: user.puesto,
+                                id_rol: user.id_rol,
+                                esta_activo: user.esta_activo
+                              });
+                            }}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-slate-700 cursor-pointer transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* DESACTIVAR / ACTIVAR */}
+                          <button
+                            title={user.esta_activo ? "Desactivar empleado" : "Activar empleado"}
+                            onClick={() => {
+                              const updated = usuarios.map(u => u.id_usuario === user.id_usuario ? { ...u, esta_activo: !u.esta_activo } : u);
+                              setUsuarios(updated);
+                              alert(`Se ha ${user.esta_activo ? 'desactivado' : 'activado'} a ${user.nombre_completo}.`);
+                            }}
+                            className={`p-1.5 rounded-lg border cursor-pointer transition-colors ${
+                              user.esta_activo 
+                                ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700' 
+                                : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                            }`}
+                          >
+                            {user.esta_activo ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                          </button>
+
+                          {/* BORRAR */}
+                          <button
+                            title="Eliminar empleado"
+                            onClick={() => setUserToDelete(user)}
+                            className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 cursor-pointer transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {usuarios.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400 text-xs">
+                        No hay empleados registrados.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* MODAL: VER DETALLES DEL EMPLEADO */}
+          {selectedUserForView && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+              >
+                <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-[#85AA1C]" />
+                    <h3 className="font-bold text-sm">Ficha del Empleado</h3>
+                  </div>
+                  <button
+                    onClick={() => setSelectedUserForView(null)}
+                    className="text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4 text-xs">
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                    <div className="w-12 h-12 rounded-full bg-[#85AA1C]/10 border border-[#85AA1C]/30 flex items-center justify-center text-[#85AA1C] font-bold text-base">
+                      {selectedUserForView.nombre_completo.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">{selectedUserForView.nombre_completo}</h4>
+                      <p className="text-slate-500 font-mono text-[11px]">{selectedUserForView.email}</p>
+                      <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[9.5px] font-bold rounded-full border ${
+                        selectedUserForView.esta_activo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
+                      }`}>
+                        <span className={`w-1 h-1 rounded-full ${selectedUserForView.esta_activo ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                        {selectedUserForView.esta_activo ? 'Cuenta Activa' : 'Cuenta Suspendida'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-slate-600">
+                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Puesto Operativo</span>
+                      <span className="font-semibold text-slate-800">{selectedUserForView.puesto}</span>
+                    </div>
+                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Rol en Sistema</span>
+                      <span className="font-semibold text-slate-800">
+                        {INITIAL_ROLES.find(r => r.id_rol === selectedUserForView.id_rol)?.nombre || selectedUserForView.id_rol}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">ID Identificador</span>
+                      <span className="font-mono text-slate-800 select-all">{selectedUserForView.id_usuario}</span>
+                    </div>
+                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Último Acceso</span>
+                      <span className="font-semibold text-slate-800">{selectedUserForView.ultimo_acceso || "Nunca"}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 text-slate-100 p-3 rounded-lg border border-slate-800 font-mono text-[10.5px]">
+                    <div className="text-[10px] text-slate-400 uppercase font-sans font-bold mb-1 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      Huella Criptográfica e.firma SAT
+                    </div>
+                    <div className="break-all select-all text-emerald-300">
+                      {selectedUserForView.firma_electronica_fingerprint || "No registrada"}
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex justify-end">
+                  <button
+                    onClick={() => setSelectedUserForView(null)}
+                    className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs cursor-pointer"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* MODAL: EDITAR EMPLEADO */}
+          {selectedUserForEdit && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+              >
+                <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Edit className="w-5 h-5 text-[#85AA1C]" />
+                    <h3 className="font-bold text-sm">Editar Empleado</h3>
+                  </div>
+                  <button
+                    onClick={() => setSelectedUserForEdit(null)}
+                    className="text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const updated = usuarios.map(u => 
+                      u.id_usuario === selectedUserForEdit.id_usuario 
+                        ? { 
+                            ...u, 
+                            nombre_completo: editUserForm.nombre_completo,
+                            email: editUserForm.email,
+                            puesto: editUserForm.puesto,
+                            id_rol: editUserForm.id_rol,
+                            esta_activo: editUserForm.esta_activo
+                          }
+                        : u
+                    );
+                    setUsuarios(updated);
+                    setSelectedUserForEdit(null);
+                    alert(`Datos del empleado ${editUserForm.nombre_completo} actualizados correctamente.`);
+                  }}
+                  className="p-5 space-y-4 text-xs"
+                >
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">Nombre Completo</label>
+                    <input
+                      type="text"
+                      required
+                      value={editUserForm.nombre_completo}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, nombre_completo: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">Correo Institucional / Usuario</label>
+                    <input
+                      type="email"
+                      required
+                      value={editUserForm.email}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">Puesto Operativo</label>
+                      <input
+                        type="text"
+                        required
+                        value={editUserForm.puesto}
+                        onChange={(e) => setEditUserForm({ ...editUserForm, puesto: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">Rol RBAC</label>
+                      <select
+                        value={editUserForm.id_rol}
+                        onChange={(e) => setEditUserForm({ ...editUserForm, id_rol: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:bg-white"
+                      >
+                        {INITIAL_ROLES.map(r => (
+                          <option key={r.id_rol} value={r.id_rol}>{r.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">Estado de la Cuenta</label>
+                    <div className="flex items-center gap-4 pt-1">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="estado"
+                          checked={editUserForm.esta_activo}
+                          onChange={() => setEditUserForm({ ...editUserForm, esta_activo: true })}
+                          className="text-emerald-600"
+                        />
+                        <span className="font-semibold text-emerald-700">Activo</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="estado"
+                          checked={!editUserForm.esta_activo}
+                          onChange={() => setEditUserForm({ ...editUserForm, esta_activo: false })}
+                          className="text-red-600"
+                        />
+                        <span className="font-semibold text-red-700">Inactivo / Suspendido</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserForEdit(null)}
+                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-[#85AA1C] hover:bg-[#739418] text-white font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Guardar Cambios</span>
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+
+          {/* MODAL: CONFIRMAR ELIMINACIÓN */}
+          {userToDelete && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200"
+              >
+                <div className="bg-red-600 text-white px-5 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="w-5 h-5" />
+                    <h3 className="font-bold text-sm">Confirmar Eliminación</h3>
+                  </div>
+                  <button
+                    onClick={() => setUserToDelete(null)}
+                    className="text-red-200 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-3 text-xs text-slate-700">
+                  <p>
+                    ¿Estás seguro de que deseas eliminar permanentemente al empleado <strong className="text-slate-900">{userToDelete.nombre_completo}</strong> ({userToDelete.email})?
+                  </p>
+                  <div className="bg-red-50 border border-red-200 p-3 rounded-lg text-red-800 text-[11px]">
+                    Esta acción revoca de inmediato las credenciales y las firmas electrónicas asociadas al usuario en todo el sistema.
+                  </div>
+                </div>
+                <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
+                  <button
+                    onClick={() => setUserToDelete(null)}
+                    className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const updated = usuarios.filter(u => u.id_usuario !== userToDelete.id_usuario);
+                      setUsuarios(updated);
+                      alert(`Se ha eliminado al empleado ${userToDelete.nombre_completo}.`);
+                      setUserToDelete(null);
+                    }}
+                    className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Eliminar Registro</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </motion.div>
       )}
 
