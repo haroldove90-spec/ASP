@@ -49,6 +49,12 @@ CREATE TABLE IF NOT EXISTS usuarios (
     actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Asegurar columnas si la tabla usuarios fue creada previamente en Supabase
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS puesto VARCHAR(100);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS firma_electronica_fingerprint VARCHAR(128);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS esta_activo BOOLEAN DEFAULT TRUE;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_acceso TIMESTAMP WITH TIME ZONE;
+
 -- ==========================================
 -- 3. TRAZABILIDAD (AUDIT TRAIL - NMX-17025)
 -- ==========================================
@@ -179,6 +185,20 @@ CREATE TABLE IF NOT EXISTS ordenes_trabajo (
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Asegurar columnas si la tabla fue creada previamente en Supabase
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS id_instrumento VARCHAR(100);
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS id_servicio VARCHAR(100);
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS cliente_nombre VARCHAR(255);
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS servicio VARCHAR(255);
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS fecha DATE;
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS id_tecnico UUID;
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS estatus VARCHAR(50) DEFAULT 'Asignado';
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS aceptado_tecnico BOOLEAN DEFAULT FALSE;
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS motivo_rechazo TEXT;
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS observaciones TEXT;
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE ordenes_trabajo ADD COLUMN IF NOT EXISTS actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
 CREATE INDEX IF NOT EXISTS idx_odt_tecnico ON ordenes_trabajo(id_tecnico);
 CREATE INDEX IF NOT EXISTS idx_odt_estatus ON ordenes_trabajo(estatus);
