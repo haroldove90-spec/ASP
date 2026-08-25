@@ -46,11 +46,17 @@ import {
   saveCotizacionToSupabase, 
   syncAllQuotesToSupabase, 
   fetchCotizacionesFromSupabase,
+  deleteCotizacionFromSupabase,
   saveOdtToSupabase,
   syncAllOdtsToSupabase,
   fetchOdtsFromSupabase,
+  deleteOdtFromSupabase,
   saveUsuarioToSupabase,
-  syncAllUsuariosToSupabase
+  syncAllUsuariosToSupabase,
+  deleteUsuarioFromSupabase,
+  saveInstrumentoToSupabase,
+  deleteInstrumentoFromSupabase,
+  syncAllInstrumentosToSupabase
 } from '../lib/supabaseSync';
 
 interface DirectorViewsProps {
@@ -118,6 +124,7 @@ interface DirectorViewsProps {
   invoices: any[];
   setInvoices: React.Dispatch<React.SetStateAction<any[]>>;
   setUsuarios: React.Dispatch<React.SetStateAction<Usuario[]>>;
+  setInstruments?: React.Dispatch<React.SetStateAction<Instrumento[]>>;
   selectedRole?: string;
 }
 
@@ -232,6 +239,40 @@ export default function DirectorViews(props: DirectorViewsProps) {
   const calMonth = parseInt(calMonthStr || '07', 10);
   const firstDayIndex = new Date(calYear, calMonth - 1, 1).getDay();
   const daysInMonthCount = new Date(calYear, calMonth, 0).getDate();
+
+  // --- STATE FOR VIEWING & EDITING INGENIEROS, COTIZACIONES, ODTS (SUPABASE CRUD) ---
+  const [selectedEngineerForView, setSelectedEngineerForView] = useState<Usuario | null>(null);
+  const [selectedEngineerForEdit, setSelectedEngineerForEdit] = useState<Usuario | null>(null);
+  const [editEngineerForm, setEditEngineerForm] = useState({
+    nombre_completo: '',
+    email: '',
+    cedula: '',
+    especialidad: 'Especialista en Acústica NOM-011',
+    puesto: '',
+    esta_activo: true
+  });
+
+  const [selectedQuoteForEdit, setSelectedQuoteForEdit] = useState<any | null>(null);
+  const [editQuoteForm, setEditQuoteForm] = useState({
+    id: '',
+    cliente: '',
+    servicio: 'Mapeo de Ruido NOM-011',
+    puntos: 1,
+    costo: 0,
+    estado: 'Aceptado',
+    fecha: ''
+  });
+
+  const [selectedOdtForEdit, setSelectedOdtForEdit] = useState<any | null>(null);
+  const [editOdtForm, setEditOdtForm] = useState({
+    id_servicio: '',
+    cliente_nombre: '',
+    servicio: 'Mapeo de Ruido NOM-011',
+    fecha: '',
+    id_tecnico: '',
+    id_instrumento: '',
+    estado: 'Asignado'
+  });
 
   // --- SYSTEM ADMIN / EMPLOYEES STATES ---
   const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -553,6 +594,194 @@ export default function DirectorViews(props: DirectorViewsProps) {
     }).catch(err => console.error("Error guardando usuario:", err));
 
     alert(`Ingeniero de Campo ${newEng.nombre_completo} registrado de alta en el sistema exitosamente.`);
+  };
+
+  // --- CRUD ACTIONS FOR INGENIEROS / PERSONAL (PUBLIC.USUARIOS) ---
+  const handleStartEditEngineer = (eng: Usuario) => {
+    setSelectedEngineerForEdit(eng);
+    setEditEngineerForm({
+      nombre_completo: eng.nombre_completo,
+      email: eng.email,
+      cedula: (eng as any).cedula_profesional || 'EMA-NMX-98432',
+      especialidad: eng.puesto?.replace('Ingeniero de Campo - ', '') || 'Especialista en Acústica NOM-011',
+      puesto: eng.puesto || 'Ingeniero de Campo',
+      esta_activo: eng.esta_activo ?? true
+    });
+  };
+
+  const handleSaveEngineerEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEngineerForEdit) return;
+
+    const updatedEng: Usuario = {
+      ...selectedEngineerForEdit,
+      nombre_completo: editEngineerForm.nombre_completo,
+      email: editEngineerForm.email,
+      puesto: `Ingeniero de Campo - ${editEngineerForm.especialidad}`,
+      firma_electronica_fingerprint: `SHA256:${editEngineerForm.cedula.toUpperCase()}`,
+      esta_activo: editEngineerForm.esta_activo
+    };
+    (updatedEng as any).cedula_profesional = editEngineerForm.cedula;
+    (updatedEng as any).firma_electronica = `FIRMA:${editEngineerForm.nombre_completo.toUpperCase().replace(/\s/g, '_')}_${editEngineerForm.cedula}`;
+
+    setUsuarios(prev => prev.map(u => u.id_usuario === selectedEngineerForEdit.id_usuario ? updatedEng : u));
+    
+    const res = await saveUsuarioToSupabase(updatedEng);
+    if (res.success) {
+      alert(`✅ Expediente del ${updatedEng.nombre_completo} actualizado y sincronizado en Supabase (public.usuarios).`);
+    } else {
+      alert(`⚠️ Actualizado localmente. Nota de Supabase: ${res.message}`);
+    }
+    setSelectedEngineerForEdit(null);
+  };
+
+  const handleToggleEngineerActive = async (eng: Usuario) => {
+    const nextState = !eng.esta_activo;
+    const actionLabel = nextState ? "Reactivar / Habilitar" : "Dar de Baja / Pausar";
+    if (!confirm(`¿Está seguro de ${actionLabel} al ${eng.nombre_completo}?\n\nEsta actualización cambiará el estado en la aplicación y en Supabase (public.usuarios).`)) return;
+
+    const updatedEng: Usuario = {
+      ...eng,
+      esta_activo: nextState
+    };
+    setUsuarios(prev => prev.map(u => u.id_usuario === eng.id_usuario ? updatedEng : u));
+
+    const res = await saveUsuarioToSupabase(updatedEng);
+    if (res.success) {
+      alert(`✅ Estado del ${eng.nombre_completo} actualizado a "${nextState ? 'ACTIVO' : 'PAUSADO / INACTIVO'}" en Supabase.`);
+    } else {
+      alert(`⚠️ Actualizado localmente. Nota de Supabase: ${res.message}`);
+    }
+  };
+
+  const handleDeleteEngineer = async (eng: Usuario) => {
+    if (!confirm(`⚠️ ¿Está seguro de ELIMINAR definitivamente al ${eng.nombre_completo}?\n\nEsta acción eliminará el registro tanto en la aplicación como en la base de datos de Supabase (public.usuarios).`)) return;
+
+    setUsuarios(prev => prev.filter(u => u.id_usuario !== eng.id_usuario));
+    const res = await deleteUsuarioFromSupabase(eng.id_usuario);
+    if (res.success) {
+      alert(`🗑️ El ${eng.nombre_completo} fue eliminado exitosamente de la base de datos de Supabase.`);
+    } else {
+      alert(`⚠️ Eliminado en la aplicación local. Nota de Supabase: ${res.message}`);
+    }
+  };
+
+  // --- CRUD ACTIONS FOR COTIZACIONES (PUBLIC.COTIZACIONES) ---
+  const handleStartEditQuote = (q: any) => {
+    setSelectedQuoteForEdit(q);
+    setEditQuoteForm({
+      id: q.id || q.folio || '',
+      cliente: q.cliente || '',
+      servicio: q.servicio || 'Mapeo de Ruido NOM-011',
+      puntos: q.puntos || 1,
+      costo: q.costo || 0,
+      estado: q.estado || 'Aceptado',
+      fecha: q.fecha || new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleSaveQuoteEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedQuoteForEdit) return;
+
+    const updatedQuote = {
+      ...selectedQuoteForEdit,
+      cliente: editQuoteForm.cliente,
+      servicio: editQuoteForm.servicio,
+      puntos: editQuoteForm.puntos,
+      costo: editQuoteForm.costo,
+      estado: editQuoteForm.estado,
+      fecha: editQuoteForm.fecha
+    };
+
+    setGeneratedQuotes(prev => prev.map(q => q.id === selectedQuoteForEdit.id ? updatedQuote : q));
+    const res = await saveCotizacionToSupabase(updatedQuote);
+    if (res.success) {
+      alert(`✅ Cotización ${updatedQuote.id} actualizada y sincronizada en Supabase (public.cotizaciones).`);
+    } else {
+      alert(`⚠️ Guardada localmente. Nota de Supabase: ${res.message}`);
+    }
+    setSelectedQuoteForEdit(null);
+  };
+
+  const handleDeleteQuote = async (q: any) => {
+    const quoteId = q.id || q.folio;
+    if (!confirm(`⚠️ ¿Está seguro de ELIMINAR la cotización ${quoteId} (${q.cliente})?\n\nSe eliminará permanentemente de la plataforma y de Supabase (public.cotizaciones).`)) return;
+
+    setGeneratedQuotes(prev => prev.filter(item => item.id !== quoteId && item.folio !== quoteId));
+    const res = await deleteCotizacionFromSupabase(quoteId);
+    if (res.success) {
+      alert(`🗑️ Cotización ${quoteId} eliminada exitosamente de Supabase.`);
+    } else {
+      alert(`⚠️ Eliminada en la aplicación local. Nota de Supabase: ${res.message}`);
+    }
+  };
+
+  // --- CRUD ACTIONS FOR ORDENES DE TRABAJO (PUBLIC.ORDENES_TRABAJO) ---
+  const handleStartEditOdt = (odt: any) => {
+    setSelectedOdtForEdit(odt);
+    setEditOdtForm({
+      id_servicio: odt.id_servicio || odt.id_odt || '',
+      cliente_nombre: odt.cliente_nombre || odt.cliente || '',
+      servicio: odt.servicio || 'Mapeo de Ruido NOM-011',
+      fecha: odt.fecha || '',
+      id_tecnico: odt.id_tecnico || '',
+      id_instrumento: odt.id_instrumento || '',
+      estado: odt.estado || 'Asignado'
+    });
+  };
+
+  const handleSaveOdtEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOdtForEdit) return;
+
+    const updatedOdt = {
+      ...selectedOdtForEdit,
+      cliente_nombre: editOdtForm.cliente_nombre,
+      servicio: editOdtForm.servicio,
+      fecha: editOdtForm.fecha,
+      id_tecnico: editOdtForm.id_tecnico,
+      id_instrumento: editOdtForm.id_instrumento,
+      estado: editOdtForm.estado
+    };
+
+    setScheduledServices(prev => prev.map(s => (s.id_servicio === selectedOdtForEdit.id_servicio || s.id_odt === selectedOdtForEdit.id_servicio) ? updatedOdt : s));
+    const res = await saveOdtToSupabase(updatedOdt);
+    if (res.success) {
+      alert(`✅ Orden de Trabajo ${updatedOdt.id_servicio} actualizada y sincronizada en Supabase (public.ordenes_trabajo).`);
+    } else {
+      alert(`⚠️ Guardada localmente. Nota de Supabase: ${res.message}`);
+    }
+    setSelectedOdtForEdit(null);
+  };
+
+  const handleDeleteOdt = async (odt: any) => {
+    const odtId = odt.id_servicio || odt.id_odt || odt.id;
+    if (!confirm(`⚠️ ¿Está seguro de ELIMINAR la Orden de Trabajo / Cita ${odtId} (${odt.cliente_nombre || odt.cliente})?\n\nSe eliminará de la plataforma y de Supabase (public.ordenes_trabajo).`)) return;
+
+    setScheduledServices(prev => prev.filter(s => s.id_servicio !== odtId && s.id_odt !== odtId));
+    const res = await deleteOdtFromSupabase(odtId);
+    if (res.success) {
+      alert(`🗑️ Orden de Trabajo ${odtId} eliminada exitosamente de Supabase.`);
+    } else {
+      alert(`⚠️ Eliminada en la aplicación local. Nota de Supabase: ${res.message}`);
+    }
+  };
+
+  // --- CRUD ACTIONS FOR INSTRUMENTOS (PUBLIC.INSTRUMENTOS) ---
+  const handleDeleteInstrument = async (inst: Instrumento) => {
+    const id = inst.codigo_interno || inst.id_instrumento;
+    if (!confirm(`⚠️ ¿Está seguro de ELIMINAR el instrumento ${inst.codigo_interno} (${inst.nombre})?\n\nSe eliminará de la plataforma y de Supabase (public.instrumentos).`)) return;
+
+    if (props.setInstruments) {
+      props.setInstruments(prev => prev.filter(i => i.codigo_interno !== inst.codigo_interno && i.id_instrumento !== inst.id_instrumento));
+    }
+    const res = await deleteInstrumentoFromSupabase(id);
+    if (res.success) {
+      alert(`🗑️ Instrumento ${inst.codigo_interno} eliminado exitosamente de Supabase.`);
+    } else {
+      alert(`⚠️ Eliminado en la aplicación local. Nota de Supabase: ${res.message}`);
+    }
   };
   const [projectTechFilter, setProjectTechFilter] = useState<string>("Todos");
   const [selectedLiveServiceForGps, setSelectedLiveServiceForGps] = useState<any>(null);
@@ -2287,16 +2516,21 @@ export default function DirectorViews(props: DirectorViewsProps) {
                     Cancelar
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const updated = usuarios.filter(u => u.id_usuario !== userToDelete.id_usuario);
                       setUsuarios(updated);
-                      alert(`Se ha eliminado al empleado ${userToDelete.nombre_completo}.`);
                       setUserToDelete(null);
+                      try {
+                        await deleteUsuarioFromSupabase(userToDelete.id_usuario);
+                        alert(`Se ha eliminado al empleado ${userToDelete.nombre_completo} de la aplicación y de Supabase (public.usuarios).`);
+                      } catch (err) {
+                        alert(`Se ha eliminado al empleado ${userToDelete.nombre_completo} de la sesión local.`);
+                      }
                     }}
                     className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>Eliminar Registro</span>
+                    <span>Eliminar de App y Supabase</span>
                   </button>
                 </div>
               </motion.div>
@@ -2857,18 +3091,36 @@ export default function DirectorViews(props: DirectorViewsProps) {
                       <td className="px-5 py-4 font-mono font-bold text-slate-900">${q.costo.toLocaleString()} MXN</td>
                       <td className="px-5 py-4 font-mono text-slate-400">{q.fecha}</td>
                       <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 font-mono">
                             {q.estado}
                           </span>
                           <button
                             type="button"
                             onClick={() => setSelectedQuoteForDetail(q)}
-                            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-emerald-200"
+                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
                             title="Ver Detalle y Reutilizar"
                           >
                             <Sparkles className="w-3 h-3 text-emerald-600" />
-                            <span>Detalle / Reutilizar</span>
+                            <span>Detalle</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditQuote(q)}
+                            className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-blue-200 shadow-2xs"
+                            title="Editar Cotización en Supabase"
+                          >
+                            <Edit className="w-3 h-3 text-blue-600" />
+                            <span>Editar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuote(q)}
+                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-red-200 shadow-2xs"
+                            title="Eliminar de Supabase (public.cotizaciones) y la App"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-600" />
+                            <span>Borrar</span>
                           </button>
                         </div>
                       </td>
@@ -3087,7 +3339,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
                         </td>
                         <td className="px-5 py-4 font-mono text-slate-500 font-bold">{service.fecha}</td>
                         <td className="px-5 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
                               service.estado === 'Completado' 
                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
@@ -3100,11 +3352,29 @@ export default function DirectorViews(props: DirectorViewsProps) {
                             <button
                               type="button"
                               onClick={() => setSelectedOdtDetailModal(service)}
-                              className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-blue-200"
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
                               title="Ver Detalle de la ODT"
                             >
-                              <FileText className="w-3 h-3 text-blue-600" />
-                              <span>Detalle ODT</span>
+                              <FileText className="w-3 h-3 text-slate-600" />
+                              <span>Detalle</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditOdt(service)}
+                              className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-blue-200 shadow-2xs"
+                              title="Editar ODT en Supabase"
+                            >
+                              <Edit className="w-3 h-3 text-blue-600" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOdt(service)}
+                              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-red-200 shadow-2xs"
+                              title="Eliminar de Supabase (public.ordenes_trabajo) y la App"
+                            >
+                              <Trash2 className="w-3 h-3 text-red-600" />
+                              <span>Borrar</span>
                             </button>
                           </div>
                         </td>
@@ -3451,19 +3721,52 @@ export default function DirectorViews(props: DirectorViewsProps) {
             </div>
           )}
 
+          {/* Supabase Storage Explanation Banner */}
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/30 p-4 rounded-xl text-white space-y-2 shadow-md">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-emerald-400" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300 font-mono">
+                Trazabilidad en Supabase: Carga de Ingenieros y Plantilla Metrológica
+              </h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-slate-300">
+              <div className="bg-white/5 border border-white/10 p-2.5 rounded-lg">
+                <span className="font-bold text-emerald-400 block font-mono">1. Tabla `public.usuarios`:</span>
+                Almacena el perfil del ingeniero, correo, puesto, cédula profesional, hash SHA-256 de e.firma y su estado booleano <code className="text-emerald-300 font-mono">esta_activo</code>.
+              </div>
+              <div className="bg-white/5 border border-white/10 p-2.5 rounded-lg">
+                <span className="font-bold text-emerald-400 block font-mono">2. Tabla `public.ordenes_trabajo`:</span>
+                Registra la carga de trabajo y citas operativas vinculadas mediante la clave foránea <code className="text-emerald-300 font-mono">id_tecnico</code>.
+              </div>
+            </div>
+            <p className="text-[10px] text-emerald-200/80 font-mono pt-1">
+              ✨ <strong>Gestión Total Activada:</strong> Puede ver expediente, editar datos, alternar disponibilidad (Baja/Pausa/Activar) y eliminar registros con sincronización bidireccional inmediata en Supabase.
+            </p>
+          </div>
+
           {/* List of Engineers with Workloads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.id_rol === 'ing_campo' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero') || u.puesto?.includes('Consultor') || u.puesto?.includes('Asesor')).map((eng) => {
               // Calculate active services/workload
               const engServices = scheduledServices.filter(s => s.id_tecnico === eng.id_usuario);
               const activeCount = engServices.length;
+              const isActive = eng.esta_activo ?? true;
 
               return (
-                <div key={eng.id_usuario} className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4 flex flex-col justify-between">
+                <div key={eng.id_usuario} className={`bg-white border ${isActive ? 'border-slate-200' : 'border-red-200 bg-red-50/20 opacity-80'} p-5 rounded-xl shadow-sm space-y-4 flex flex-col justify-between`}>
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="space-y-0.5">
-                        <h4 className="text-sm font-bold text-slate-800">{eng.nombre_completo}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-slate-800">{eng.nombre_completo}</h4>
+                          <span className={`px-2 py-0.2 rounded text-[8px] font-bold uppercase font-mono border ${
+                            isActive 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                              : 'bg-red-100 text-red-700 border-red-200'
+                          }`}>
+                            {isActive ? "Activo" : "Pausado / Inactivo"}
+                          </span>
+                        </div>
                         <p className="text-[10px] text-slate-400 font-mono leading-none">{eng.email}</p>
                       </div>
                       <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold font-mono border ${
@@ -3499,12 +3802,61 @@ export default function DirectorViews(props: DirectorViewsProps) {
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400 font-mono">
-                    <span className="truncate max-w-[180px]" title={(eng as any).firma_electronica || eng.firma_electronica_fingerprint}>
-                      SHA256 Firma: <span className="text-emerald-500 font-bold">{((eng as any).firma_electronica || eng.firma_electronica_fingerprint) ? "Acreditado" : "Pendiente"}</span>
-                    </span>
+                  <div className="pt-2 border-t border-slate-100 space-y-2">
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                      <span className="truncate max-w-[200px]" title={(eng as any).firma_electronica || eng.firma_electronica_fingerprint}>
+                        SHA256 Firma: <span className="text-emerald-600 font-bold">{((eng as any).firma_electronica || eng.firma_electronica_fingerprint) ? "Acreditado" : "Pendiente"}</span>
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-mono">
+                        UUID: {eng.id_usuario.substring(0, 8)}...
+                      </span>
+                    </div>
                     
-                    <div className="flex items-center gap-1.5">
+                    {/* Full Action Toolbar: View, Edit, Pause/Activate, Modify Load, Delete */}
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEngineerForView(eng)}
+                        className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                        title="Ver Expediente Completo y ODTs en Supabase"
+                      >
+                        <Eye className="w-3 h-3 text-slate-600" />
+                        <span>Ver</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditEngineer(eng)}
+                        className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                        title="Editar Datos del Ingeniero en Supabase"
+                      >
+                        <Edit className="w-3 h-3 text-blue-600" />
+                        <span>Editar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleEngineerActive(eng)}
+                        className={`px-2 py-1 border rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs ${
+                          isActive 
+                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200' 
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+                        }`}
+                        title={isActive ? "Pausar o Dar de Baja" : "Reactivar Ingeniero"}
+                      >
+                        {isActive ? (
+                          <>
+                            <UserX className="w-3 h-3 text-amber-700" />
+                            <span>Pausar</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="w-3 h-3 text-emerald-700" />
+                            <span>Activar</span>
+                          </>
+                        )}
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => {
@@ -3518,24 +3870,21 @@ export default function DirectorViews(props: DirectorViewsProps) {
                             });
                           }
                         }}
-                        className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                        className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs"
                         title="Modificar Carga, Reasignar ODT o Cambiar Fechas"
                       >
-                        <Edit3 className="w-3 h-3 text-amber-700" />
-                        <span>Modificar Carga</span>
+                        <Edit3 className="w-3 h-3 text-indigo-700" />
+                        <span>Carga</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          if (confirm(`¿Está seguro de modificar la disponibilidad de ${eng.nombre_completo}?`)) {
-                            alert(`Se ha actualizado el estado de disponibilidad del Ing. ${eng.nombre_completo}.`);
-                          }
-                        }}
-                        className="px-2 py-1 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 border border-slate-200 rounded text-[10px] font-bold cursor-pointer transition shadow-2xs"
-                        title="Dar de baja o modificar asignación de campo"
+                        onClick={() => handleDeleteEngineer(eng)}
+                        className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                        title="Eliminar Definitivamente de Supabase y de la App"
                       >
-                        <span>Baja / Pausa</span>
+                        <Trash2 className="w-3 h-3 text-red-600" />
+                        <span>Borrar</span>
                       </button>
                     </div>
                   </div>
@@ -3607,24 +3956,54 @@ export default function DirectorViews(props: DirectorViewsProps) {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  window.print();
-                }}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5 text-slate-600" />
-                <span>Imprimir ODT</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedOdtDetailModal(null)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl cursor-pointer"
-              >
-                Cerrar
-              </button>
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100 gap-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const odt = selectedOdtDetailModal;
+                    setSelectedOdtDetailModal(null);
+                    handleStartEditOdt(odt);
+                  }}
+                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-blue-200"
+                  title="Editar datos de la ODT en Supabase"
+                >
+                  <Edit className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Editar ODT</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const odt = selectedOdtDetailModal;
+                    setSelectedOdtDetailModal(null);
+                    handleDeleteOdt(odt);
+                  }}
+                  className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-red-200"
+                  title="Eliminar de Supabase y de la App"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  <span>Borrar</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.print();
+                  }}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Imprimir</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOdtDetailModal(null)}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3693,31 +4072,61 @@ export default function DirectorViews(props: DirectorViewsProps) {
             </div>
 
             <div className="flex justify-between items-center pt-3 border-t border-slate-100 gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedQuoteForDetail(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setNewQuoteForm({
-                    cliente: '',
-                    servicio: selectedQuoteForDetail.servicio,
-                    puntos: selectedQuoteForDetail.puntos,
-                    viaticos: selectedQuoteForDetail.viaticos || 1500
-                  });
-                  setIsAddQuoteOpen(true);
-                  setSelectedQuoteForDetail(null);
-                  alert(`¡Parámetros de la cotización ${selectedQuoteForDetail.id} reusados exitosamente!\nComplete el nombre del cliente y emita la nueva cotización.`);
-                }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Reutilizar esta Cotización</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = selectedQuoteForDetail;
+                    setSelectedQuoteForDetail(null);
+                    handleStartEditQuote(q);
+                  }}
+                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-blue-200"
+                  title="Editar datos de la cotización en Supabase"
+                >
+                  <Edit className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Editar Cotización</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = selectedQuoteForDetail;
+                    setSelectedQuoteForDetail(null);
+                    handleDeleteQuote(q);
+                  }}
+                  className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-red-200"
+                  title="Eliminar de Supabase y de la App"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  <span>Borrar</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedQuoteForDetail(null)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewQuoteForm({
+                      cliente: '',
+                      servicio: selectedQuoteForDetail.servicio,
+                      puntos: selectedQuoteForDetail.puntos,
+                      viaticos: selectedQuoteForDetail.viaticos || 1500
+                    });
+                    setIsAddQuoteOpen(true);
+                    setSelectedQuoteForDetail(null);
+                    alert(`¡Parámetros de la cotización ${selectedQuoteForDetail.id} reusados exitosamente!\nComplete el nombre del cliente y emita la nueva cotización.`);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Reutilizar Cotización</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3782,7 +4191,35 @@ export default function DirectorViews(props: DirectorViewsProps) {
               </div>
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-100">
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100 gap-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const srv = selectedFieldScheduleDetail;
+                    setSelectedFieldScheduleDetail(null);
+                    handleStartEditOdt(srv);
+                  }}
+                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-blue-200"
+                  title="Editar datos de esta cita/ODT en Supabase"
+                >
+                  <Edit className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Editar ODT</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const srv = selectedFieldScheduleDetail;
+                    setSelectedFieldScheduleDetail(null);
+                    handleDeleteOdt(srv);
+                  }}
+                  className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-red-200"
+                  title="Eliminar de Supabase y de la Agenda"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  <span>Borrar</span>
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setSelectedFieldScheduleDetail(null)}
@@ -3913,6 +4350,497 @@ export default function DirectorViews(props: DirectorViewsProps) {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL VER EXPEDIENTE DE INGENIERO (SUPABASE PUBLIC.USUARIOS) */}
+      {selectedEngineerForView && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 font-mono uppercase">
+                    Expediente Metrológico del Ingeniero
+                  </h3>
+                  <span className="text-[10px] text-slate-400 font-mono">Tabla Supabase: public.usuarios</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedEngineerForView(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Nombre Completo:</span>
+                  <span className="font-bold text-slate-900 text-sm">{selectedEngineerForView.nombre_completo}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Correo Electrónico:</span>
+                  <span className="font-semibold text-slate-800">{selectedEngineerForView.email}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Cédula Profesional:</span>
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    {(selectedEngineerForView as any).cedula_profesional || "EMA-NMX-98432"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Puesto / Especialidad:</span>
+                  <span className="font-semibold text-slate-800">{selectedEngineerForView.puesto || "Ingeniero de Campo"}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">UUID en Supabase:</span>
+                  <span className="text-[10px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                    {selectedEngineerForView.id_usuario}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Estatus Operativo:</span>
+                  <span className={`font-bold px-2.5 py-0.5 rounded text-[10px] border ${
+                    (selectedEngineerForView.esta_activo ?? true)
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {(selectedEngineerForView.esta_activo ?? true) ? 'ACTIVO / DISPONIBLE' : 'PAUSADO / INACTIVO'}
+                  </span>
+                </div>
+              </div>
+
+              {/* ODTs asignadas a este ingeniero */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase font-mono text-slate-500">
+                    Carga de Trabajo Asignada (Supabase public.ordenes_trabajo):
+                  </span>
+                  <span className="text-[10px] font-mono font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                    {scheduledServices.filter(s => s.id_tecnico === selectedEngineerForView.id_usuario).length} ODTs
+                  </span>
+                </div>
+
+                {scheduledServices.filter(s => s.id_tecnico === selectedEngineerForView.id_usuario).length === 0 ? (
+                  <div className="p-3 bg-slate-50 rounded-lg border border-dashed border-slate-200 text-center text-slate-400 text-[11px]">
+                    Este ingeniero no tiene ninguna Orden de Trabajo asignada actualmente.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {scheduledServices.filter(s => s.id_tecnico === selectedEngineerForView.id_usuario).map(s => (
+                      <div key={s.id_servicio} className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-slate-800">{s.id_servicio}: {s.cliente_nombre}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">{s.servicio} • {s.fecha}</div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedEngineerForView(null);
+                              handleStartEditOdt(s);
+                            }}
+                            className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[9px] font-bold border border-blue-200"
+                          >
+                            Editar ODT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOdt(s)}
+                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded text-[9px] font-bold border border-red-200"
+                          >
+                            Borrar ODT
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100 gap-2">
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const eng = selectedEngineerForView;
+                    setSelectedEngineerForView(null);
+                    handleStartEditEngineer(eng);
+                  }}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Editar Perfil</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const eng = selectedEngineerForView;
+                    setSelectedEngineerForView(null);
+                    handleDeleteEngineer(eng);
+                  }}
+                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar</span>
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedEngineerForView(null)}
+                className="px-5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR INGENIERO (SUPABASE PUBLIC.USUARIOS) */}
+      {selectedEngineerForEdit && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+              <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                <Edit className="w-5 h-5 text-blue-600" />
+                Editar Ingeniero en Supabase
+              </h3>
+              <button
+                onClick={() => setSelectedEngineerForEdit(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEngineerEdit} className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Nombre Completo *</label>
+                <input
+                  type="text"
+                  required
+                  value={editEngineerForm.nombre_completo}
+                  onChange={(e) => setEditEngineerForm({ ...editEngineerForm, nombre_completo: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Correo Electrónico *</label>
+                <input
+                  type="email"
+                  required
+                  value={editEngineerForm.email}
+                  onChange={(e) => setEditEngineerForm({ ...editEngineerForm, email: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Cédula Profesional *</label>
+                <input
+                  type="text"
+                  required
+                  value={editEngineerForm.cedula}
+                  onChange={(e) => setEditEngineerForm({ ...editEngineerForm, cedula: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Especialidad Metrológica *</label>
+                <select
+                  value={editEngineerForm.especialidad}
+                  onChange={(e) => setEditEngineerForm({ ...editEngineerForm, especialidad: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                >
+                  <option value="Especialista en Acústica NOM-011">Especialista en Acústica NOM-011</option>
+                  <option value="Especialista en Ergonomía e Iluminación NOM-025">Especialista en Ergonomía e Iluminación NOM-025</option>
+                  <option value="Experto Metrólogo NMX-EC-17025">Experto Metrólogo NMX-EC-17025</option>
+                  <option value="Ingeniero en Vibraciones Industriales NOM-024">Ingeniero en Vibraciones Industriales NOM-024</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Estatus de Disponibilidad</label>
+                <select
+                  value={editEngineerForm.esta_activo ? 'activo' : 'inactivo'}
+                  onChange={(e) => setEditEngineerForm({ ...editEngineerForm, esta_activo: e.target.value === 'activo' })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                >
+                  <option value="activo">Activo / Disponible para Asignación de ODT</option>
+                  <option value="inactivo">Pausado / Inactivo (Baja Temporal)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedEngineerForEdit(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs shadow cursor-pointer transition flex items-center gap-1"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Guardar en Supabase</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR COTIZACIÓN (SUPABASE PUBLIC.COTIZACIONES) */}
+      {selectedQuoteForEdit && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+              <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                <Edit className="w-5 h-5 text-blue-600" />
+                Editar Cotización: {selectedQuoteForEdit.id}
+              </h3>
+              <button
+                onClick={() => setSelectedQuoteForEdit(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuoteEdit} className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Cliente Industrial *</label>
+                <input
+                  type="text"
+                  required
+                  value={editQuoteForm.cliente}
+                  onChange={(e) => setEditQuoteForm({ ...editQuoteForm, cliente: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Servicio / Norma *</label>
+                <select
+                  value={editQuoteForm.servicio}
+                  onChange={(e) => setEditQuoteForm({ ...editQuoteForm, servicio: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                >
+                  <option value="Mapeo de Ruido NOM-011-STPS">Mapeo de Ruido NOM-011-STPS</option>
+                  <option value="Estudio de Iluminación NOM-025-STPS">Estudio de Iluminación NOM-025-STPS</option>
+                  <option value="Dosimetrías de Ruido NOM-011-STPS">Dosimetrías de Ruido NOM-011-STPS</option>
+                  <option value="Evaluación de Vibraciones NOM-024-STPS">Evaluación de Vibraciones NOM-024-STPS</option>
+                  <option value="Estudio de Presiones NOM-016-STPS">Estudio de Presiones NOM-016-STPS</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Puntos de Medición</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={editQuoteForm.puntos}
+                    onChange={(e) => {
+                      const pts = Number(e.target.value);
+                      setEditQuoteForm({ 
+                        ...editQuoteForm, 
+                        puntos: pts,
+                        costo: pts * 2500 + 1500
+                      });
+                    }}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Costo Total ($ MXN)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editQuoteForm.costo}
+                    onChange={(e) => setEditQuoteForm({ ...editQuoteForm, costo: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Estatus Comercial</label>
+                <select
+                  value={editQuoteForm.estado}
+                  onChange={(e) => setEditQuoteForm({ ...editQuoteForm, estado: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
+                >
+                  <option value="Generada">Generada</option>
+                  <option value="Enviada">Enviada al Cliente</option>
+                  <option value="Aceptado">Aceptado / Autorizado</option>
+                  <option value="Rechazado">Rechazado</option>
+                  <option value="Facturado">Facturado</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Fecha de Emisión</label>
+                <input
+                  type="date"
+                  value={editQuoteForm.fecha}
+                  onChange={(e) => setEditQuoteForm({ ...editQuoteForm, fecha: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs font-mono"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedQuoteForEdit(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs shadow cursor-pointer transition flex items-center gap-1"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Guardar en Supabase</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR ODT (SUPABASE PUBLIC.ORDENES_TRABAJO) */}
+      {selectedOdtForEdit && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+              <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                <Edit className="w-5 h-5 text-blue-600" />
+                Editar ODT: {selectedOdtForEdit.id_servicio || selectedOdtForEdit.id_odt}
+              </h3>
+              <button
+                onClick={() => setSelectedOdtForEdit(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOdtEdit} className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Cliente Industrial *</label>
+                <input
+                  type="text"
+                  required
+                  value={editOdtForm.cliente_nombre}
+                  onChange={(e) => setEditOdtForm({ ...editOdtForm, cliente_nombre: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Servicio Metrológico *</label>
+                <select
+                  value={editOdtForm.servicio}
+                  onChange={(e) => setEditOdtForm({ ...editOdtForm, servicio: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
+                >
+                  <option value="Mapeo de Ruido NOM-011">Mapeo de Ruido NOM-011</option>
+                  <option value="Dosimetría de Ruido NOM-011">Dosimetría de Ruido NOM-011</option>
+                  <option value="Estudio de Iluminación NOM-025">Estudio de Iluminación NOM-025</option>
+                  <option value="Pruebas de Vibraciones NOM-024">Pruebas de Vibraciones NOM-024</option>
+                  <option value="Presión Ambiental NOM-016">Presión Ambiental NOM-016</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Fecha Programada *</label>
+                <input
+                  type="date"
+                  required
+                  value={editOdtForm.fecha}
+                  onChange={(e) => setEditOdtForm({ ...editOdtForm, fecha: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Ingeniero de Campo Asignado *</label>
+                <select
+                  value={editOdtForm.id_tecnico}
+                  onChange={(e) => setEditOdtForm({ ...editOdtForm, id_tecnico: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
+                  required
+                >
+                  <option value="">Seleccione Ingeniero...</option>
+                  {usuarios.filter(u => u.id_rol === 'LAB_TECH' || u.id_rol === 'ing_campo' || u.puesto?.includes('Técnico') || u.puesto?.includes('Ingeniero') || u.puesto?.includes('Consultor') || u.puesto?.includes('Asesor')).map(eng => (
+                    <option key={eng.id_usuario} value={eng.id_usuario}>{eng.nombre_completo}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Instrumento Autorizado *</label>
+                <select
+                  value={editOdtForm.id_instrumento}
+                  onChange={(e) => setEditOdtForm({ ...editOdtForm, id_instrumento: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
+                  required
+                >
+                  <option value="">Seleccione Instrumento...</option>
+                  {instruments.map(inst => (
+                    <option key={inst.id_instrumento} value={inst.id_instrumento}>
+                      {inst.nombre} ({inst.marca} Mod. {inst.modelo})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold uppercase text-[9px]">Estatus de la ODT</label>
+                <select
+                  value={editOdtForm.estado}
+                  onChange={(e) => setEditOdtForm({ ...editOdtForm, estado: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
+                >
+                  <option value="Asignado">Asignado</option>
+                  <option value="En Proceso">En Proceso</option>
+                  <option value="Completado">Completado</option>
+                  <option value="Cancelada">Cancelada</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOdtForEdit(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs shadow cursor-pointer transition flex items-center gap-1"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Guardar en Supabase</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

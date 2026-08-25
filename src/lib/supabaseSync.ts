@@ -517,6 +517,138 @@ export async function syncAllModulesToSupabase(data: {
 }
 
 // -------------------------------------------------------------
+// Helper: Direct REST Delete con Fallback
+// -------------------------------------------------------------
+
+export async function directRestDelete(table: string, column: string, value: string): Promise<{ success: boolean; error?: any }> {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/${table}?${column}=eq.${encodeURIComponent(value)}`;
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Prefer": "return=representation"
+      }
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return { success: false, error: errText };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err };
+  }
+}
+
+// -------------------------------------------------------------
+// DELETES ESPECÍFICOS POR MÓDULO CON REFLEJO INMEDIATO EN SUPABASE
+// -------------------------------------------------------------
+
+export async function deleteCotizacionFromSupabase(idCotizacion: string): Promise<SupabaseSyncResult> {
+  try {
+    const { error } = await supabase.from("cotizaciones").delete().eq("id_cotizacion", idCotizacion);
+    if (!error) {
+      return { success: true, message: `Cotización ${idCotizacion} eliminada exitosamente de Supabase.`, count: 1 };
+    }
+    const res = await directRestDelete("cotizaciones", "id_cotizacion", idCotizacion);
+    if (res.success) {
+      return { success: true, message: `Cotización ${idCotizacion} eliminada exitosamente de Supabase.`, count: 1 };
+    }
+    return { success: false, message: `Error al eliminar cotización: ${error?.message || JSON.stringify(error)}`, error };
+  } catch (err: any) {
+    return { success: false, message: `Error al eliminar cotización: ${err?.message || err}`, error: err };
+  }
+}
+
+export async function deleteOdtFromSupabase(idOdtOrServicio: string): Promise<SupabaseSyncResult> {
+  try {
+    const { error } = await supabase
+      .from("ordenes_trabajo")
+      .delete()
+      .or(`id_odt.eq.${idOdtOrServicio},id_servicio.eq.${idOdtOrServicio}`);
+
+    if (!error) {
+      return { success: true, message: `Orden de Trabajo ${idOdtOrServicio} eliminada exitosamente de Supabase.`, count: 1 };
+    }
+    const res1 = await directRestDelete("ordenes_trabajo", "id_odt", idOdtOrServicio);
+    if (res1.success) {
+      return { success: true, message: `Orden de Trabajo ${idOdtOrServicio} eliminada exitosamente de Supabase.`, count: 1 };
+    }
+    const res2 = await directRestDelete("ordenes_trabajo", "id_servicio", idOdtOrServicio);
+    if (res2.success) {
+      return { success: true, message: `Orden de Trabajo ${idOdtOrServicio} eliminada exitosamente de Supabase.`, count: 1 };
+    }
+    return { success: false, message: `Error al eliminar ODT: ${error?.message || JSON.stringify(error)}`, error };
+  } catch (err: any) {
+    return { success: false, message: `Error al eliminar ODT: ${err?.message || err}`, error: err };
+  }
+}
+
+export async function deleteUsuarioFromSupabase(idUsuario: string): Promise<SupabaseSyncResult> {
+  try {
+    let targetId = idUsuario;
+    if (!isValidUuid(targetId)) {
+      targetId = `01000000-0000-0000-0000-${toDeterministicHex(idUsuario)}`;
+    }
+
+    const { error } = await supabase.from("usuarios").delete().eq("id_usuario", targetId);
+    if (!error) {
+      return { success: true, message: `Usuario/Ingeniero eliminado de Supabase (public.usuarios).`, count: 1 };
+    }
+    const res = await directRestDelete("usuarios", "id_usuario", targetId);
+    if (res.success) {
+      return { success: true, message: `Usuario/Ingeniero eliminado de Supabase (public.usuarios).`, count: 1 };
+    }
+    return { success: false, message: `Error al eliminar usuario: ${error?.message || JSON.stringify(error)}`, error };
+  } catch (err: any) {
+    return { success: false, message: `Error al eliminar usuario: ${err?.message || err}`, error: err };
+  }
+}
+
+export async function deleteInstrumentoFromSupabase(codigoOrId: string): Promise<SupabaseSyncResult> {
+  try {
+    const { error } = await supabase
+      .from("instrumentos")
+      .delete()
+      .or(`codigo_interno.eq.${codigoOrId},id_instrumento.eq.${codigoOrId}`);
+
+    if (!error) {
+      return { success: true, message: `Instrumento ${codigoOrId} eliminado de Supabase.`, count: 1 };
+    }
+    const res1 = await directRestDelete("instrumentos", "codigo_interno", codigoOrId);
+    if (res1.success) return { success: true, message: `Instrumento ${codigoOrId} eliminado de Supabase.`, count: 1 };
+    const res2 = await directRestDelete("instrumentos", "id_instrumento", codigoOrId);
+    if (res2.success) return { success: true, message: `Instrumento ${codigoOrId} eliminado de Supabase.`, count: 1 };
+    return { success: false, message: `Error al eliminar instrumento: ${error?.message || JSON.stringify(error)}`, error };
+  } catch (err: any) {
+    return { success: false, message: `Error al eliminar instrumento: ${err?.message || err}`, error: err };
+  }
+}
+
+export async function fetchUsuariosFromSupabase(): Promise<{ users: Usuario[], error: any }> {
+  try {
+    const { data, error } = await supabase.from("usuarios").select("*").order("creado_en", { ascending: true });
+    if (!error && data && data.length > 0) {
+      return { users: data as Usuario[], error: null };
+    }
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=*&order=creado_en.asc`, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (resp.ok) {
+      const rows = await resp.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        return { users: rows as Usuario[], error: null };
+      }
+    }
+    return { users: [], error: error || null };
+  } catch (err) {
+    return { users: [], error: err };
+  }
+}
+
+// -------------------------------------------------------------
 // 6. PRUEBA DE CONEXIÓN Y DIAGNÓSTICO EN TIEMPO REAL
 // -------------------------------------------------------------
 

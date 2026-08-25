@@ -76,6 +76,14 @@ import {
   fetchCotizacionesFromSupabase,
   fetchOdtsFromSupabase,
   syncAllOdtsToSupabase,
+  fetchUsuariosFromSupabase,
+  syncAllUsuariosToSupabase,
+  fetchInstrumentosFromSupabase,
+  syncAllInstrumentosToSupabase,
+  deleteCotizacionFromSupabase,
+  deleteOdtFromSupabase,
+  deleteUsuarioFromSupabase,
+  deleteInstrumentoFromSupabase,
   testSupabaseConnection,
   syncAllModulesToSupabase
 } from './lib/supabaseSync';
@@ -320,9 +328,9 @@ export default function App() {
     localStorage.setItem('aspechs_generated_quotes', JSON.stringify(generatedQuotes));
   }, [generatedQuotes]);
 
-  // Initial Sync with Supabase (public.cotizaciones)
+  // Initial Sync with Supabase (public.cotizaciones, ordenes_trabajo, usuarios, instrumentos)
   useEffect(() => {
-    async function syncQuotesWithSupabaseOnMount() {
+    async function syncDataWithSupabaseOnMount() {
       try {
         const { quotes: remoteQuotes, error } = await fetchCotizacionesFromSupabase();
         if (!error && remoteQuotes && remoteQuotes.length > 0) {
@@ -337,7 +345,6 @@ export default function App() {
             return [...remoteQuotes, ...localOnly];
           });
         } else if (generatedQuotes.length > 0) {
-          // If Supabase is empty or fresh, upload our current quotes to Supabase automatically!
           syncAllQuotesToSupabase(generatedQuotes).catch(e => console.error("Error auto-syncing to Supabase:", e));
         }
       } catch (err) {
@@ -359,8 +366,40 @@ export default function App() {
       } catch (err) {
         console.warn("Supabase initial odts sync info:", err);
       }
+
+      try {
+        const { users: remoteUsers } = await fetchUsuariosFromSupabase();
+        if (remoteUsers && remoteUsers.length > 0) {
+          setUsuarios(prev => {
+            const remoteMap = new Map(remoteUsers.map(u => [u.id_usuario, u]));
+            const localOnly = prev.filter(u => !remoteMap.has(u.id_usuario));
+            if (localOnly.length > 0) {
+              syncAllUsuariosToSupabase(localOnly).catch(e => console.error("Error auto-uploading local users:", e));
+            }
+            return [...remoteUsers, ...localOnly];
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase initial users sync info:", err);
+      }
+
+      try {
+        const { instruments: remoteInsts } = await fetchInstrumentosFromSupabase();
+        if (remoteInsts && remoteInsts.length > 0) {
+          setInstruments(prev => {
+            const remoteMap = new Map(remoteInsts.map(i => [i.codigo_interno, i]));
+            const localOnly = prev.filter(i => !remoteMap.has(i.codigo_interno));
+            if (localOnly.length > 0) {
+              syncAllInstrumentosToSupabase(localOnly).catch(e => console.error("Error auto-uploading local instruments:", e));
+            }
+            return [...remoteInsts, ...localOnly];
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase initial instruments sync info:", err);
+      }
     }
-    syncQuotesWithSupabaseOnMount();
+    syncDataWithSupabaseOnMount();
   }, []);
 
   // Invoice control state for Admin/Ventas and Director
@@ -1775,6 +1814,7 @@ export default function App() {
                 invoices={invoices}
                 setInvoices={setInvoices}
                 setUsuarios={setUsuarios}
+                setInstruments={setInstruments}
               />
             )}
 
