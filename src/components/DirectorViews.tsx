@@ -343,7 +343,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
       puntos: Number(newQuoteForm.puntos),
       costo: computedCosto,
       fecha: new Date().toISOString().split('T')[0],
-      estado: "Enviado"
+      estado: "Enviada"
     };
 
     setGeneratedQuotes([newQuote, ...generatedQuotes]);

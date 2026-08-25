@@ -795,7 +795,7 @@ export default function App() {
       costo: costTotal,
       fecha: new Date().toISOString().split('T')[0],
       contacto: leadFormData.contacto,
-      estado: "Enviado"
+      estado: "Enviada"
     };
 
     setGeneratedQuotes([newQuote, ...generatedQuotes]);

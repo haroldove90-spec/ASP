@@ -13,11 +13,27 @@ function isValidUuid(id?: string | null): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim());
 }
 
+/**
+ * Normaliza el estado de la cotización para cumplir estrictamente con el CHECK constraint
+ * cotizaciones_estatus_check: ('Generada', 'Enviada', 'Aprobada', 'Rechazada', 'Facturada')
+ */
+export function normalizeEstatus(raw?: string | null): "Generada" | "Enviada" | "Aprobada" | "Rechazada" | "Facturada" {
+  if (!raw) return "Enviada";
+  const s = String(raw).trim().toLowerCase();
+  if (s.includes("enviad") || s.includes("emitid") || s.includes("sent")) return "Enviada";
+  if (s.includes("aprob") || s.includes("acept") || s.includes("autoriz")) return "Aprobada";
+  if (s.includes("rechaz") || s.includes("cancel")) return "Rechazada";
+  if (s.includes("factur")) return "Facturada";
+  if (s.includes("generad") || s.includes("borrador") || s.includes("pend")) return "Generada";
+  return "Enviada";
+}
+
 export function mapQuoteToSupabase(quote: any, userUuid?: string | null) {
   const total = Number(quote.costo || quote.total || (quote.puntos ? (quote.puntos * 2500) + (quote.viaticos || 0) : 14000));
   const subtotal = Number((total / 1.16).toFixed(2));
   const iva = Number((total - subtotal).toFixed(2));
   const folio = quote.id || quote.folio || quote.codigo || `COT-${Date.now().toString().slice(-4)}`;
+  const estatusValidado = normalizeEstatus(quote.estado || quote.estatus);
 
   return {
     id_cotizacion: folio,
@@ -38,7 +54,7 @@ export function mapQuoteToSupabase(quote: any, userUuid?: string | null) {
     iva: iva,
     total: Number(total.toFixed(2)),
     moneda: quote.moneda || "MXN",
-    estatus: quote.estado || quote.estatus || "Enviada",
+    estatus: estatusValidado,
     elaborado_por: isValidUuid(userUuid) ? userUuid : null,
     validez_dias: 30,
     condiciones_comerciales: "Condiciones: 50% anticipo al autorizar y 50% contra entrega de informe técnico con acreditación EMA y sello de tiempo criptográfico NOM-151.",
