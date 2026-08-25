@@ -1,4 +1,4 @@
-import { supabase } from "../supabaseClient";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "../supabaseClient";
 
 export interface SupabaseSyncResult {
   success: boolean;
@@ -7,10 +7,16 @@ export interface SupabaseSyncResult {
   error?: any;
 }
 
+// Check if string is a valid UUID
+function isValidUuid(id?: string | null): boolean {
+  if (!id || typeof id !== "string") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim());
+}
+
 export function mapQuoteToSupabase(quote: any, userUuid?: string | null) {
   const total = Number(quote.costo || quote.total || (quote.puntos ? (quote.puntos * 2500) + (quote.viaticos || 0) : 14000));
-  const subtotal = Math.round(total / 1.16);
-  const iva = Math.round(total - subtotal);
+  const subtotal = Number((total / 1.16).toFixed(2));
+  const iva = Number((total - subtotal).toFixed(2));
   const folio = quote.id || quote.folio || quote.codigo || `COT-${Date.now().toString().slice(-4)}`;
 
   return {
@@ -30,12 +36,13 @@ export function mapQuoteToSupabase(quote: any, userUuid?: string | null) {
     ],
     subtotal: subtotal,
     iva: iva,
-    total: total,
+    total: Number(total.toFixed(2)),
     moneda: quote.moneda || "MXN",
-    estatus: quote.estado || quote.estatus || "Enviado",
+    estatus: quote.estado || quote.estatus || "Enviada",
+    elaborado_por: isValidUuid(userUuid) ? userUuid : null,
     validez_dias: 30,
     condiciones_comerciales: "Condiciones: 50% anticipo al autorizar y 50% contra entrega de informe técnico con acreditación EMA y sello de tiempo criptográfico NOM-151.",
-    creado_en: quote.fecha ? new Date(quote.fecha).toISOString() : new Date().toISOString(),
+    creado_en: quote.fecha ? (quote.fecha.includes('T') ? quote.fecha : new Date(quote.fecha).toISOString()) : new Date().toISOString(),
     actualizado_en: new Date().toISOString()
   };
 }
@@ -67,35 +74,87 @@ export function mapSupabaseToQuote(row: any) {
 }
 
 /**
+ * Fallback direct REST request to Supabase to guarantee execution
+ */
+async function directRestUpsert(rows: any[]): Promise<{ success: boolean; data?: any; error?: any }> {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/cotizaciones?on_conflict=id_cotizacion`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates, return=representation"
+      },
+      body: JSON.stringify(rows)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return { success: false, error: errText };
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err };
+  }
+}
+
+/**
  * Guarda o actualiza una cotización individual en la tabla 'cotizaciones' de Supabase
  */
 export async function saveCotizacionToSupabase(quote: any, userUuid?: string | null): Promise<SupabaseSyncResult> {
   try {
     const row = mapQuoteToSupabase(quote, userUuid);
     
-    // Intentar upsert en la tabla 'cotizaciones'
+    // 1. Intentar mediante supabase-js SDK
     const { data, error } = await supabase
       .from("cotizaciones")
       .upsert([row], { onConflict: "id_cotizacion" })
       .select();
 
-    if (error) {
-      console.error("Error al guardar cotización en Supabase:", error);
+    if (!error) {
+      console.log("Cotización guardada exitosamente en Supabase:", data);
       return {
-        success: false,
-        message: `Error de Supabase: ${error.message || error.details || JSON.stringify(error)}`,
-        error
+        success: true,
+        message: `Cotización ${row.folio} guardada correctamente en Supabase (public.cotizaciones).`,
+        count: 1
       };
     }
 
-    console.log("Cotización guardada exitosamente en Supabase:", data);
+    // 2. Si falló el SDK, intentar con REST directo
+    console.warn("Reintentando con llamada REST directa a Supabase...", error);
+    const restRes = await directRestUpsert([row]);
+    if (restRes.success) {
+      return {
+        success: true,
+        message: `Cotización ${row.folio} guardada correctamente en Supabase.`,
+        count: 1
+      };
+    }
+
     return {
-      success: true,
-      message: `Cotización ${row.folio} guardada correctamente en Supabase (public.cotizaciones).`,
-      count: 1
+      success: false,
+      message: `Error de Supabase: ${error.message || JSON.stringify(error)}`,
+      error
     };
   } catch (err: any) {
     console.error("Excepción al comunicarse con Supabase:", err);
+    // Intento final REST directo
+    try {
+      const row = mapQuoteToSupabase(quote, userUuid);
+      const restRes = await directRestUpsert([row]);
+      if (restRes.success) {
+        return {
+          success: true,
+          message: `Cotización ${row.folio} guardada correctamente en Supabase.`,
+          count: 1
+        };
+      }
+    } catch (_) {}
+
     return {
       success: false,
       message: `Fallo de conexión con Supabase: ${err?.message || err}`,
@@ -114,26 +173,50 @@ export async function syncAllQuotesToSupabase(quotes: any[]): Promise<SupabaseSy
 
   try {
     const rows = quotes.map(q => mapQuoteToSupabase(q));
+    
+    // 1. Intentar vía Supabase JS client
     const { data, error } = await supabase
       .from("cotizaciones")
       .upsert(rows, { onConflict: "id_cotizacion" })
       .select();
 
-    if (error) {
-      console.error("Error en upsert masivo a Supabase:", error);
+    if (!error) {
       return {
-        success: false,
-        message: `Error al sincronizar cotizaciones: ${error.message}`,
-        error
+        success: true,
+        message: `¡${rows.length} cotizaciones sincronizadas exitosamente con Supabase!`,
+        count: rows.length
+      };
+    }
+
+    // 2. Si falló, intentar con REST directo
+    console.warn("Fallo SDK upsert masivo, intentando REST directo...", error);
+    const restRes = await directRestUpsert(rows);
+    if (restRes.success) {
+      return {
+        success: true,
+        message: `¡${rows.length} cotizaciones sincronizadas exitosamente con Supabase!`,
+        count: rows.length
       };
     }
 
     return {
-      success: true,
-      message: `¡${rows.length} cotizaciones sincronizadas exitosamente con Supabase!`,
-      count: rows.length
+      success: false,
+      message: `Error al sincronizar cotizaciones: ${error.message || JSON.stringify(error)}`,
+      error
     };
   } catch (err: any) {
+    try {
+      const rows = quotes.map(q => mapQuoteToSupabase(q));
+      const restRes = await directRestUpsert(rows);
+      if (restRes.success) {
+        return {
+          success: true,
+          message: `¡${rows.length} cotizaciones sincronizadas exitosamente con Supabase!`,
+          count: rows.length
+        };
+      }
+    } catch (_) {}
+
     return {
       success: false,
       message: `Error de red con Supabase: ${err?.message || err}`,
@@ -152,19 +235,29 @@ export async function fetchCotizacionesFromSupabase(): Promise<{ quotes: any[], 
       .select("*")
       .order("creado_en", { ascending: false });
 
-    if (error) {
-      console.warn("No se pudieron cargar cotizaciones desde Supabase:", error.message);
-      return { quotes: [], error };
-    }
-
-    if (data && data.length > 0) {
+    if (!error && data && data.length > 0) {
       const mapped = data.map(mapSupabaseToQuote);
       return { quotes: mapped, error: null };
     }
 
-    return { quotes: [], error: null };
+    // Fallback REST GET
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/cotizaciones?select=*&order=creado_en.desc`, {
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+    if (resp.ok) {
+      const rows = await resp.json();
+      if (Array.isArray(rows)) {
+        return { quotes: rows.map(mapSupabaseToQuote), error: null };
+      }
+    }
+
+    return { quotes: [], error: error || null };
   } catch (err) {
     console.warn("Excepción al consultar Supabase:", err);
     return { quotes: [], error: err };
   }
 }
+
