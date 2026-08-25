@@ -465,23 +465,26 @@ export default function App() {
     return usuarios.find(u => u.id_usuario === currentPersonaId) || usuarios[0];
   }, [usuarios, currentPersonaId]);
 
-  // Check if current active user is an administrator / director / system admin
-  const isAdmin = useMemo(() => {
-    const role = (activePersona.id_role || activePersona.id_rol || '').toLowerCase();
-    const puesto = (activePersona.puesto || '').toLowerCase();
+  // Check if current active user is authorized to navigate across all roles (CEO and SysAdmin only)
+  const canNavigateAllRoles = useMemo(() => {
+    const role = (activePersona?.id_role || activePersona?.id_rol || '').toLowerCase();
+    const puesto = (activePersona?.puesto || '').toLowerCase();
+    const email = (activePersona?.email || '').toLowerCase();
     return (
-      role === 'sys_admin' ||
       role === 'ceo' ||
-      role === 'dir_op' ||
-      puesto.includes('admin') ||
+      role === 'sys_admin' ||
+      role === 'admin' ||
+      email.includes('harold') ||
+      email.includes('haroldo90') ||
+      email.includes('alejandro.torres') ||
       puesto.includes('ceo') ||
-      puesto.includes('director') ||
-      puesto.includes('gerente') ||
-      selectedRole === 'sys_admin' ||
-      selectedRole === 'ceo' ||
-      true // Enable for easy role testing across all accounts
+      puesto.includes('director general') ||
+      puesto.includes('administrador del sistema') ||
+      puesto.includes('ciberseguridad')
     );
-  }, [activePersona, selectedRole]);
+  }, [activePersona]);
+
+  const isAdmin = canNavigateAllRoles;
 
   // Available roles list for Admin Role Switcher
   const ALL_ROLES_OPTIONS = useMemo(() => [
@@ -1516,14 +1519,14 @@ export default function App() {
 
           {/* SIMULADOR DE PERSONA / CAMBIO DE ROL */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-stretch sm:self-auto">
-            {/* Volver a Selección de Roles / Cerrar Sesión */}
+            {/* Cerrar Sesión / Volver */}
             <button
-              onClick={() => setSelectedRole(null)}
+              onClick={handleLogout}
               className="flex items-center justify-center gap-2 px-3.5 py-1.5 bg-[#85AA1C] hover:bg-[#739418] text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-sm shrink-0 cursor-pointer hover:shadow-md"
-              title="Volver a la Pantalla de Inicio de Roles"
+              title="Cerrar Sesión del Portal"
             >
               <Home className="w-3.5 h-3.5" />
-              <span>Cambiar de Rol</span>
+              <span>{canNavigateAllRoles ? "Cambiar de Rol / Salir" : "Cerrar Sesión"}</span>
             </button>
 
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
