@@ -162,8 +162,18 @@ const PREDEFINED_USERS_MAPPING = [
     email: "haroldo90@aspechs.com.mx",
     username: "haroldo90",
     rol: "ceo",
-    puesto: "CEO",
-    firma: "SHA256:CEO_HA_99810A (e.firma SAT)",
+    puesto: "CEO / Director General",
+    firma: "SHA256:CEO_HA_99810A98F71E89C1 (e.firma SAT)",
+    password: "Chevropar#1970"
+  },
+  {
+    id: "01000000-0000-0000-0000-000000000001",
+    nombre: "Harold Anguiano Morales",
+    email: "harold.anguiano@aspechs.com.mx",
+    username: "harold.anguiano",
+    rol: "ceo",
+    puesto: "CEO / Director General",
+    firma: "SHA256:CEO_HA_99810A98F71E89C1 (e.firma SAT)",
     password: "Chevropar#1970"
   },
   {
@@ -504,7 +514,10 @@ export default function HomeSelection({ onSelectRole }: HomeSelectionProps) {
         const searchEmail = email.trim().toLowerCase();
         const mappedUser = PREDEFINED_USERS_MAPPING.find(u => 
           u.email.toLowerCase() === searchEmail || 
-          u.email.split('@')[0].toLowerCase() === searchEmail
+          u.email.split('@')[0].toLowerCase() === searchEmail ||
+          (u.username && u.username.toLowerCase() === searchEmail)
+        ) || (
+          (searchEmail.includes("harold") || searchEmail.includes("ceo")) ? PREDEFINED_USERS_MAPPING.find(u => u.rol === "ceo") : undefined
         );
         
         if (mappedUser) {
