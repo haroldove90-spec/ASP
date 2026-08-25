@@ -70,6 +70,7 @@ import CoordinatorViews from './components/CoordinatorViews';
 import TechnicianViews from './components/TechnicianViews';
 import AdminViews from './components/AdminViews';
 import HomeSelection from './components/HomeSelection';
+import { saveCotizacionToSupabase, syncAllQuotesToSupabase, fetchCotizacionesFromSupabase } from './lib/supabaseSync';
 
 export default function App() {
   // Session / Active Role state for dynamic landing page
@@ -310,6 +311,33 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('aspechs_generated_quotes', JSON.stringify(generatedQuotes));
   }, [generatedQuotes]);
+
+  // Initial Sync with Supabase (public.cotizaciones)
+  useEffect(() => {
+    async function syncQuotesWithSupabaseOnMount() {
+      try {
+        const { quotes: remoteQuotes, error } = await fetchCotizacionesFromSupabase();
+        if (!error && remoteQuotes && remoteQuotes.length > 0) {
+          // Merge remote quotes with local quotes (remote takes precedence, add local non-existing ones)
+          setGeneratedQuotes(prev => {
+            const remoteMap = new Map(remoteQuotes.map(q => [q.id, q]));
+            const localOnly = prev.filter(q => !remoteMap.has(q.id));
+            if (localOnly.length > 0) {
+              // Upload any local-only quotes (e.g. user's existing COT-001, COT-002) to Supabase
+              syncAllQuotesToSupabase(localOnly).catch(e => console.error("Error auto-uploading local quotes:", e));
+            }
+            return [...remoteQuotes, ...localOnly];
+          });
+        } else if (generatedQuotes.length > 0) {
+          // If Supabase is empty or fresh, upload our current quotes to Supabase automatically!
+          syncAllQuotesToSupabase(generatedQuotes).catch(e => console.error("Error auto-syncing to Supabase:", e));
+        }
+      } catch (err) {
+        console.warn("Supabase initial sync info:", err);
+      }
+    }
+    syncQuotesWithSupabaseOnMount();
+  }, []);
 
   // Invoice control state for Admin/Ventas and Director
   const [invoices, setInvoices] = useState<any[]>(() => {
@@ -747,7 +775,7 @@ export default function App() {
     id_instrumento: ''
   });
 
-  const handleAdminGenerateQuote = (e: React.FormEvent) => {
+  const handleAdminGenerateQuote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!leadFormData.cliente || !leadFormData.contacto) {
       alert("Por favor rellene todos los campos obligatorios.");
@@ -781,7 +809,10 @@ export default function App() {
     };
     setInvoices([newInvoice, ...invoices]);
 
-    alert(`Cotización generada correctamente para ${leadFormData.cliente} por $${costTotal.toLocaleString()}. Se ha registrado automáticamente una factura en estado Pendiente.`);
+    // Guardar en Supabase
+    saveCotizacionToSupabase(newQuote, activePersona?.id_usuario).catch(err => console.error("Error al guardar en Supabase:", err));
+
+    alert(`Cotización ${newQuote.id} generada y sincronizada con Supabase para ${leadFormData.cliente} por $${costTotal.toLocaleString()} MXN.`);
     setLeadFormData({
       cliente: '',
       contacto: '',

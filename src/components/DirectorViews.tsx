@@ -34,10 +34,15 @@ import {
   Edit,
   X,
   UserX,
-  CheckCircle2
+  CheckCircle2,
+  Cloud,
+  CloudCheck,
+  RefreshCw,
+  Database
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion, AuditLog } from '../initial_data';
+import { saveCotizacionToSupabase, syncAllQuotesToSupabase, fetchCotizacionesFromSupabase } from '../lib/supabaseSync';
 
 interface DirectorViewsProps {
   activePersona: Usuario;
@@ -319,8 +324,12 @@ export default function DirectorViews(props: DirectorViewsProps) {
     especialidad: 'Especialista en Acústica NOM-011'
   });
 
+  // Supabase sync states
+  const [isSyncingQuotes, setIsSyncingQuotes] = useState(false);
+  const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
+
   // --- SUBMISSION HANDLERS ---
-  const handleCreateQuote = (e: React.FormEvent) => {
+  const handleCreateQuote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuoteForm.cliente) {
       alert("Por favor ingrese el nombre del cliente.");
@@ -356,7 +365,34 @@ export default function DirectorViews(props: DirectorViewsProps) {
       puntos: 5,
       viaticos: 1500
     });
-    alert(`Cotización ${newQuote.id} generada y registrada con éxito para ${newQuote.cliente} por un monto total de $${newQuote.costo.toLocaleString()} MXN.`);
+
+    // Guardar en tiempo real en la tabla 'cotizaciones' de Supabase
+    setIsSyncingQuotes(true);
+    setSyncStatusMessage("Guardando cotización en Supabase...");
+    const syncRes = await saveCotizacionToSupabase(newQuote, activePersona?.id_usuario);
+    setIsSyncingQuotes(false);
+
+    if (syncRes.success) {
+      setSyncStatusMessage(`✅ Cotización ${newQuote.id} guardada en Supabase (public.cotizaciones).`);
+      alert(`✅ Cotización ${newQuote.id} generada y registrada con éxito para ${newQuote.cliente} por un monto total de $${newQuote.costo.toLocaleString()} MXN.\n\n☁️ Guardada y respaldada en Supabase (public.cotizaciones).`);
+    } else {
+      setSyncStatusMessage(`⚠️ Guardada localmente. Error en Supabase: ${syncRes.message}`);
+      alert(`Cotización ${newQuote.id} generada localmente.\n\nRespuesta de Supabase: ${syncRes.message}`);
+    }
+  };
+
+  const handleManualSyncQuotes = async () => {
+    setIsSyncingQuotes(true);
+    setSyncStatusMessage("Sincronizando todas las cotizaciones con Supabase...");
+    const res = await syncAllQuotesToSupabase(generatedQuotes);
+    setIsSyncingQuotes(false);
+    if (res.success) {
+      setSyncStatusMessage(`✅ ${res.message}`);
+      alert(`☁️ ${res.message}\n\nLas ${generatedQuotes.length} cotizaciones ahora están guardadas y visibles en Supabase en la tabla 'public.cotizaciones'.`);
+    } else {
+      setSyncStatusMessage(`❌ Error al sincronizar: ${res.message}`);
+      alert(`❌ Error al sincronizar con Supabase:\n${res.message}`);
+    }
   };
 
   const handleCreateOdt = (e: React.FormEvent) => {
@@ -2558,20 +2594,62 @@ export default function DirectorViews(props: DirectorViewsProps) {
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-                <FileText className="text-emerald-600 w-4.5 h-4.5" />
-                Gestión e Historial de Cotizaciones
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">Módulo interactivo de costeo, emisión de cotizaciones y automatización de facturación.</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                  <FileText className="text-emerald-600 w-4.5 h-4.5" />
+                  Gestión e Historial de Cotizaciones
+                </h3>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <Database className="w-3 h-3 text-emerald-600" />
+                  <span>Supabase: public.cotizaciones</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Módulo interactivo de costeo, emisión de cotizaciones y sincronización en tiempo real con base de datos PostgreSQL.</p>
             </div>
-            <button
-              onClick={() => setIsAddQuoteOpen(true)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nueva Cotización</span>
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleManualSyncQuotes}
+                disabled={isSyncingQuotes}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 border border-slate-200 cursor-pointer disabled:opacity-50"
+                title="Sube y sincroniza todas las cotizaciones guardadas a la tabla cotizaciones en Supabase"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isSyncingQuotes ? 'animate-spin' : ''}`} />
+                <span>{isSyncingQuotes ? 'Sincronizando...' : 'Sincronizar con Supabase'}</span>
+              </button>
+
+              <button
+                onClick={() => setIsAddQuoteOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/10 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nueva Cotización</span>
+              </button>
+            </div>
           </div>
+
+          {/* Sync Status Banner if any */}
+          {syncStatusMessage && (
+            <div className={`p-3 rounded-lg text-xs font-mono flex items-center justify-between border ${
+              syncStatusMessage.startsWith('✅')
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : syncStatusMessage.startsWith('❌')
+                ? 'bg-red-50 text-red-800 border-red-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                <Cloud className="w-4 h-4 shrink-0" />
+                <span>{syncStatusMessage}</span>
+              </div>
+              <button
+                onClick={() => setSyncStatusMessage(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* Form Modal for Creating Quote */}
           {isAddQuoteOpen && (
