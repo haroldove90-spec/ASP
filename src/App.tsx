@@ -428,13 +428,16 @@ export default function App() {
   // Global Supabase Connection & Sync State
   const [supabaseStatus, setSupabaseStatus] = useState<'testing' | 'connected' | 'error'>('testing');
   const [supabaseMessage, setSupabaseMessage] = useState<string>('Verificando conexión con Supabase...');
+  const [supabaseDiagnostics, setSupabaseDiagnostics] = useState<any>(null);
   const [isSyncingGlobal, setIsSyncingGlobal] = useState<boolean>(false);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState<boolean>(false);
 
-  // Verificar conexión con Supabase al montar la app
-  useEffect(() => {
-    let isMounted = true;
-    testSupabaseConnection().then(res => {
-      if (!isMounted) return;
+  const checkSupabaseHealth = async () => {
+    setSupabaseStatus('testing');
+    setSupabaseMessage('Probando conexión con Supabase...');
+    try {
+      const res = await testSupabaseConnection();
+      setSupabaseDiagnostics(res);
       if (res.connected) {
         setSupabaseStatus('connected');
         setSupabaseMessage(`Conectado (${res.latencyMs}ms) - ${res.tables.ordenes_trabajo} citas, ${res.tables.cotizaciones} cotizaciones, ${res.tables.instrumentos} instrumentos`);
@@ -442,10 +445,19 @@ export default function App() {
         setSupabaseStatus('error');
         setSupabaseMessage(res.error || 'Error de conexión con Supabase');
       }
-    }).catch(err => {
-      if (!isMounted) return;
+      return res;
+    } catch (err: any) {
       setSupabaseStatus('error');
       setSupabaseMessage('Error al contactar Supabase: ' + (err?.message || String(err)));
+      return { connected: false, error: err?.message || String(err) };
+    }
+  };
+
+  // Verificar conexión con Supabase al montar la app
+  useEffect(() => {
+    let isMounted = true;
+    checkSupabaseHealth().then(() => {
+      if (!isMounted) return;
     });
     return () => { isMounted = false; };
   }, []);
@@ -466,12 +478,12 @@ export default function App() {
     if (res.success) {
       setSupabaseStatus('connected');
       setSupabaseMessage('Sincronizado exitosamente con Supabase');
-      alert(`☁️ Conexión Exitosa con Supabase\n\n${res.message}\n\n• Agenda & Programación (${scheduledServices.length} registros en public.ordenes_trabajo)\n• Cotizaciones Comerciales (${generatedQuotes.length} registros en public.cotizaciones)\n• Inventario de Metrología (${instruments.length} instrumentos en public.instrumentos)\n• Personal (${usuarios.length} usuarios en public.usuarios)`);
+      await checkSupabaseHealth();
     } else {
       setSupabaseStatus('error');
       setSupabaseMessage(res.message);
-      alert(`❌ Resultado de Sincronización:\n${res.message}`);
     }
+    return res;
   };
 
   // Persona State
@@ -1664,15 +1676,17 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-3 self-stretch sm:self-auto">
             {/* Botón de Sincronización e Indicador Supabase */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-1 shadow-xs">
-              <div 
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
+              <button 
+                type="button"
+                onClick={() => setIsSupabaseModalOpen(true)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer hover:opacity-90 active:scale-98 ${
                   supabaseStatus === 'connected' 
-                    ? 'bg-emerald-100 text-emerald-800' 
+                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200/80 border border-emerald-300/60' 
                     : supabaseStatus === 'testing'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-red-100 text-red-800'
+                      ? 'bg-amber-100 text-amber-800 hover:bg-amber-200/80 border border-amber-300/60'
+                      : 'bg-red-100 text-red-800 hover:bg-red-200/80 border border-red-300/60'
                 }`}
-                title={supabaseMessage}
+                title="Clic para ver diagnóstico y estado detallado de Supabase"
               >
                 <span className={`w-2 h-2 rounded-full ${
                   supabaseStatus === 'connected' 
@@ -1687,13 +1701,13 @@ export default function App() {
                 <span className="sm:hidden">
                   {supabaseStatus === 'connected' ? 'Supabase OK' : 'Supabase'}
                 </span>
-              </div>
+              </button>
               <button
                 type="button"
                 onClick={handleGlobalSyncAll}
                 disabled={isSyncingGlobal}
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
-                title="Probar conexión y sincronizar todos los módulos (Agenda, Cotizaciones, Instrumentos, Personal) con Supabase"
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer active:scale-98"
+                title="Sincronizar todos los módulos (Agenda, Cotizaciones, Instrumentos, Personal) con Supabase"
               >
                 <RefreshCw className={`w-3.5 h-3.5 text-[#85AA1C] ${isSyncingGlobal ? 'animate-spin' : ''}`} />
                 <span className="hidden md:inline">{isSyncingGlobal ? "Sincronizando..." : "Sincronizar Supabase"}</span>
@@ -1947,6 +1961,138 @@ export default function App() {
         </footer>
 
       </main>
+
+      {/* MODAL DE DIAGNÓSTICO Y CONTROL SUPABASE */}
+      {isSupabaseModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-5 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Centro de Conexión Supabase Cloud</h3>
+                  <p className="text-xs text-slate-500 font-light">Trazabilidad en tiempo real y base de datos PostgreSQL</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsSupabaseModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Status Card */}
+            <div className={`p-4 rounded-xl border flex items-center justify-between ${
+              supabaseStatus === 'connected'
+                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                : supabaseStatus === 'testing'
+                  ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+                  : 'bg-red-50/70 border-red-200 text-red-900'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-3.5 h-3.5 rounded-full ${
+                  supabaseStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : supabaseStatus === 'testing' ? 'bg-amber-500 animate-ping' : 'bg-red-500'
+                }`}></div>
+                <div>
+                  <div className="font-bold text-sm">
+                    {supabaseStatus === 'connected' ? 'Conexión Estable con Supabase' : supabaseStatus === 'testing' ? 'Verificando Servidor...' : 'Problema de Comunicación'}
+                  </div>
+                  <div className="text-xs opacity-80 font-mono mt-0.5">
+                    {supabaseDiagnostics?.lastChecked ? `Última revisión: ${supabaseDiagnostics.lastChecked}` : 'Iniciando diagnóstico...'}
+                  </div>
+                </div>
+              </div>
+              {supabaseDiagnostics?.latencyMs !== undefined && (
+                <div className="text-right font-mono">
+                  <span className="text-xs font-bold bg-white/80 px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                    {supabaseDiagnostics.latencyMs} ms
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Database Metrics Grid */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">Tablas Sincronizadas en la Nube</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <div className="text-[10px] text-slate-500 font-mono">Cotizaciones</div>
+                  <div className="text-lg font-mono font-bold text-emerald-700 mt-0.5">
+                    {supabaseDiagnostics?.tables?.cotizaciones ?? generatedQuotes.length}
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-mono">public.cotizaciones</div>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <div className="text-[10px] text-slate-500 font-mono">Agenda & ODTs</div>
+                  <div className="text-lg font-mono font-bold text-emerald-700 mt-0.5">
+                    {supabaseDiagnostics?.tables?.ordenes_trabajo ?? scheduledServices.length}
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-mono">public.ordenes_trabajo</div>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <div className="text-[10px] text-slate-500 font-mono">Instrumentos</div>
+                  <div className="text-lg font-mono font-bold text-emerald-700 mt-0.5">
+                    {supabaseDiagnostics?.tables?.instrumentos ?? instruments.length}
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-mono">public.instrumentos</div>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <div className="text-[10px] text-slate-500 font-mono">Personal</div>
+                  <div className="text-lg font-mono font-bold text-emerald-700 mt-0.5">
+                    {supabaseDiagnostics?.tables?.usuarios ?? usuarios.length}
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-mono">public.usuarios</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Diagnostic Message */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 font-mono space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                <Info className="w-3.5 h-3.5 text-blue-500" />
+                <span>Endpoint Cloud:</span>
+              </div>
+              <p className="text-[11px] text-slate-500 break-all select-all">https://xqmgkmxkqvnrakodlgjp.supabase.co</p>
+              <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
+                Estado: {supabaseMessage}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => checkSupabaseHealth()}
+                disabled={supabaseStatus === 'testing' || isSyncingGlobal}
+                className="w-full sm:w-auto px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
+                <span>Probar Conexión</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await handleGlobalSyncAll();
+                  if (res?.success) {
+                    alert("¡Sincronización completada exitosamente con Supabase!");
+                  } else {
+                    alert("Aviso de sincronización: " + (res?.message || "Revise la consola"));
+                  }
+                }}
+                disabled={isSyncingGlobal}
+                className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-98"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingGlobal ? 'animate-spin' : ''}`} />
+                <span>{isSyncingGlobal ? "Sincronizando Módulos..." : "Sincronizar Todo Ahora"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

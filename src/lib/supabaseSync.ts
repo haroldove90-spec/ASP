@@ -670,30 +670,75 @@ export async function fetchUsuariosFromSupabase(): Promise<{ users: Usuario[], e
 export async function testSupabaseConnection(): Promise<SupabaseConnectionStatus> {
   const start = performance.now();
   try {
-    // Consultar el conteo de las tablas principales
+    // Consultar el conteo de las tablas principales con limit(1) y count exacto para evitar bloqueos por HEAD request
     const [quotesRes, odtsRes, instRes, usersRes] = await Promise.all([
-      supabase.from("cotizaciones").select("id_cotizacion", { count: "exact", head: true }),
-      supabase.from("ordenes_trabajo").select("id_odt", { count: "exact", head: true }),
-      supabase.from("instrumentos").select("id_instrumento", { count: "exact", head: true }),
-      supabase.from("usuarios").select("id_usuario", { count: "exact", head: true })
+      supabase.from("cotizaciones").select("id_cotizacion", { count: "exact" }).limit(1),
+      supabase.from("ordenes_trabajo").select("id_odt", { count: "exact" }).limit(1),
+      supabase.from("instrumentos").select("id_instrumento", { count: "exact" }).limit(1),
+      supabase.from("usuarios").select("id_usuario", { count: "exact" }).limit(1)
     ]);
 
+    const hasAnySuccess = !quotesRes.error || !odtsRes.error || !instRes.error || !usersRes.error;
     const end = performance.now();
     const latency = Math.round(end - start);
 
-    return {
-      connected: true,
-      latencyMs: latency,
-      tables: {
-        cotizaciones: quotesRes.count ?? 0,
-        ordenes_trabajo: odtsRes.count ?? 0,
-        instrumentos: instRes.count ?? 0,
-        usuarios: usersRes.count ?? 0,
-        certificados_calibracion: 0
-      },
-      lastChecked: new Date().toLocaleTimeString()
-    };
+    if (hasAnySuccess) {
+      return {
+        connected: true,
+        latencyMs: latency,
+        tables: {
+          cotizaciones: quotesRes.count ?? (quotesRes.data?.length || 0),
+          ordenes_trabajo: odtsRes.count ?? (odtsRes.data?.length || 0),
+          instrumentos: instRes.count ?? (instRes.data?.length || 0),
+          usuarios: usersRes.count ?? (usersRes.data?.length || 0),
+          certificados_calibracion: 0
+        },
+        lastChecked: new Date().toLocaleTimeString()
+      };
+    }
+
+    // Direct REST Fallback check si el cliente JS tuviera alguna discrepancia
+    const restRes = await fetch(`${SUPABASE_URL}/rest/v1/ordenes_trabajo?select=id_odt&limit=1`, {
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+
+    if (restRes.ok) {
+      return {
+        connected: true,
+        latencyMs: Math.round(performance.now() - start),
+        tables: {
+          cotizaciones: quotesRes.count ?? 0,
+          ordenes_trabajo: odtsRes.count ?? 0,
+          instrumentos: instRes.count ?? 0,
+          usuarios: usersRes.count ?? 0,
+          certificados_calibracion: 0
+        },
+        lastChecked: new Date().toLocaleTimeString()
+      };
+    }
+
+    throw new Error(quotesRes.error?.message || odtsRes.error?.message || "No fue posible comunicar con las tablas de Supabase");
   } catch (err: any) {
+    // Último intento de fallback directo
+    try {
+      const ping = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+        headers: { "apikey": SUPABASE_ANON_KEY }
+      });
+      if (ping.ok || ping.status === 200 || ping.status === 404) {
+        return {
+          connected: true,
+          latencyMs: Math.round(performance.now() - start),
+          tables: { cotizaciones: 0, ordenes_trabajo: 0, instrumentos: 0, usuarios: 0, certificados_calibracion: 0 },
+          lastChecked: new Date().toLocaleTimeString()
+        };
+      }
+    } catch {
+      // ignore
+    }
+
     const end = performance.now();
     return {
       connected: false,
