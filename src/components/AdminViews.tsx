@@ -1325,7 +1325,7 @@ export default function AdminViews(props: AdminViewsProps) {
                           <span className="font-mono font-bold text-xs text-emerald-600">${(q.costo || 0).toLocaleString('es-MX')} MXN</span>
                         </div>
                         <div className="text-[10px] text-slate-500 font-mono">
-                          Servicios: {q.servicio || (q.servicios && q.servicios.join(" + "))}
+                          Servicios: {typeof q.servicio === 'string' ? q.servicio : (Array.isArray(q.servicios) ? q.servicios.map((s: any) => typeof s === 'string' ? s : (s?.servicio || s?.nombre || '')).filter(Boolean).join(" + ") : (q.servicio || 'Servicio Metrológico'))}
                         </div>
                         <div className="flex justify-end gap-1.5 pt-1 border-t border-slate-100">
                           <button
@@ -1425,11 +1425,14 @@ export default function AdminViews(props: AdminViewsProps) {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {(quote.servicios || [quote.servicio]).map((serv: string) => (
-                            <span key={serv} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded text-[9px] font-semibold font-mono">
-                              {serv}
-                            </span>
-                          ))}
+                          {(Array.isArray(quote.servicios) ? quote.servicios : [quote.servicio]).filter(Boolean).map((servItem: any, sIdx: number) => {
+                            const servLabel = typeof servItem === 'string' ? servItem : (servItem?.servicio || servItem?.nombre || 'Servicio Metrológico');
+                            return (
+                              <span key={`${quote.id_propuesta || quote.id || 'q'}-${sIdx}-${servLabel}`} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded text-[9px] font-semibold font-mono">
+                                {servLabel}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -4212,23 +4215,26 @@ ASP METROLOGÍA S.A. DE C.V.`}
                     2. Seleccionar Conceptos Solicitados por el Cliente en su O.C. *
                   </label>
                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5 max-h-[140px] overflow-y-auto">
-                    {(odciModalQuote.servicios || [odciModalQuote.servicio]).map((srv: string) => (
-                      <label key={srv} className="flex items-center gap-2 bg-white p-2 rounded border border-slate-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={odciSelectedServices.includes(srv)}
-                          onChange={() => {
-                            if (odciSelectedServices.includes(srv)) {
-                              setOdciSelectedServices(odciSelectedServices.filter(s => s !== srv));
-                            } else {
-                              setOdciSelectedServices([...odciSelectedServices, srv]);
-                            }
-                          }}
-                          className="rounded text-blue-600 focus:ring-0"
-                        />
-                        <span className="font-medium text-slate-800 text-[11px]">{srv}</span>
-                      </label>
-                    ))}
+                    {(Array.isArray(odciModalQuote.servicios) ? odciModalQuote.servicios : [odciModalQuote.servicio]).filter(Boolean).map((srvItem: any, srvIdx: number) => {
+                      const srv = typeof srvItem === 'string' ? srvItem : (srvItem?.servicio || srvItem?.nombre || 'Servicio Metrológico');
+                      return (
+                        <label key={`${srvIdx}-${srv}`} className="flex items-center gap-2 bg-white p-2 rounded border border-slate-200 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={odciSelectedServices.includes(srv)}
+                            onChange={() => {
+                              if (odciSelectedServices.includes(srv)) {
+                                setOdciSelectedServices(odciSelectedServices.filter(s => s !== srv));
+                              } else {
+                                setOdciSelectedServices([...odciSelectedServices, srv]);
+                              }
+                            }}
+                            className="rounded text-blue-600 focus:ring-0"
+                          />
+                          <span className="font-medium text-slate-800 text-[11px]">{srv}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -4450,12 +4456,13 @@ ASP METROLOGÍA S.A. DE C.V.`}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 bg-white">
-                        {(viewingOfficialQuoteModal.servicios || [viewingOfficialQuoteModal.servicio || "Evaluación Metrológica In Situ"]).map((s: string, idx: number) => {
-                          const pts = viewingOfficialQuoteModal.puntos || 5;
-                          const costPt = viewingOfficialQuoteModal.costo_punto || 1800;
-                          const rowSubtotal = pts * costPt;
+                        {(Array.isArray(viewingOfficialQuoteModal.servicios) ? viewingOfficialQuoteModal.servicios : [viewingOfficialQuoteModal.servicio || "Evaluación Metrológica In Situ"]).filter(Boolean).map((sItem: any, idx: number) => {
+                          const s = typeof sItem === 'string' ? sItem : (sItem?.servicio || sItem?.nombre || "Evaluación Metrológica In Situ");
+                          const pts = (typeof sItem === 'object' && sItem?.puntos) || viewingOfficialQuoteModal.puntos || 5;
+                          const costPt = (typeof sItem === 'object' && sItem?.costo_unitario) || viewingOfficialQuoteModal.costo_punto || 1800;
+                          const rowSubtotal = (typeof sItem === 'object' && sItem?.subtotal) || (pts * costPt);
                           return (
-                            <tr key={idx} className="hover:bg-slate-50">
+                            <tr key={`${idx}-${s}`} className="hover:bg-slate-50">
                               <td className="py-3 px-3">
                                 <div className="font-bold text-slate-900">{s}</div>
                                 <div className="text-[10px] text-slate-500">Evaluación metrológica y emisión de informe de ensayo con acreditación EMA.</div>

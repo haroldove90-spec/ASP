@@ -3086,7 +3086,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
                         </button>
                       </td>
                       <td className="px-5 py-4 font-bold text-slate-800">{q.cliente}</td>
-                      <td className="px-5 py-4 text-slate-500">{q.servicio}</td>
+                      <td className="px-5 py-4 text-slate-500">{typeof q.servicio === 'string' ? q.servicio : (q.servicio?.servicio || (Array.isArray(q.servicios) ? q.servicios.join(' + ') : 'Mapeo de Ruido NOM-011'))}</td>
                       <td className="px-5 py-4 text-center font-mono">{q.puntos}</td>
                       <td className="px-5 py-4 font-mono font-bold text-slate-900">${q.costo.toLocaleString()} MXN</td>
                       <td className="px-5 py-4 font-mono text-slate-400">{q.fecha}</td>
@@ -4034,7 +4034,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2">
                   <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Servicio Norma:</span>
-                  <span className="font-semibold text-slate-800">{selectedQuoteForDetail.servicio}</span>
+                  <span className="font-semibold text-slate-800">{typeof selectedQuoteForDetail.servicio === 'string' ? selectedQuoteForDetail.servicio : (selectedQuoteForDetail.servicio?.servicio || (Array.isArray(selectedQuoteForDetail.servicios) ? selectedQuoteForDetail.servicios.join(' + ') : 'Mapeo Metrológico'))}</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
                   <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Puntos de Medición:</span>

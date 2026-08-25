@@ -114,13 +114,27 @@ export function mapQuoteToSupabase(quote: any, userUuid?: string | null) {
 }
 
 export function mapSupabaseToQuote(row: any) {
-  const primaryService = Array.isArray(row.servicios) && row.servicios.length > 0 
-    ? (row.servicios[0].servicio || row.servicios[0].nombre || "Servicio Industrial")
-    : (row.servicio_norma || "Mapeo de Ruido NOM-011-STPS");
+  let primaryService = "Mapeo de Ruido NOM-011-STPS";
+  let serviceNames: string[] = [];
+  let puntos = 5;
 
-  const puntos = Array.isArray(row.servicios) && row.servicios.length > 0
-    ? (row.servicios[0].puntos || 5)
-    : 5;
+  if (Array.isArray(row.servicios) && row.servicios.length > 0) {
+    serviceNames = row.servicios.map((s: any) => {
+      if (typeof s === 'string') return s;
+      if (s && typeof s === 'object') return s.servicio || s.nombre || s.serviceName || "Servicio Metrológico";
+      return "Servicio Metrológico";
+    });
+    primaryService = serviceNames[0] || "Mapeo de Ruido NOM-011-STPS";
+    if (typeof row.servicios[0] === 'object' && row.servicios[0]?.puntos) {
+      puntos = Number(row.servicios[0].puntos);
+    }
+  } else if (typeof row.servicio_norma === 'string' && row.servicio_norma) {
+    primaryService = row.servicio_norma;
+    serviceNames = [primaryService];
+  } else if (typeof row.servicio === 'string' && row.servicio) {
+    primaryService = row.servicio;
+    serviceNames = [primaryService];
+  }
 
   return {
     id: row.id_cotizacion || row.folio,
@@ -135,7 +149,8 @@ export function mapSupabaseToQuote(row: any) {
     estado: row.estatus || "Enviada",
     email: row.cliente_email,
     telefono: row.cliente_telefono,
-    servicios: row.servicios
+    servicios: serviceNames,
+    servicios_desglosados: Array.isArray(row.servicios) ? row.servicios : []
   };
 }
 
