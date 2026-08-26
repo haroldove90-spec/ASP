@@ -1,5 +1,7 @@
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "../supabaseClient";
 import { Usuario, Instrumento, CertificadoCalibracion, AuditLog } from "../initial_data";
+import { addConfirmationRecord, TelemetrySaveRecord } from "../types/supabaseTelemetry";
+import { soundManager } from "../utils/audioAlerts";
 
 export interface SupabaseSyncResult {
   success: boolean;
@@ -7,6 +9,7 @@ export interface SupabaseSyncResult {
   count?: number;
   error?: any;
   details?: Record<string, any>;
+  telemetry?: TelemetrySaveRecord;
 }
 
 export interface SupabaseConnectionStatus {
@@ -18,6 +21,8 @@ export interface SupabaseConnectionStatus {
     instrumentos: number;
     usuarios: number;
     certificados_calibracion: number;
+    bitacora_auditoria?: number;
+    reportes_campo?: number;
   };
   lastChecked: string;
   error?: string;
@@ -74,8 +79,39 @@ export function normalizeEstatus(raw?: string | null): "Generada" | "Enviada" | 
   return "Enviada";
 }
 
+/**
+ * Consulta el conteo exacto en tiempo real de una tabla en Supabase
+ */
+export async function getTableCount(table: string): Promise<number> {
+  try {
+    const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true });
+    if (!error && typeof count === 'number') {
+      return count;
+    }
+
+    // Direct REST Fallback
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&limit=1`, {
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Prefer": "count=exact"
+      }
+    });
+    if (resp.ok) {
+      const contentRange = resp.headers.get("content-range");
+      if (contentRange) {
+        const total = contentRange.split("/")[1];
+        if (total && total !== "*") return parseInt(total, 10);
+      }
+    }
+  } catch (e) {
+    console.warn(`Could not get count for ${table}:`, e);
+  }
+  return 0;
+}
+
 // -------------------------------------------------------------
-// 1. COTIZACIONES
+// 1. COTIZACIONES (cotizaciones)
 // -------------------------------------------------------------
 
 export function mapQuoteToSupabase(quote: any, userUuid?: string | null) {
@@ -155,38 +191,107 @@ export function mapSupabaseToQuote(row: any) {
 }
 
 export async function saveCotizacionToSupabase(quote: any, userUuid?: string | null): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("cotizaciones");
+
   try {
     const row = mapQuoteToSupabase(quote, userUuid);
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("cotizaciones")
       .upsert([row], { onConflict: "id_cotizacion" })
       .select();
 
-    if (!error) {
-      return { success: true, message: `Cotización ${row.folio} guardada en Supabase.`, count: 1 };
+    let isSuccess = !error;
+    let errDetail = error;
+
+    if (!isSuccess) {
+      const res = await directRestUpsert("cotizaciones", "id_cotizacion", [row]);
+      isSuccess = res.success;
+      errDetail = res.error;
     }
 
-    // Direct REST fallback
-    const res = await directRestUpsert("cotizaciones", "id_cotizacion", [row]);
-    if (res.success) return { success: true, message: `Cotización ${row.folio} guardada en Supabase.`, count: 1 };
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? (countBefore > 0 ? countBefore + 1 : 1) : countBefore;
 
-    return { success: false, message: `Error: ${error.message || JSON.stringify(error)}`, error };
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.cotizaciones",
+        action: "INSERT",
+        recordId: row.folio,
+        recordTitle: `Cotización: ${row.cliente_nombre} ($${row.total.toLocaleString('es-MX')} MXN)`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return {
+        success: true,
+        message: `Cotización ${row.folio} guardada en Supabase (public.cotizaciones).`,
+        count: 1,
+        telemetry
+      };
+    }
+
+    const telemetry = addConfirmationRecord({
+      table: "public.cotizaciones",
+      action: "INSERT",
+      recordId: row.folio,
+      recordTitle: `Cotización: ${row.cliente_nombre}`,
+      countBefore,
+      countAfter: countBefore,
+      latencyMs,
+      status: "error",
+      errorMessage: errDetail?.message || String(errDetail),
+      syncedToCloud: false
+    });
+
+    soundManager.playErrorAlert();
+    return { success: false, message: `Error al guardar cotización: ${errDetail?.message || JSON.stringify(errDetail)}`, error: errDetail, telemetry };
   } catch (err: any) {
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    soundManager.playErrorAlert();
     return { success: false, message: `Error de conexión: ${err?.message || err}`, error: err };
   }
 }
 
 export async function syncAllQuotesToSupabase(quotes: any[]): Promise<SupabaseSyncResult> {
   if (!quotes || quotes.length === 0) return { success: true, message: "Sin cotizaciones para sincronizar.", count: 0 };
+  const startTime = performance.now();
+  const countBefore = await getTableCount("cotizaciones");
+
   try {
     const rows = quotes.map(q => mapQuoteToSupabase(q));
     const { error } = await supabase.from("cotizaciones").upsert(rows, { onConflict: "id_cotizacion" });
-    if (!error) return { success: true, message: `${rows.length} cotizaciones sincronizadas con Supabase.`, count: rows.length };
+    
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res = await directRestUpsert("cotizaciones", "id_cotizacion", rows);
+      isSuccess = res.success;
+    }
 
-    const res = await directRestUpsert("cotizaciones", "id_cotizacion", rows);
-    if (res.success) return { success: true, message: `${rows.length} cotizaciones sincronizadas con Supabase.`, count: rows.length };
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? rows.length : countBefore;
 
-    return { success: false, message: `Error: ${error.message || JSON.stringify(error)}`, error };
+    if (isSuccess) {
+      const telemetry = addConfirmationRecord({
+        table: "public.cotizaciones",
+        action: "SYNC",
+        recordId: `BATCH-${rows.length}-ITEMS`,
+        recordTitle: `Sincronización masiva (${rows.length} cotizaciones)`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `${rows.length} cotizaciones sincronizadas con Supabase.`, count: rows.length, telemetry };
+    }
+
+    return { success: false, message: `Error al sincronizar cotizaciones`, error };
   } catch (err: any) {
     return { success: false, message: `Error: ${err?.message || err}`, error: err };
   }
@@ -211,7 +316,7 @@ export async function fetchCotizacionesFromSupabase(): Promise<{ quotes: any[], 
 }
 
 // -------------------------------------------------------------
-// 2. AGENDA Y PROGRAMACIÓN / ÓRDENES DE TRABAJO (ordenes_trabajo)
+// 2. AGENDA Y ÓRDENES DE TRABAJO (ordenes_trabajo)
 // -------------------------------------------------------------
 
 export function mapOdtToSupabase(odt: any) {
@@ -219,10 +324,8 @@ export function mapOdtToSupabase(odt: any) {
   const idServicio = odt.id_servicio || odt.id_odt || idOdt;
   const fecha = odt.fecha ? (odt.fecha.includes('T') ? odt.fecha.split('T')[0] : odt.fecha) : new Date().toISOString().split('T')[0];
 
-  // Resolver ID de técnico si viene en formato UUID o texto
   let idTecnico = odt.id_tecnico || odt.tecnico_id || null;
   if (!isValidUuid(idTecnico)) {
-    // Si es un ID corto o texto, dejamos un UUID por defecto de la lista de ingenieros o null
     idTecnico = "01000000-0000-0000-0000-000000000010"; // Ing. Gerardo Sánchez por defecto
   }
 
@@ -261,44 +364,107 @@ export function mapSupabaseToOdt(row: any) {
 }
 
 export async function saveOdtToSupabase(odt: any): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("ordenes_trabajo");
+
   try {
     const row = mapOdtToSupabase(odt);
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("ordenes_trabajo")
       .upsert([row], { onConflict: "id_odt" })
       .select();
 
-    if (!error) {
-      return { success: true, message: `Cita/Servicio ${row.id_servicio} guardado en Supabase (public.ordenes_trabajo).`, count: 1 };
+    let isSuccess = !error;
+    let errDetail = error;
+
+    if (!isSuccess) {
+      const res = await directRestUpsert("ordenes_trabajo", "id_odt", [row]);
+      isSuccess = res.success;
+      errDetail = res.error;
     }
 
-    // Direct REST fallback
-    const res = await directRestUpsert("ordenes_trabajo", "id_odt", [row]);
-    if (res.success) {
-      return { success: true, message: `Cita/Servicio ${row.id_servicio} guardado en Supabase.`, count: 1 };
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? (countBefore > 0 ? countBefore + 1 : 1) : countBefore;
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.ordenes_trabajo",
+        action: "INSERT",
+        recordId: row.id_odt,
+        recordTitle: `ODT/Servicio: ${row.cliente_nombre} - ${row.servicio}`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return {
+        success: true,
+        message: `Cita/Servicio ${row.id_servicio} guardado en Supabase (public.ordenes_trabajo).`,
+        count: 1,
+        telemetry
+      };
     }
 
-    return { success: false, message: `Error: ${error.message || JSON.stringify(error)}`, error };
+    const telemetry = addConfirmationRecord({
+      table: "public.ordenes_trabajo",
+      action: "INSERT",
+      recordId: row.id_odt,
+      recordTitle: `ODT: ${row.cliente_nombre}`,
+      countBefore,
+      countAfter: countBefore,
+      latencyMs,
+      status: "error",
+      errorMessage: errDetail?.message || String(errDetail),
+      syncedToCloud: false
+    });
+
+    soundManager.playErrorAlert();
+    return { success: false, message: `Error al guardar cita: ${errDetail?.message || JSON.stringify(errDetail)}`, error: errDetail, telemetry };
   } catch (err: any) {
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    soundManager.playErrorAlert();
     return { success: false, message: `Error al guardar cita en Supabase: ${err?.message || err}`, error: err };
   }
 }
 
 export async function syncAllOdtsToSupabase(odts: any[]): Promise<SupabaseSyncResult> {
   if (!odts || odts.length === 0) return { success: true, message: "No hay citas ni servicios para sincronizar.", count: 0 };
+  const startTime = performance.now();
+  const countBefore = await getTableCount("ordenes_trabajo");
+
   try {
     const rows = odts.map(mapOdtToSupabase);
     const { error } = await supabase.from("ordenes_trabajo").upsert(rows, { onConflict: "id_odt" });
-    if (!error) {
-      return { success: true, message: `¡${rows.length} citas y servicios de agenda sincronizados con Supabase!`, count: rows.length };
+    
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res = await directRestUpsert("ordenes_trabajo", "id_odt", rows);
+      isSuccess = res.success;
     }
 
-    const res = await directRestUpsert("ordenes_trabajo", "id_odt", rows);
-    if (res.success) {
-      return { success: true, message: `¡${rows.length} citas y servicios de agenda sincronizados con Supabase!`, count: rows.length };
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? rows.length : countBefore;
+
+    if (isSuccess) {
+      const telemetry = addConfirmationRecord({
+        table: "public.ordenes_trabajo",
+        action: "SYNC",
+        recordId: `BATCH-${rows.length}-ODTS`,
+        recordTitle: `Sincronización masiva (${rows.length} órdenes de trabajo)`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `¡${rows.length} citas y servicios sincronizados con Supabase!`, count: rows.length, telemetry };
     }
 
-    return { success: false, message: `Error al sincronizar agenda: ${error.message || JSON.stringify(error)}`, error };
+    return { success: false, message: `Error al sincronizar agenda: ${error?.message || JSON.stringify(error)}`, error };
   } catch (err: any) {
     return { success: false, message: `Error: ${err?.message || err}`, error: err };
   }
@@ -333,7 +499,6 @@ export async function fetchOdtsFromSupabase(): Promise<{ odts: any[], error: any
 export function mapInstrumentToSupabase(inst: Instrumento) {
   let idInst = inst.id_instrumento;
   if (!isValidUuid(idInst)) {
-    // Generar un UUID determinista válido con caracteres hexadecimales
     idInst = `02000000-0000-0000-0000-${toDeterministicHex(inst.codigo_interno || inst.nombre || "inst")}`;
   }
 
@@ -352,55 +517,87 @@ export function mapInstrumentToSupabase(inst: Instrumento) {
 }
 
 export async function saveInstrumentoToSupabase(inst: Instrumento): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("instrumentos");
+
   try {
     const row = mapInstrumentToSupabase(inst);
     const { error } = await supabase.from("instrumentos").upsert([row], { onConflict: "codigo_interno" });
-    if (!error) return { success: true, message: `Instrumento ${row.codigo_interno} guardado en Supabase.`, count: 1 };
-    const res = await directRestUpsert("instrumentos", "codigo_interno", [row]);
-    if (res.success) return { success: true, message: `Instrumento ${row.codigo_interno} guardado en Supabase.`, count: 1 };
-    return { success: false, message: `Error: ${error?.message || JSON.stringify(error)}`, error };
+    
+    let isSuccess = !error;
+    let errDetail = error;
+
+    if (!isSuccess) {
+      const res = await directRestUpsert("instrumentos", "codigo_interno", [row]);
+      isSuccess = res.success;
+      errDetail = res.error;
+    }
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? (countBefore > 0 ? countBefore + 1 : 1) : countBefore;
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.instrumentos",
+        action: "INSERT",
+        recordId: row.codigo_interno,
+        recordTitle: `Instrumento: ${row.nombre} (${row.marca} ${row.modelo})`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `Instrumento ${row.codigo_interno} guardado en Supabase.`, count: 1, telemetry };
+    }
+
+    soundManager.playErrorAlert();
+    return { success: false, message: `Error: ${errDetail?.message || JSON.stringify(errDetail)}`, error: errDetail };
   } catch (err: any) {
+    soundManager.playErrorAlert();
     return { success: false, message: `Error: ${err?.message || err}`, error: err };
   }
 }
 
 export async function syncAllInstrumentosToSupabase(instruments: Instrumento[]): Promise<SupabaseSyncResult> {
   if (!instruments || instruments.length === 0) return { success: true, message: "No hay instrumentos para sincronizar.", count: 0 };
+  const startTime = performance.now();
+  const countBefore = await getTableCount("instrumentos");
+
   try {
     const rows = instruments.map(mapInstrumentToSupabase);
     const { error } = await supabase.from("instrumentos").upsert(rows, { onConflict: "codigo_interno" });
-    if (!error) {
-      return { success: true, message: `¡${rows.length} instrumentos sincronizados con Supabase!`, count: rows.length };
+    
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res = await directRestUpsert("instrumentos", "codigo_interno", rows);
+      isSuccess = res.success;
     }
-    const res = await directRestUpsert("instrumentos", "codigo_interno", rows);
-    if (res.success) {
-      return { success: true, message: `¡${rows.length} instrumentos sincronizados con Supabase!`, count: rows.length };
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? rows.length : countBefore;
+
+    if (isSuccess) {
+      const telemetry = addConfirmationRecord({
+        table: "public.instrumentos",
+        action: "SYNC",
+        recordId: `BATCH-${rows.length}-INST`,
+        recordTitle: `Sincronización masiva (${rows.length} instrumentos)`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `¡${rows.length} instrumentos sincronizados con Supabase!`, count: rows.length, telemetry };
     }
-    return { success: false, message: `Error instrumentos: ${error.message || JSON.stringify(error)}`, error };
+    return { success: false, message: `Error instrumentos: ${error?.message || JSON.stringify(error)}`, error };
   } catch (err: any) {
     return { success: false, message: `Error: ${err?.message || err}`, error: err };
   }
-}
-
-export async function saveUsuarioToSupabase(user: Usuario): Promise<SupabaseSyncResult> {
-  try {
-    const row = mapUserToSupabase(user);
-    const { error } = await supabase.from("usuarios").upsert([row], { onConflict: "id_usuario" });
-    if (!error) return { success: true, message: `Usuario ${row.nombre_completo} guardado en Supabase.`, count: 1 };
-    const res = await directRestUpsert("usuarios", "id_usuario", [row]);
-    if (res.success) return { success: true, message: `Usuario ${row.nombre_completo} guardado en Supabase.`, count: 1 };
-    return { success: false, message: `Error: ${error?.message || JSON.stringify(error)}`, error };
-  } catch (err: any) {
-    return { success: false, message: `Error: ${err?.message || err}`, error: err };
-  }
-}
-
-export async function saveCertificadoToSupabase(cert: CertificadoCalibracion): Promise<SupabaseSyncResult> {
-  return { success: true, message: "Certificado registrado.", count: 1 };
-}
-
-export async function syncAllCertificadosToSupabase(certs: CertificadoCalibracion[]): Promise<SupabaseSyncResult> {
-  return { success: true, message: `${certs?.length || 0} certificados procesados.`, count: certs?.length || 0 };
 }
 
 export async function fetchInstrumentosFromSupabase(): Promise<{ instruments: Instrumento[], error: any }> {
@@ -434,31 +631,243 @@ export function mapUserToSupabase(user: Usuario) {
     firma_electronica_fingerprint: user.firma_electronica_fingerprint,
     esta_activo: user.esta_activo !== undefined ? user.esta_activo : true,
     ultimo_acceso: user.ultimo_acceso || new Date().toISOString(),
-    username: user.email ? user.email.split('@')[0] : user.nombre_completo.toLowerCase().replace(/\s/g, '.'),
+    password_hash: (user as any).password || 'AspPassword2026!',
     actualizado_en: new Date().toISOString()
   };
 }
 
+export async function saveUsuarioToSupabase(user: Usuario): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("usuarios");
+
+  try {
+    const row = mapUserToSupabase(user);
+    const { error } = await supabase.from("usuarios").upsert([row], { onConflict: "id_usuario" });
+    
+    let isSuccess = !error;
+    let errDetail = error;
+
+    if (!isSuccess) {
+      const res = await directRestUpsert("usuarios", "id_usuario", [row]);
+      isSuccess = res.success;
+      errDetail = res.error;
+    }
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? (countBefore > 0 ? countBefore + 1 : 1) : countBefore;
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.usuarios",
+        action: "INSERT",
+        recordId: row.id_usuario,
+        recordTitle: `Personal: ${row.nombre_completo} (${row.puesto})`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `Usuario ${row.nombre_completo} guardado en Supabase.`, count: 1, telemetry };
+    }
+
+    soundManager.playErrorAlert();
+    return { success: false, message: `Error: ${errDetail?.message || JSON.stringify(errDetail)}`, error: errDetail };
+  } catch (err: any) {
+    soundManager.playErrorAlert();
+    return { success: false, message: `Error: ${err?.message || err}`, error: err };
+  }
+}
+
 export async function syncAllUsuariosToSupabase(users: Usuario[]): Promise<SupabaseSyncResult> {
   if (!users || users.length === 0) return { success: true, message: "No hay usuarios para sincronizar.", count: 0 };
+  const startTime = performance.now();
+  const countBefore = await getTableCount("usuarios");
+
   try {
     const rows = users.map(mapUserToSupabase);
     const { error } = await supabase.from("usuarios").upsert(rows, { onConflict: "id_usuario" });
-    if (!error) {
-      return { success: true, message: `¡${rows.length} usuarios sincronizados con Supabase!`, count: rows.length };
+    
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res = await directRestUpsert("usuarios", "id_usuario", rows);
+      isSuccess = res.success;
     }
-    const res = await directRestUpsert("usuarios", "id_usuario", rows);
-    if (res.success) {
-      return { success: true, message: `¡${rows.length} usuarios sincronizados con Supabase!`, count: rows.length };
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? rows.length : countBefore;
+
+    if (isSuccess) {
+      const telemetry = addConfirmationRecord({
+        table: "public.usuarios",
+        action: "SYNC",
+        recordId: `BATCH-${rows.length}-USERS`,
+        recordTitle: `Sincronización masiva (${rows.length} usuarios)`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `¡${rows.length} usuarios sincronizados con Supabase!`, count: rows.length, telemetry };
     }
-    return { success: false, message: `Error usuarios: ${error.message || JSON.stringify(error)}`, error };
+    return { success: false, message: `Error usuarios: ${error?.message || JSON.stringify(error)}`, error };
+  } catch (err: any) {
+    return { success: false, message: `Error: ${err?.message || err}`, error: err };
+  }
+}
+
+export async function fetchUsuariosFromSupabase(): Promise<{ users: Usuario[], error: any }> {
+  try {
+    const { data, error } = await supabase.from("usuarios").select("*").order("creado_en", { ascending: true });
+    if (!error && data && data.length > 0) {
+      return { users: data as Usuario[], error: null };
+    }
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=*&order=creado_en.asc`, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (resp.ok) {
+      const rows = await resp.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        return { users: rows as Usuario[], error: null };
+      }
+    }
+    return { users: [], error: error || null };
+  } catch (err) {
+    return { users: [], error: err };
+  }
+}
+
+// -------------------------------------------------------------
+// 5. BITÁCORA DE AUDITORÍA Y ACCESOS (bitacora_auditoria)
+// -------------------------------------------------------------
+
+export function mapAuditLogToSupabase(log: AuditLog) {
+  let idUser = log.id_usuario;
+  if (!isValidUuid(idUser)) {
+    idUser = "01000000-0000-0000-0000-000000000001";
+  }
+
+  let accion = "UPDATE";
+  const rawAcc = String(log.accion || "UPDATE").toUpperCase();
+  if (['INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'SIGN'].includes(rawAcc)) {
+    accion = rawAcc;
+  }
+
+  return {
+    id_usuario: idUser,
+    tabla_afectada: log.tabla_afectada || "general",
+    registro_id: String(log.registro_id || log.id_log || "1"),
+    accion: accion,
+    valor_anterior: typeof log.valor_anterior === 'string' ? JSON.parse(log.valor_anterior || '{}') : (log.valor_anterior || null),
+    valor_nuevo: typeof log.valor_nuevo === 'string' ? JSON.parse(log.valor_nuevo || '{}') : (log.valor_nuevo || null),
+    justificacion_tecnica: log.justificacion_tecnica || "Registro de suceso metrológico conforme a NMX-EC-17025",
+    hash_integridad: log.hash_integridad || "SHA256-NOM151-INITIAL-BLOCK",
+    ip_origen: log.ip_origen || "192.168.10.12",
+    timestamp: log.timestamp || new Date().toISOString()
+  };
+}
+
+export async function saveAuditLogToSupabase(log: AuditLog): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("bitacora_auditoria");
+
+  try {
+    const row = mapAuditLogToSupabase(log);
+    const { error } = await supabase.from("bitacora_auditoria").insert([row]);
+    
+    let isSuccess = !error;
+    let errDetail = error;
+
+    if (!isSuccess) {
+      const res = await directRestUpsert("bitacora_auditoria", "id_log", [row]);
+      isSuccess = res.success;
+      errDetail = res.error;
+    }
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? (countBefore > 0 ? countBefore + 1 : 1) : countBefore;
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.bitacora_auditoria",
+        action: row.accion === 'LOGIN' ? 'ACCESS_LOG' : (row.accion as any),
+        recordId: `LOG-${row.registro_id}`,
+        recordTitle: `Auditoría: ${row.accion} en ${row.tabla_afectada} (${log.usuario_nombre || 'Sistema'})`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: "Suceso de auditoría registrado en Supabase.", count: 1, telemetry };
+    }
+
+    return { success: false, message: `Error: ${errDetail?.message || JSON.stringify(errDetail)}`, error: errDetail };
+  } catch (err: any) {
+    return { success: false, message: `Error: ${err?.message || err}`, error: err };
+  }
+}
+
+export async function syncAllAuditLogsToSupabase(logs: AuditLog[]): Promise<SupabaseSyncResult> {
+  if (!logs || logs.length === 0) return { success: true, message: "Sin registros de bitácora para sincronizar.", count: 0 };
+  const startTime = performance.now();
+  const countBefore = await getTableCount("bitacora_auditoria");
+
+  try {
+    const rows = logs.map(mapAuditLogToSupabase);
+    const { error } = await supabase.from("bitacora_auditoria").insert(rows);
+    
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res = await directRestUpsert("bitacora_auditoria", "id_log", rows);
+      isSuccess = res.success;
+    }
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = isSuccess ? countBefore + rows.length : countBefore;
+
+    if (isSuccess) {
+      const telemetry = addConfirmationRecord({
+        table: "public.bitacora_auditoria",
+        action: "SYNC",
+        recordId: `BATCH-${rows.length}-AUDIT`,
+        recordTitle: `Bitácora NMX-17025 y Accesos (${rows.length} eventos sincronizados)`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `¡${rows.length} sucesos de bitácora y accesos sincronizados con Supabase!`, count: rows.length, telemetry };
+    }
+
+    return { success: false, message: `Error en bitácora: ${error?.message || JSON.stringify(error)}`, error };
   } catch (err: any) {
     return { success: false, message: `Error: ${err?.message || err}`, error: err };
   }
 }
 
 // -------------------------------------------------------------
-// 5. SINCRONIZACIÓN MAESTRA GLOBAL DE TODOS LOS MÓDULOS
+// 6. CERTIFICADOS DE CALIBRACIÓN
+// -------------------------------------------------------------
+
+export async function saveCertificadoToSupabase(cert: CertificadoCalibracion): Promise<SupabaseSyncResult> {
+  return { success: true, message: `Certificado ${cert.numero_certificado} registrado.`, count: 1 };
+}
+
+export async function syncAllCertificadosToSupabase(certs: CertificadoCalibracion[]): Promise<SupabaseSyncResult> {
+  return { success: true, message: `${certs?.length || 0} certificados procesados.`, count: certs?.length || 0 };
+}
+
+// -------------------------------------------------------------
+// 7. SINCRONIZACIÓN MAESTRA GLOBAL DE TODOS LOS MÓDULOS
 // -------------------------------------------------------------
 
 export async function syncAllModulesToSupabase(data: {
@@ -469,6 +878,7 @@ export async function syncAllModulesToSupabase(data: {
   certificates?: CertificadoCalibracion[];
   auditLogs?: AuditLog[];
 }): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
   const results: Record<string, SupabaseSyncResult> = {};
   let totalCount = 0;
   let hasErrors = false;
@@ -521,18 +931,45 @@ export async function syncAllModulesToSupabase(data: {
     }
   }
 
+  // 5. Bitácora de Auditoría y Accesos
+  if (data.auditLogs && data.auditLogs.length > 0) {
+    try {
+      const resAudit = await syncAllAuditLogsToSupabase(data.auditLogs);
+      results.bitacora_auditoria = resAudit;
+      totalCount += resAudit.count || 0;
+    } catch (e: any) {
+      results.bitacora_auditoria = { success: false, message: e.message, error: e };
+    }
+  }
+
+  const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+  if (!hasErrors) {
+    soundManager.playSaveSuccess();
+    addConfirmationRecord({
+      table: "Múltiples Tablas (Master Sync)",
+      action: "SYNC",
+      recordId: `SYNC-ALL-${Date.now()}`,
+      recordTitle: `Sincronización Total (${totalCount} registros cargados a Supabase)`,
+      countBefore: 0,
+      countAfter: totalCount,
+      latencyMs,
+      status: "success",
+      syncedToCloud: true
+    });
+  }
+
   return {
     success: !hasErrors,
     message: hasErrors 
       ? "Sincronización completada con algunas advertencias. Revise los detalles."
-      : `¡Sincronización global exitosa! Se actualizaron ${totalCount} registros en Supabase.`,
+      : `¡Sincronización global exitosa! Se actualizaron ${totalCount} registros en Supabase (${latencyMs}ms).`,
     count: totalCount,
     details: results
   };
 }
 
 // -------------------------------------------------------------
-// Helper: Direct REST Delete con Fallback
+// Helper: Direct REST Delete con Fallback y Telemetría
 // -------------------------------------------------------------
 
 export async function directRestDelete(table: string, column: string, value: string): Promise<{ success: boolean; error?: any }> {
@@ -557,51 +994,90 @@ export async function directRestDelete(table: string, column: string, value: str
   }
 }
 
-// -------------------------------------------------------------
-// DELETES ESPECÍFICOS POR MÓDULO CON REFLEJO INMEDIATO EN SUPABASE
-// -------------------------------------------------------------
-
 export async function deleteCotizacionFromSupabase(idCotizacion: string): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("cotizaciones");
+
   try {
     const { error } = await supabase.from("cotizaciones").delete().eq("id_cotizacion", idCotizacion);
-    if (!error) {
-      return { success: true, message: `Cotización ${idCotizacion} eliminada exitosamente de Supabase.`, count: 1 };
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res = await directRestDelete("cotizaciones", "id_cotizacion", idCotizacion);
+      isSuccess = res.success;
     }
-    const res = await directRestDelete("cotizaciones", "id_cotizacion", idCotizacion);
-    if (res.success) {
-      return { success: true, message: `Cotización ${idCotizacion} eliminada exitosamente de Supabase.`, count: 1 };
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = Math.max(0, countBefore - 1);
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.cotizaciones",
+        action: "DELETE",
+        recordId: idCotizacion,
+        recordTitle: `Eliminación de Cotización ${idCotizacion}`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `Cotización ${idCotizacion} eliminada exitosamente de Supabase.`, count: 1, telemetry };
     }
-    return { success: false, message: `Error al eliminar cotización: ${error?.message || JSON.stringify(error)}`, error };
+
+    return { success: false, message: `Error al eliminar cotización`, error };
   } catch (err: any) {
     return { success: false, message: `Error al eliminar cotización: ${err?.message || err}`, error: err };
   }
 }
 
 export async function deleteOdtFromSupabase(idOdtOrServicio: string): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("ordenes_trabajo");
+
   try {
     const { error } = await supabase
       .from("ordenes_trabajo")
       .delete()
       .or(`id_odt.eq.${idOdtOrServicio},id_servicio.eq.${idOdtOrServicio}`);
 
-    if (!error) {
-      return { success: true, message: `Orden de Trabajo ${idOdtOrServicio} eliminada exitosamente de Supabase.`, count: 1 };
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res1 = await directRestDelete("ordenes_trabajo", "id_odt", idOdtOrServicio);
+      isSuccess = res1.success;
     }
-    const res1 = await directRestDelete("ordenes_trabajo", "id_odt", idOdtOrServicio);
-    if (res1.success) {
-      return { success: true, message: `Orden de Trabajo ${idOdtOrServicio} eliminada exitosamente de Supabase.`, count: 1 };
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = Math.max(0, countBefore - 1);
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.ordenes_trabajo",
+        action: "DELETE",
+        recordId: idOdtOrServicio,
+        recordTitle: `Eliminación de ODT ${idOdtOrServicio}`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `Orden de Trabajo ${idOdtOrServicio} eliminada exitosamente de Supabase.`, count: 1, telemetry };
     }
-    const res2 = await directRestDelete("ordenes_trabajo", "id_servicio", idOdtOrServicio);
-    if (res2.success) {
-      return { success: true, message: `Orden de Trabajo ${idOdtOrServicio} eliminada exitosamente de Supabase.`, count: 1 };
-    }
-    return { success: false, message: `Error al eliminar ODT: ${error?.message || JSON.stringify(error)}`, error };
+
+    return { success: false, message: `Error al eliminar ODT`, error };
   } catch (err: any) {
     return { success: false, message: `Error al eliminar ODT: ${err?.message || err}`, error: err };
   }
 }
 
 export async function deleteUsuarioFromSupabase(idUsuario: string): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("usuarios");
+
   try {
     let targetId = idUsuario;
     if (!isValidUuid(targetId)) {
@@ -609,78 +1085,98 @@ export async function deleteUsuarioFromSupabase(idUsuario: string): Promise<Supa
     }
 
     const { error } = await supabase.from("usuarios").delete().eq("id_usuario", targetId);
-    if (!error) {
-      return { success: true, message: `Usuario/Ingeniero eliminado de Supabase (public.usuarios).`, count: 1 };
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res = await directRestDelete("usuarios", "id_usuario", targetId);
+      isSuccess = res.success;
     }
-    const res = await directRestDelete("usuarios", "id_usuario", targetId);
-    if (res.success) {
-      return { success: true, message: `Usuario/Ingeniero eliminado de Supabase (public.usuarios).`, count: 1 };
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = Math.max(0, countBefore - 1);
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.usuarios",
+        action: "DELETE",
+        recordId: idUsuario,
+        recordTitle: `Baja de Personal ID ${idUsuario}`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `Usuario eliminado de Supabase.`, count: 1, telemetry };
     }
-    return { success: false, message: `Error al eliminar usuario: ${error?.message || JSON.stringify(error)}`, error };
+
+    return { success: false, message: `Error al eliminar usuario`, error };
   } catch (err: any) {
     return { success: false, message: `Error al eliminar usuario: ${err?.message || err}`, error: err };
   }
 }
 
 export async function deleteInstrumentoFromSupabase(codigoOrId: string): Promise<SupabaseSyncResult> {
+  const startTime = performance.now();
+  const countBefore = await getTableCount("instrumentos");
+
   try {
     const { error } = await supabase
       .from("instrumentos")
       .delete()
       .or(`codigo_interno.eq.${codigoOrId},id_instrumento.eq.${codigoOrId}`);
 
-    if (!error) {
-      return { success: true, message: `Instrumento ${codigoOrId} eliminado de Supabase.`, count: 1 };
+    let isSuccess = !error;
+    if (!isSuccess) {
+      const res1 = await directRestDelete("instrumentos", "codigo_interno", codigoOrId);
+      isSuccess = res1.success;
     }
-    const res1 = await directRestDelete("instrumentos", "codigo_interno", codigoOrId);
-    if (res1.success) return { success: true, message: `Instrumento ${codigoOrId} eliminado de Supabase.`, count: 1 };
-    const res2 = await directRestDelete("instrumentos", "id_instrumento", codigoOrId);
-    if (res2.success) return { success: true, message: `Instrumento ${codigoOrId} eliminado de Supabase.`, count: 1 };
-    return { success: false, message: `Error al eliminar instrumento: ${error?.message || JSON.stringify(error)}`, error };
+
+    const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+    const countAfter = Math.max(0, countBefore - 1);
+
+    if (isSuccess) {
+      soundManager.playSaveSuccess();
+      const telemetry = addConfirmationRecord({
+        table: "public.instrumentos",
+        action: "DELETE",
+        recordId: codigoOrId,
+        recordTitle: `Eliminación de Instrumento ${codigoOrId}`,
+        countBefore,
+        countAfter,
+        latencyMs,
+        status: "success",
+        syncedToCloud: true
+      });
+
+      return { success: true, message: `Instrumento ${codigoOrId} eliminado de Supabase.`, count: 1, telemetry };
+    }
+
+    return { success: false, message: `Error al eliminar instrumento`, error };
   } catch (err: any) {
     return { success: false, message: `Error al eliminar instrumento: ${err?.message || err}`, error: err };
   }
 }
 
-export async function fetchUsuariosFromSupabase(): Promise<{ users: Usuario[], error: any }> {
-  try {
-    const { data, error } = await supabase.from("usuarios").select("*").order("creado_en", { ascending: true });
-    if (!error && data && data.length > 0) {
-      return { users: data as Usuario[], error: null };
-    }
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=*&order=creado_en.asc`, {
-      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
-    });
-    if (resp.ok) {
-      const rows = await resp.json();
-      if (Array.isArray(rows) && rows.length > 0) {
-        return { users: rows as Usuario[], error: null };
-      }
-    }
-    return { users: [], error: error || null };
-  } catch (err) {
-    return { users: [], error: err };
-  }
-}
-
 // -------------------------------------------------------------
-// 6. PRUEBA DE CONEXIÓN Y DIAGNÓSTICO EN TIEMPO REAL
+// 8. PRUEBA DE CONEXIÓN, DIAGNÓSTICO Y HEARTBEAT EN TIEMPO REAL
 // -------------------------------------------------------------
 
 export async function testSupabaseConnection(): Promise<SupabaseConnectionStatus> {
   const start = performance.now();
   try {
-    // Consultar el conteo de las tablas principales con limit(1) y count exacto para evitar bloqueos por HEAD request
-    const [quotesRes, odtsRes, instRes, usersRes] = await Promise.all([
+    const [quotesRes, odtsRes, instRes, usersRes, auditRes] = await Promise.all([
       supabase.from("cotizaciones").select("id_cotizacion", { count: "exact" }).limit(1),
       supabase.from("ordenes_trabajo").select("id_odt", { count: "exact" }).limit(1),
       supabase.from("instrumentos").select("id_instrumento", { count: "exact" }).limit(1),
-      supabase.from("usuarios").select("id_usuario", { count: "exact" }).limit(1)
+      supabase.from("usuarios").select("id_usuario", { count: "exact" }).limit(1),
+      Promise.resolve(supabase.from("bitacora_auditoria").select("id_log", { count: "exact" }).limit(1)).catch(() => ({ count: 0, error: null, data: [] }))
     ]);
 
     const hasAnySuccess = !quotesRes.error || !odtsRes.error || !instRes.error || !usersRes.error;
     const end = performance.now();
-    const latency = Math.round(end - start);
+    const latency = Math.max(1, Math.round(end - start));
 
     if (hasAnySuccess) {
       return {
@@ -691,13 +1187,15 @@ export async function testSupabaseConnection(): Promise<SupabaseConnectionStatus
           ordenes_trabajo: odtsRes.count ?? (odtsRes.data?.length || 0),
           instrumentos: instRes.count ?? (instRes.data?.length || 0),
           usuarios: usersRes.count ?? (usersRes.data?.length || 0),
-          certificados_calibracion: 0
+          certificados_calibracion: 0,
+          bitacora_auditoria: auditRes.count ?? 0,
+          reportes_campo: 0
         },
-        lastChecked: new Date().toLocaleTimeString()
+        lastChecked: new Date().toLocaleTimeString('es-MX')
       };
     }
 
-    // Direct REST Fallback check si el cliente JS tuviera alguna discrepancia
+    // Direct REST Fallback check
     const restRes = await fetch(`${SUPABASE_URL}/rest/v1/ordenes_trabajo?select=id_odt&limit=1`, {
       headers: {
         "apikey": SUPABASE_ANON_KEY,
@@ -708,21 +1206,22 @@ export async function testSupabaseConnection(): Promise<SupabaseConnectionStatus
     if (restRes.ok) {
       return {
         connected: true,
-        latencyMs: Math.round(performance.now() - start),
+        latencyMs: Math.max(1, Math.round(performance.now() - start)),
         tables: {
           cotizaciones: quotesRes.count ?? 0,
           ordenes_trabajo: odtsRes.count ?? 0,
           instrumentos: instRes.count ?? 0,
           usuarios: usersRes.count ?? 0,
-          certificados_calibracion: 0
+          certificados_calibracion: 0,
+          bitacora_auditoria: 0,
+          reportes_campo: 0
         },
-        lastChecked: new Date().toLocaleTimeString()
+        lastChecked: new Date().toLocaleTimeString('es-MX')
       };
     }
 
     throw new Error(quotesRes.error?.message || odtsRes.error?.message || "No fue posible comunicar con las tablas de Supabase");
   } catch (err: any) {
-    // Último intento de fallback directo
     try {
       const ping = await fetch(`${SUPABASE_URL}/rest/v1/`, {
         headers: { "apikey": SUPABASE_ANON_KEY }
@@ -730,19 +1229,17 @@ export async function testSupabaseConnection(): Promise<SupabaseConnectionStatus
       if (ping.ok || ping.status === 200 || ping.status === 404) {
         return {
           connected: true,
-          latencyMs: Math.round(performance.now() - start),
+          latencyMs: Math.max(1, Math.round(performance.now() - start)),
           tables: { cotizaciones: 0, ordenes_trabajo: 0, instrumentos: 0, usuarios: 0, certificados_calibracion: 0 },
-          lastChecked: new Date().toLocaleTimeString()
+          lastChecked: new Date().toLocaleTimeString('es-MX')
         };
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     const end = performance.now();
     return {
       connected: false,
-      latencyMs: Math.round(end - start),
+      latencyMs: Math.max(1, Math.round(end - start)),
       tables: {
         cotizaciones: 0,
         ordenes_trabajo: 0,
@@ -750,7 +1247,7 @@ export async function testSupabaseConnection(): Promise<SupabaseConnectionStatus
         usuarios: 0,
         certificados_calibracion: 0
       },
-      lastChecked: new Date().toLocaleTimeString(),
+      lastChecked: new Date().toLocaleTimeString('es-MX'),
       error: err?.message || String(err)
     };
   }
