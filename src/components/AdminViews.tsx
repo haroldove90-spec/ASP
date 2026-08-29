@@ -37,7 +37,12 @@ import {
   Printer,
   FileSignature,
   X,
-  RefreshCw
+  RefreshCw,
+  Percent,
+  Sliders,
+  Tag,
+  Send,
+  FileEdit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Usuario } from '../initial_data';
@@ -49,6 +54,25 @@ import {
   syncAllQuotesToSupabase,
   testSupabaseConnection 
 } from '../lib/supabaseSync';
+import { 
+  MetrologyServiceItem, 
+  getStoredServices, 
+  saveStoredServices 
+} from '../data/metrologyServices';
+import { 
+  ClientRecord, 
+  ClientContact, 
+  getStoredClients, 
+  saveStoredClients, 
+  updateClientContacts 
+} from '../data/clientsDatabase';
+import { ServiceCatalogModal } from './ServiceCatalogModal';
+import { 
+  CommercialConditionsBlock, 
+  CommercialConditions, 
+  DEFAULT_COMMERCIAL_CONDITIONS 
+} from './CommercialConditionsBlock';
+import { ClientMultiContactSelector } from './ClientMultiContactSelector';
 
 interface AdminViewsProps {
   activePersona: Usuario;
@@ -234,66 +258,10 @@ export default function AdminViews(props: AdminViewsProps) {
   const [serverDossier, setServerDossier] = useState<any | null>(null);
 
   // --- CRM & CLIENTS ADVANCED STATES ---
-  const [clientsList, setClientsList] = useState<any[]>(() => {
-    const saved = localStorage.getItem('aspechs_clients_list');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: "CLI-001",
-        razon_social: "Aceros de México S.A. de C.V.",
-        rfc: "AME841012TS9",
-        direccion: "Av. Constitución 400, Monterrey, NL",
-        contacto_nombre: "Ing. Juan Gómez",
-        contacto_email: "compras@acerosmex.com",
-        contacto_telefono: "811-555-0199",
-        sector: "Metalúrgico",
-        estado: "Activo",
-        pipeline_stage: "negotiation",
-        fecha_registro: "2026-01-15"
-      },
-      {
-        id: "CLI-002",
-        razon_social: "Farmacéutica del Norte S.A. de C.V.",
-        rfc: "FNO981105RE4",
-        direccion: "Paseo de la Reforma 1200, Ciudad de México",
-        contacto_nombre: "Dra. Sofía Méndez",
-        contacto_email: "s.mendez@farnorte.com",
-        contacto_telefono: "555-123-4567",
-        sector: "Farmacéutico",
-        estado: "Activo",
-        pipeline_stage: "quoted",
-        fecha_registro: "2026-02-20"
-      },
-      {
-        id: "CLI-003",
-        razon_social: "Alimentos Procesados Bajío S.A.",
-        rfc: "APB100220UY3",
-        direccion: "Blvd. Adolfo López Mateos 15, León, Gto",
-        contacto_nombre: "Lic. Pedro Torres",
-        contacto_email: "ptorres@alimentosbajio.mx",
-        contacto_telefono: "477-987-6543",
-        sector: "Alimentos",
-        estado: "Prospecto",
-        pipeline_stage: "lead",
-        fecha_registro: "2026-04-10"
-      },
-      {
-        id: "CLI-004",
-        razon_social: "Refinería Tuxpan S.A. de C.V.",
-        rfc: "RTU750403KL8",
-        direccion: "Zona Industrial Lote 4, Tuxpan, Ver",
-        contacto_nombre: "Ing. Carlos Ruiz",
-        contacto_email: "cruiz@refineriatuxpan.com",
-        contacto_telefono: "783-111-2233",
-        sector: "Petroquímico",
-        estado: "Activo",
-        pipeline_stage: "won",
-        fecha_registro: "2026-05-02"
-      }
-    ];
-  });
+  const [clientsList, setClientsList] = useState<ClientRecord[]>(() => getStoredClients());
 
   useEffect(() => {
-    localStorage.setItem('aspechs_clients_list', JSON.stringify(clientsList));
+    saveStoredClients(clientsList);
   }, [clientsList]);
 
   const [clientsSearchQuery, setClientsSearchQuery] = useState("");
@@ -665,13 +633,24 @@ export default function AdminViews(props: AdminViewsProps) {
   }>>([
     {
       id: "srv-1",
-      serviceName: "NOM-011-STPS-2001 (Ruido Industrial - Nivel Sonoro Continuo)",
+      serviceName: "NOM-011-STPS-2001 (Ruido Industrial - Nivel Sonoro Continuo A)",
       puntos: 5,
       costo_punto: 1800
     }
   ]);
 
   const [estimatedViatics, setEstimatedViatics] = useState(1500);
+  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+
+  // Available Services Catalog State
+  const [availableServices, setAvailableServices] = useState<MetrologyServiceItem[]>(() => getStoredServices());
+  const [isServiceCatalogOpen, setIsServiceCatalogOpen] = useState(false);
+
+  // Multi-contact list for currently selected client
+  const [currentQuoteContacts, setCurrentQuoteContacts] = useState<ClientContact[]>([]);
+
+  // Commercial conditions state
+  const [commercialConditions, setCommercialConditions] = useState<CommercialConditions>(DEFAULT_COMMERCIAL_CONDITIONS);
 
   // Quote Sub-Tabs & Modal States
   const [activeQuoteSubTab, setActiveQuoteSubTab] = useState<"new" | "history">("new");
@@ -681,21 +660,6 @@ export default function AdminViews(props: AdminViewsProps) {
   const [odciSelectedServices, setOdciSelectedServices] = useState<string[]>([]);
   const [odciUploadedFile, setOdciUploadedFile] = useState<File | null>(null);
   const [odtDetailModal, setOdtDetailModal] = useState<any | null>(null);
-
-  // Catalog of standard ASPECHS metrological services
-  const CATALOG_SERVICES = [
-    "NOM-011-STPS-2001 (Ruido Industrial - Nivel Sonoro Continuo A)",
-    "NOM-025-STPS-2008 (Iluminación y Luxes en Centros de Trabajo)",
-    "NOM-015-STPS-2001 (Condiciones Térmicas Elevadas o Abatidas)",
-    "NOM-081-SEMARNAT-1994 (Ruido Perimetral en Fuentes Fijas)",
-    "NOM-022-STPS-2015 (Electricidad Estática y Tierras Físicas)",
-    "NOM-010-STPS-2014 (Agentes Químicos Contaminantes del Medio Ambiente)",
-    "NOM-024-STPS-2001 (Vibraciones en Cuerpo Entero / Mano-Brazo)",
-    "NOM-004-STPS-1999 (Sistemas de Protección en Maquinaria y Equipo)",
-    "Estudio Especializado de Tierras Físicas y Resistencia a Tierra",
-    "Estudio de Calidad de Energía y Análisis de Armónicos",
-    "Servicio Personalizado / Consultoría Técnica Especializada"
-  ];
 
   // Auto update folio when client, date or clientNum changes
   useEffect(() => {
@@ -721,24 +685,65 @@ export default function AdminViews(props: AdminViewsProps) {
       setContactName(found.contacto_nombre);
       setContactEmail(found.contacto_email);
       setContactPhone(found.contacto_telefono);
+      if (found.contactos && found.contactos.length > 0) {
+        setCurrentQuoteContacts(found.contactos);
+      } else {
+        const defaultContact: ClientContact = {
+          id: `cnt-${Date.now()}`,
+          nombre: found.contacto_nombre,
+          puesto: "Representante / Compras",
+          email: found.contacto_email,
+          telefono: found.contacto_telefono,
+          es_principal: true,
+          enviar_cotizacion: true
+        };
+        setCurrentQuoteContacts([defaultContact]);
+      }
+    }
+  };
+
+  const handleUpdateCurrentQuoteContacts = (newContacts: ClientContact[]) => {
+    setCurrentQuoteContacts(newContacts);
+    // Update active primary contact fields if primary is changed
+    const primary = newContacts.find(c => c.es_principal && c.enviar_cotizacion) || newContacts.find(c => c.enviar_cotizacion) || newContacts[0];
+    if (primary) {
+      setContactName(primary.nombre);
+      setContactEmail(primary.email);
+      setContactPhone(primary.telefono);
+    }
+    if (selectedClientNum) {
+      updateClientContacts(selectedClientNum, newContacts);
+      setClientsList(getStoredClients());
     }
   };
 
   // Dynamic service row manipulation
   const handleAddServiceRow = () => {
+    const defaultServiceName = availableServices.length > 0 ? availableServices[0].nombre : "NOM-011-STPS-2001 (Ruido Industrial)";
+    const defaultServiceCost = availableServices.length > 0 ? availableServices[0].precio_base_sugerido : 1800;
     const newRow = {
       id: `srv-${Date.now()}`,
-      serviceName: CATALOG_SERVICES[itemizedServices.length % CATALOG_SERVICES.length],
+      serviceName: defaultServiceName,
       puntos: 5,
-      costo_punto: 1800
+      costo_punto: defaultServiceCost
     };
     setItemizedServices([...itemizedServices, newRow]);
   };
 
   const handleUpdateServiceRow = (id: string, key: string, value: any) => {
-    setItemizedServices(itemizedServices.map(item => 
-      item.id === id ? { ...item, [key]: value } : item
-    ));
+    setItemizedServices(itemizedServices.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [key]: value };
+        if (key === "serviceName") {
+          const matched = availableServices.find(s => s.nombre === value);
+          if (matched) {
+            updated.costo_punto = matched.precio_base_sugerido;
+          }
+        }
+        return updated;
+      }
+      return item;
+    }));
   };
 
   const handleRemoveServiceRow = (id: string) => {
@@ -749,6 +754,12 @@ export default function AdminViews(props: AdminViewsProps) {
     setItemizedServices(itemizedServices.filter(item => item.id !== id));
   };
 
+  // Callback when services catalog is saved in modal
+  const handleSaveServicesCatalog = (updatedServices: MetrologyServiceItem[]) => {
+    setAvailableServices(updatedServices);
+    saveStoredServices(updatedServices);
+  };
+
   // Reuse / Clone quote from history
   const handleReuseQuote = (quoteToClone: any) => {
     setClientName(quoteToClone.cliente || "");
@@ -756,6 +767,14 @@ export default function AdminViews(props: AdminViewsProps) {
     setContactEmail(quoteToClone.email || "");
     setContactPhone(quoteToClone.telefono || "");
     setEstimatedViatics(quoteToClone.viaticos || 1500);
+    setDiscountPercentage(quoteToClone.descuento_porcentaje || 0);
+
+    if (quoteToClone.condiciones) {
+      setCommercialConditions(quoteToClone.condiciones);
+    }
+    if (quoteToClone.contactos && quoteToClone.contactos.length > 0) {
+      setCurrentQuoteContacts(quoteToClone.contactos);
+    }
 
     if (quoteToClone.servicios_desglosados && quoteToClone.servicios_desglosados.length > 0) {
       setItemizedServices(quoteToClone.servicios_desglosados.map((s: any, idx: number) => ({
@@ -779,11 +798,13 @@ export default function AdminViews(props: AdminViewsProps) {
     alert(`Se cargaron los conceptos de la cotización ${quoteToClone.id_propuesta || quoteToClone.id}. Puede editar los datos del cliente, folio y guardar la nueva propuesta.`);
   };
 
-  // Calculations for dynamic form
+  // Calculations for dynamic form with editable costs & discount %
   const subtotalServices = itemizedServices.reduce((acc, curr) => acc + (curr.puntos * curr.costo_punto), 0);
-  const subtotalGeneral = subtotalServices + estimatedViatics;
-  const computedIva = Math.round(subtotalGeneral * 0.16);
-  const computedTotal = subtotalGeneral + computedIva;
+  const subtotalBruto = subtotalServices + estimatedViatics;
+  const discountAmount = Math.round(subtotalBruto * ((discountPercentage || 0) / 100));
+  const subtotalNetoConDescuento = subtotalBruto - discountAmount;
+  const computedIva = Math.round(subtotalNetoConDescuento * 0.16);
+  const computedTotal = subtotalNetoConDescuento + computedIva;
 
   // CRM Filters
   const [crmMonthFilter, setCrmMonthFilter] = useState("Todos");
@@ -801,28 +822,24 @@ export default function AdminViews(props: AdminViewsProps) {
   // Available months list for filters
   const MONTHS_LIST = ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-  // Handle full-stack submit of the Quote Form
-  const handleSubmitNewQuote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clientName || !contactName || !contactEmail || !contactPhone) {
-      alert("Por favor complete todos los datos obligatorios.");
-      return;
-    }
-
+  // Construction of base Quote Object
+  const buildQuotePayload = (status: "Borrador" | "Enviado" | "Emitida") => {
     const currentMonthIndex = new Date(quoteDate).getMonth();
     const quoteMonth = MONTHS_LIST[currentMonthIndex + 1] || "Julio";
-
     const serviceNamesArray = itemizedServices.map(i => i.serviceName);
+    const activeContacts = currentQuoteContacts.filter(c => c.enviar_cotizacion);
 
-    const newQuoteObj = {
+    return {
       id: quoteFolio,
       id_propuesta: quoteFolio,
       cliente: isSubcontracted && subcontractorName ? `${clientName} (Subcontratado: ${subcontractorName})` : clientName,
       es_subcontratado: isSubcontracted,
       subcontratado_nombre: subcontractorName,
-      contacto: contactName,
-      email: contactEmail,
-      telefono: contactPhone,
+      contacto: contactName || (activeContacts[0]?.nombre) || "Representante de Compras",
+      email: contactEmail || (activeContacts[0]?.email) || "contacto@cliente.com",
+      telefono: contactPhone || (activeContacts[0]?.telefono) || "",
+      contactos: currentQuoteContacts,
+      contactos_destinatarios: activeContacts.map(c => ({ nombre: c.nombre, email: c.email, puesto: c.puesto })),
       fecha: quoteDate,
       mes: quoteMonth,
       servicios: serviceNamesArray,
@@ -831,25 +848,68 @@ export default function AdminViews(props: AdminViewsProps) {
       puntos: itemizedServices.reduce((acc, curr) => acc + curr.puntos, 0),
       costo_punto: itemizedServices[0]?.costo_punto || 1800,
       viaticos: estimatedViatics,
-      subtotal: subtotalGeneral,
+      subtotal_servicios: subtotalServices,
+      subtotal_bruto: subtotalBruto,
+      descuento_porcentaje: discountPercentage || 0,
+      descuento_monto: discountAmount,
+      subtotal: subtotalNetoConDescuento,
       iva: computedIva,
       costo: computedTotal,
-      estado: "Enviado"
+      condiciones: commercialConditions,
+      estado: status
     };
+  };
+
+  // ACTION 1: Guardar Borrador / Editar y Guardar Cotización
+  const handleSaveDraftQuote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!clientName) {
+      alert("Por favor ingrese el nombre del cliente o seleccione uno de la lista.");
+      return;
+    }
+
+    const draftQuoteObj = buildQuotePayload("Borrador");
 
     if (setGeneratedQuotes) {
-      setGeneratedQuotes([newQuoteObj, ...generatedQuotes]);
+      const exists = generatedQuotes.some(q => q.id === draftQuoteObj.id || q.id_propuesta === draftQuoteObj.id);
+      const updated = exists
+        ? generatedQuotes.map(q => (q.id === draftQuoteObj.id || q.id_propuesta === draftQuoteObj.id) ? draftQuoteObj : q)
+        : [draftQuoteObj, ...generatedQuotes];
+      setGeneratedQuotes(updated);
+    }
+
+    // Sincronizar en Supabase
+    saveCotizacionToSupabase(draftQuoteObj, activePersona?.id_usuario).catch(err => {
+      console.error("Error guardando borrador en Supabase:", err);
+    });
+
+    alert(`💾 Cotización ${quoteFolio} guardada como BORRADOR.\nPuede continuar editando conceptos, costos o contactos.`);
+  };
+
+  // ACTION 2: Emitir Cotización Formal
+  const handleEmitOfficialQuote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!clientName) {
+      alert("Por favor complete el nombre del cliente antes de emitir.");
+      return;
+    }
+
+    const officialQuoteObj = buildQuotePayload("Enviado");
+
+    if (setGeneratedQuotes) {
+      const filtered = generatedQuotes.filter(q => q.id !== officialQuoteObj.id && q.id_propuesta !== officialQuoteObj.id);
+      setGeneratedQuotes([officialQuoteObj, ...filtered]);
     }
 
     const newInvoiceObj = {
       id_factura: invoices.length + 1,
-      cliente: newQuoteObj.cliente,
+      cliente: officialQuoteObj.cliente,
       monto: computedTotal,
       estado: "Pendiente",
       vencimiento: new Date(new Date(quoteDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      mes: quoteMonth,
-      servicios: serviceNamesArray,
-      servicio: serviceNamesArray.join(" + ")
+      mes: officialQuoteObj.mes,
+      servicios: officialQuoteObj.servicios,
+      servicio: officialQuoteObj.servicio
     };
 
     if (setInvoices) {
@@ -857,24 +917,17 @@ export default function AdminViews(props: AdminViewsProps) {
     }
 
     // Guardar en Supabase en la tabla public.cotizaciones
-    saveCotizacionToSupabase(newQuoteObj, activePersona?.id_usuario).then(res => {
+    saveCotizacionToSupabase(officialQuoteObj, activePersona?.id_usuario).then(res => {
       if (res.success) {
-        console.log("Cotización guardada en Supabase:", res.message);
+        console.log("Cotización emitida en Supabase:", res.message);
       }
-    }).catch(err => console.error("Error guardando cotización en Supabase:", err));
+    }).catch(err => console.error("Error guardando cotización emitida en Supabase:", err));
 
-    alert(`¡Ficha de Cotización ${quoteFolio} Registrada Exitosamente!\nCliente: ${newQuoteObj.cliente}\nTotal Desglosado: $${computedTotal.toLocaleString('es-MX')} MXN (IVA Incluido).\n\n☁️ Guardada y sincronizada en Supabase (public.cotizaciones).`);
+    const activeEmails = currentQuoteContacts.filter(c => c.enviar_cotizacion).map(c => `${c.nombre} (${c.email})`).join(", ");
 
-    // Reset Form
-    setClientName("");
-    setSubcontractorName("");
-    setIsSubcontracted(false);
-    setContactName("");
-    setContactEmail("");
-    setContactPhone("");
-    setItemizedServices([
-      { id: "srv-1", serviceName: CATALOG_SERVICES[0], puntos: 5, costo_punto: 1800 }
-    ]);
+    alert(`✅ ¡Cotización Oficial ${quoteFolio} Emitida Exitosamente!\n\nCliente: ${officialQuoteObj.cliente}\nDestinatarios Notificados: ${activeEmails || officialQuoteObj.email}\nDescuento Aplicado: ${discountPercentage}% (-$${discountAmount.toLocaleString('es-MX')} MXN)\nTotal Final: $${computedTotal.toLocaleString('es-MX')} MXN (IVA Incluido).\n\n☁️ Guardada y sincronizada en Supabase (public.cotizaciones).`);
+
+    // Reset or keep for details
   };
 
   // Filter CRM quotations list
@@ -1048,12 +1101,12 @@ export default function AdminViews(props: AdminViewsProps) {
               </div>
 
               {activeQuoteSubTab === "new" && (
-                <form onSubmit={handleSubmitNewQuote} className="space-y-3 text-xs">
+                <div className="space-y-3 text-xs">
                   
-                  {/* SELECCIÓN AUTOMÁTICA DE CLIENTE O BUSCADOR */}
+                  {/* SELECCIÓN AUTOMÁTICA DE CLIENTE */}
                   <div className="space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                     <label className="block text-[10px] font-bold text-slate-700 uppercase font-mono">
-                      1. Seleccionar Cliente Existente (# de Cliente Automático) *
+                      1. Seleccionar Cliente de la Base de Datos (# Cliente Automático) *
                     </label>
                     <select
                       value={selectedClientNum}
@@ -1063,7 +1116,7 @@ export default function AdminViews(props: AdminViewsProps) {
                       <option value="">-- Seleccionar de la Lista de Clientes --</option>
                       {clientsList.map(c => (
                         <option key={c.id} value={c.id}>
-                          #{c.id} — {c.razon_social} (RFC: {c.rfc || "S/RFC"})
+                          #{c.id} — {c.razon_social} (RFC: {c.rfc || "S/RFC"}) • {c.contactos?.length || 1} contactos
                         </option>
                       ))}
                     </select>
@@ -1117,40 +1170,13 @@ export default function AdminViews(props: AdminViewsProps) {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                      <div>
-                        <label className="block text-[9px] font-semibold text-slate-600">Contacto *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ing. Juan Gómez"
-                          value={contactName}
-                          onChange={(e) => setContactName(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-semibold text-slate-600">Correo *</label>
-                        <input
-                          type="email"
-                          required
-                          placeholder="contacto@cliente.com"
-                          value={contactEmail}
-                          onChange={(e) => setContactEmail(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-semibold text-slate-600">Teléfono *</label>
-                        <input
-                          type="tel"
-                          required
-                          placeholder="811-555-0199"
-                          value={contactPhone}
-                          onChange={(e) => setContactPhone(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono"
-                        />
-                      </div>
+                    {/* SELECTOR AVANZADO MULTI-CONTACTO (2+ CONTACTOS Y BLOQUEO DE ENVÍO) */}
+                    <div className="pt-1">
+                      <ClientMultiContactSelector
+                        contacts={currentQuoteContacts}
+                        onContactsChange={handleUpdateCurrentQuoteContacts}
+                        clientName={clientName || "Cliente"}
+                      />
                     </div>
                   </div>
 
@@ -1184,81 +1210,106 @@ export default function AdminViews(props: AdminViewsProps) {
                     </div>
                   </div>
 
-                  {/* ESPECIFICACIONES Y SERVICIOS DESPLEGABLES CON ALTA DINÁMICA */}
+                  {/* ESPECIFICACIONES Y SERVICIOS DESPLEGABLES CON EDICIÓN DE COSTOS Y ALTA DINÁMICA */}
                   <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap justify-between items-center gap-1.5">
                       <span className="text-[10px] uppercase font-bold text-slate-700 block font-mono">
-                        Especificaciones y Servicios (Desglose Individual)
+                        Especificaciones y Servicios Metrológicos
                       </span>
-                      <button
-                        type="button"
-                        onClick={handleAddServiceRow}
-                        className="px-2 py-0.5 bg-[#85AA1C] hover:bg-lime-600 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>+ Dar de Alta Más Servicios</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsServiceCatalogOpen(true)}
+                          className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                          title="Gestionar y dar de alta servicios sin salirse de la cotización"
+                        >
+                          <Settings className="w-3 h-3 text-blue-600" />
+                          <span>Edición a Servicios Disponibles</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddServiceRow}
+                          className="px-2 py-1 bg-[#85AA1C] hover:bg-lime-600 text-white rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>+ Agregar Concepto</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                      {itemizedServices.map((item, index) => (
-                        <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1.5 text-xs shadow-2xs">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[9px] font-mono font-bold text-slate-400">Servicio #{index + 1}</span>
-                            {itemizedServices.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveServiceRow(item.id)}
-                                className="text-red-500 hover:text-red-700 text-[10px] font-bold cursor-pointer"
+                    <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                      {itemizedServices.map((item, index) => {
+                        const rowTotal = (item.puntos || 0) * (item.costo_punto || 0);
+                        return (
+                          <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1.5 text-xs shadow-2xs">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[9px] font-mono font-bold text-slate-500">
+                                Concepto #{index + 1}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono font-bold text-emerald-700">
+                                  Importe: ${rowTotal.toLocaleString('es-MX')} MXN
+                                </span>
+                                {itemizedServices.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveServiceRow(item.id)}
+                                    className="text-red-500 hover:text-red-700 text-[10px] font-bold cursor-pointer"
+                                  >
+                                    ✕ Quitar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <select
+                                value={item.serviceName}
+                                onChange={(e) => handleUpdateServiceRow(item.id, "serviceName", e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-300 rounded p-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#85AA1C]"
                               >
-                                ✕ Quitar
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="space-y-1">
-                            <select
-                              value={item.serviceName}
-                              onChange={(e) => handleUpdateServiceRow(item.id, "serviceName", e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-xs font-semibold text-slate-800"
-                            >
-                              {CATALOG_SERVICES.map((catSrv) => (
-                                <option key={catSrv} value={catSrv}>{catSrv}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[8px] font-bold text-slate-500 uppercase">Puntos a Medir</label>
-                              <input
-                                type="number"
-                                min={1}
-                                required
-                                value={item.puntos}
-                                onChange={(e) => handleUpdateServiceRow(item.id, "puntos", Number(e.target.value))}
-                                className="w-full bg-white border border-slate-200 rounded px-2 py-0.5 text-center font-mono font-bold"
-                              />
+                                {availableServices.map((catSrv) => (
+                                  <option key={catSrv.id} value={catSrv.nombre}>
+                                    {catSrv.nombre} (Sugerido: ${catSrv.precio_base_sugerido.toLocaleString('es-MX')} MXN)
+                                  </option>
+                                ))}
+                              </select>
                             </div>
-                            <div>
-                              <label className="block text-[8px] font-bold text-slate-500 uppercase">Costo por Punto ($)</label>
-                              <input
-                                type="number"
-                                min={1}
-                                required
-                                value={item.costo_punto}
-                                onChange={(e) => handleUpdateServiceRow(item.id, "costo_punto", Number(e.target.value))}
-                                className="w-full bg-white border border-slate-200 rounded px-2 py-0.5 text-center font-mono font-bold text-emerald-700"
-                              />
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase">Puntos a Medir</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  required
+                                  value={item.puntos}
+                                  onChange={(e) => handleUpdateServiceRow(item.id, "puntos", Number(e.target.value))}
+                                  className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-center font-mono font-bold text-slate-800"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[8px] font-bold text-emerald-800 uppercase flex items-center justify-between">
+                                  <span>Costo por Punto ($ Editable) *</span>
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  required
+                                  value={item.costo_punto}
+                                  onChange={(e) => handleUpdateServiceRow(item.id, "costo_punto", Number(e.target.value))}
+                                  className="w-full bg-emerald-50 border border-emerald-300 rounded px-2 py-1 text-center font-mono font-bold text-emerald-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="pt-1">
                       <label className="block text-[9px] font-bold text-slate-600 uppercase font-mono mb-1">
-                        Viáticos de Traslado y Campo ($)
+                        Viáticos de Traslado y Campo ($ Editable)
                       </label>
                       <input
                         type="number"
@@ -1271,8 +1322,14 @@ export default function AdminViews(props: AdminViewsProps) {
                     </div>
                   </div>
 
-                  {/* RESUMEN FINANCIERO */}
-                  <div className="bg-slate-900 text-slate-100 p-3.5 rounded-xl space-y-1.5 border border-slate-800">
+                  {/* BLOQUE DE CONDICIONES COMERCIALES */}
+                  <CommercialConditionsBlock
+                    conditions={commercialConditions}
+                    onChange={setCommercialConditions}
+                  />
+
+                  {/* RESUMEN FINANCIERO CON DESCUENTO % */}
+                  <div className="bg-slate-900 text-slate-100 p-3.5 rounded-xl space-y-2 border border-slate-800">
                     <div className="flex justify-between text-[11px] font-mono">
                       <span className="text-slate-400">Subtotal Servicios:</span>
                       <span>${subtotalServices.toLocaleString('es-MX')} MXN</span>
@@ -1281,28 +1338,72 @@ export default function AdminViews(props: AdminViewsProps) {
                       <span className="text-slate-400">Viáticos de Campo:</span>
                       <span>${estimatedViatics.toLocaleString('es-MX')} MXN</span>
                     </div>
+
                     <div className="flex justify-between text-[11px] font-mono border-t border-slate-800 pt-1">
-                      <span className="text-slate-300">Subtotal Neto:</span>
-                      <span>${subtotalGeneral.toLocaleString('es-MX')} MXN</span>
+                      <span className="text-slate-300">Subtotal Bruto:</span>
+                      <span className="text-slate-200 font-bold">${subtotalBruto.toLocaleString('es-MX')} MXN</span>
                     </div>
+
+                    {/* CAMPO DE DESCUENTO % DESPUÉS DE SUBTOTAL */}
+                    <div className="flex items-center justify-between text-[11px] font-mono bg-slate-800/90 p-2 rounded-lg border border-amber-500/40">
+                      <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                        <Percent className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Descuento %:</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={discountPercentage}
+                          onChange={(e) => setDiscountPercentage(Math.max(0, Math.min(100, Number(e.target.value))))}
+                          className="w-16 bg-slate-900 border border-amber-400 rounded px-2 py-0.5 text-right font-mono font-bold text-amber-300 text-xs focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                          placeholder="0"
+                        />
+                        <span className="text-amber-400 font-bold">
+                          (-${discountAmount.toLocaleString('es-MX')} MXN)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between text-[11px] font-mono border-t border-slate-800 pt-1">
+                      <span className="text-slate-300 font-bold">Subtotal Neto:</span>
+                      <span className="font-bold text-white">${subtotalNetoConDescuento.toLocaleString('es-MX')} MXN</span>
+                    </div>
+
                     <div className="flex justify-between text-[11px] font-mono text-amber-400 font-bold">
                       <span>IVA (16% Standard SAT):</span>
                       <span>+ ${computedIva.toLocaleString('es-MX')} MXN</span>
                     </div>
                     <div className="flex justify-between text-xs font-bold text-emerald-400 border-t border-slate-700 pt-1.5 font-mono">
                       <span>Total Neto Propuesta:</span>
-                      <span>${computedTotal.toLocaleString('es-MX')} MXN</span>
+                      <span className="text-sm">${computedTotal.toLocaleString('es-MX')} MXN</span>
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-[#85AA1C] hover:bg-lime-600 text-white font-bold rounded-lg text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Guardar y Emitir Cotización</span>
-                  </button>
-                </form>
+                  {/* DOS BOTONES POR SEPARADO: GUARDAR BORRADOR Y EMITIR COTIZACIÓN */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {/* BOTÓN 1: EDITAR / GUARDAR BORRADOR */}
+                    <button
+                      type="button"
+                      onClick={() => handleSaveDraftQuote()}
+                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition-colors border border-slate-700 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <FileEdit className="w-4 h-4 text-blue-400" />
+                      <span>Editar y Guardar Borrador</span>
+                    </button>
+
+                    {/* BOTÓN 2: EMITIR COTIZACIÓN */}
+                    <button
+                      type="button"
+                      onClick={() => handleEmitOfficialQuote()}
+                      className="w-full py-2.5 bg-[#85AA1C] hover:bg-lime-600 text-white font-bold rounded-lg text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Emitir Cotización</span>
+                    </button>
+                  </div>
+                </div>
               )}
 
               {activeQuoteSubTab === "history" && (
@@ -1408,6 +1509,8 @@ export default function AdminViews(props: AdminViewsProps) {
                   filteredQuotes.map((quote, qIndex) => {
                     const quoteKey = quote.id_propuesta || quote.id || quote.id_cotizacion || `quote-${qIndex}`;
                     const quoteFolio = quote.id_propuesta || quote.id || quote.id_cotizacion || `COT-2026-${String(qIndex + 1).padStart(3, '0')}`;
+                    const isDraft = quote.estado === 'Borrador';
+
                     return (
                       <div key={quoteKey} className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all">
                         <div className="space-y-1">
@@ -1416,6 +1519,11 @@ export default function AdminViews(props: AdminViewsProps) {
                               {quoteFolio}
                             </span>
                             <strong className="text-slate-900 text-xs">{quote.cliente}</strong>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono ${
+                              isDraft ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                            }`}>
+                              {quote.estado || "Enviada"}
+                            </span>
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono space-y-0.5">
                             <div className="flex items-center gap-1">
@@ -1446,10 +1554,23 @@ export default function AdminViews(props: AdminViewsProps) {
                             </span>
                             <div className="text-[9px] text-slate-400 block font-mono">
                               <div>F: {quote.fecha} ({quote.mes || 'Julio'})</div>
+                              {quote.descuento_porcentaje ? (
+                                <div className="text-amber-600 font-bold">Desc: {quote.descuento_porcentaje}%</div>
+                              ) : null}
                               <div>{quote.puntos || 5} puntos evaluados</div>
                             </div>
                           </div>
-                          <div className="flex justify-start md:justify-end">
+                          <div className="flex justify-start md:justify-end gap-1.5">
+                            {isDraft && (
+                              <button
+                                onClick={() => handleReuseQuote(quote)}
+                                className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded border border-blue-200 transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Cargar en editor para modificar y emitir"
+                              >
+                                <FileEdit className="w-3.5 h-3.5" />
+                                <span>Editar</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => setViewingOfficialQuoteModal(quote)}
                               className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -4870,8 +4991,18 @@ ASP METROLOGÍA S.A. DE C.V.`}
                       </div>
                     </div>
 
-                    <div className="w-full sm:w-64 bg-slate-900 text-white p-4 rounded-xl space-y-2 font-mono">
-                      <div className="flex justify-between text-xs text-slate-300">
+                    <div className="w-full sm:w-72 bg-slate-900 text-white p-4 rounded-xl space-y-1.5 font-mono">
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>Subtotal Bruto:</span>
+                        <span>${(viewingOfficialQuoteModal.subtotal_bruto || viewingOfficialQuoteModal.subtotal || ((viewingOfficialQuoteModal.costo || 2300000) / 1.16)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      {viewingOfficialQuoteModal.descuento_porcentaje > 0 && (
+                        <div className="flex justify-between text-xs text-amber-400 font-bold bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
+                          <span>Descuento ({viewingOfficialQuoteModal.descuento_porcentaje}%):</span>
+                          <span>-${(viewingOfficialQuoteModal.descuento_monto || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-xs text-slate-300 border-t border-slate-800 pt-1">
                         <span>Subtotal Neto:</span>
                         <span>${(viewingOfficialQuoteModal.subtotal || ((viewingOfficialQuoteModal.costo || 2300000) / 1.16)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
@@ -4902,14 +5033,18 @@ ASP METROLOGÍA S.A. DE C.V.`}
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                       <div className="font-bold text-slate-900 uppercase font-mono text-xs text-[#85AA1C]">1. Tiempos de Entrega e Informes</div>
                       <p>
-                        Los informes técnicos de ensayo serán entregados en un plazo máximo de <strong>5 días hábiles</strong> posteriores a la finalización de los trabajos de campo. Todos los documentos emitidos cuentan con código QR de verificación de autenticidad en servidor.
+                        {viewingOfficialQuoteModal.condiciones?.tiempo_entrega ? (
+                          <>Los informes técnicos de ensayo serán entregados en un plazo de <strong>{viewingOfficialQuoteModal.condiciones.tiempo_entrega}</strong> posteriores a los trabajos de campo.</>
+                        ) : (
+                          <>Los informes técnicos de ensayo serán entregados en un plazo máximo de <strong>5 días hábiles</strong> posteriores a la finalización de los trabajos de campo.</>
+                        )} Todos los documentos emitidos cuentan con código QR de verificación de autenticidad en servidor.
                       </p>
                     </div>
 
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                      <div className="font-bold text-slate-900 uppercase font-mono text-xs text-[#85AA1C]">2. Garantía Metrológica EMA</div>
+                      <div className="font-bold text-slate-900 uppercase font-mono text-xs text-[#85AA1C]">2. Forma de Pago y Vigencia</div>
                       <p>
-                        ASPECHS garantiza que todos los sonómetros, luxómetros y multímetros utilizados cuentan con calibración vigente expedida por laboratorios acreditados ante la Entidad Mexicana de Acreditación (EMA) bajo la norma NMX-EC-17025-IMNC-2018.
+                        Forma de pago: <strong>{viewingOfficialQuoteModal.condiciones?.forma_pago || "50% Anticipo y 50% contra entrega de informe"}</strong>. Vigencia comercial de la cotización: <strong>{viewingOfficialQuoteModal.condiciones?.vigencia_dias || 30} días naturales</strong>.
                       </p>
                     </div>
                   </div>
@@ -4951,6 +5086,14 @@ ASP METROLOGÍA S.A. DE C.V.`}
             </motion.div>
           </div>
         )}
+
+        {/* MODAL DE EDICIÓN A SERVICIOS DISPONIBLES */}
+        <ServiceCatalogModal
+          isOpen={isServiceCatalogOpen}
+          onClose={() => setIsServiceCatalogOpen(false)}
+          services={availableServices}
+          onSaveServices={handleSaveServicesCatalog}
+        />
       </AnimatePresence>
     </div>
   );
