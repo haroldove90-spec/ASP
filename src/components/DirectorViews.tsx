@@ -38,7 +38,15 @@ import {
   Cloud,
   CloudCheck,
   RefreshCw,
-  Database
+  Database,
+  Percent,
+  Tag,
+  Send,
+  FileEdit,
+  Building,
+  Mail,
+  Phone,
+  HelpCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Usuario, Instrumento, CertificadoCalibracion, AuditLog } from '../initial_data';
@@ -58,6 +66,25 @@ import {
   deleteInstrumentoFromSupabase,
   syncAllInstrumentosToSupabase
 } from '../lib/supabaseSync';
+import { 
+  MetrologyServiceItem, 
+  getStoredServices, 
+  saveStoredServices 
+} from '../data/metrologyServices';
+import { 
+  ClientRecord, 
+  ClientContact, 
+  getStoredClients, 
+  saveStoredClients, 
+  updateClientContacts 
+} from '../data/clientsDatabase';
+import { ServiceCatalogModal } from './ServiceCatalogModal';
+import { 
+  CommercialConditionsBlock, 
+  CommercialConditions, 
+  DEFAULT_COMMERCIAL_CONDITIONS 
+} from './CommercialConditionsBlock';
+import { ClientMultiContactSelector } from './ClientMultiContactSelector';
 
 interface DirectorViewsProps {
   activePersona: Usuario;
@@ -188,14 +215,147 @@ export default function DirectorViews(props: DirectorViewsProps) {
   const [activeFinTab, setActiveFinTab] = useState<'quotes' | 'invoices'>('invoices');
   const [projectStatusFilter, setProjectStatusFilter] = useState<string>("Todos");
 
+  // --- CRM, SERVICES CATALOG & CLIENTS ADVANCED STATES ---
+  const [availableServices, setAvailableServices] = useState<MetrologyServiceItem[]>(() => getStoredServices());
+  const [isServiceCatalogOpen, setIsServiceCatalogOpen] = useState(false);
+
+  const [clientsList, setClientsList] = useState<ClientRecord[]>(() => getStoredClients());
+  const [selectedClientNum, setSelectedClientNum] = useState<string>("");
+  const [clientName, setClientName] = useState("");
+  const [isSubcontracted, setIsSubcontracted] = useState(false);
+  const [subcontractorName, setSubcontractorName] = useState("");
+  const [quoteDate, setQuoteDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [quoteFolio, setQuoteFolio] = useState(() => `COT-2026-${String(generatedQuotes.length + 1).padStart(3, '0')}`);
+
+  // Contacts
+  const [currentQuoteContacts, setCurrentQuoteContacts] = useState<ClientContact[]>([]);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+
+  // Itemized concepts
+  const [itemizedServices, setItemizedServices] = useState<Array<{
+    id: string;
+    serviceName: string;
+    puntos: number;
+    costo_punto: number;
+  }>>([
+    {
+      id: "srv-dir-1",
+      serviceName: "NOM-011-STPS-2001 (Ruido Industrial - Nivel Sonoro Continuo A)",
+      puntos: 5,
+      costo_punto: 1800
+    }
+  ]);
+
+  const [estimatedViatics, setEstimatedViatics] = useState(1500);
+  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [commercialConditions, setCommercialConditions] = useState<CommercialConditions>(DEFAULT_COMMERCIAL_CONDITIONS);
+
+  // Auto update folio when client or date changes
+  useEffect(() => {
+    let clientDigits = "001";
+    if (selectedClientNum) {
+      const match = selectedClientNum.match(/\d+/);
+      if (match) clientDigits = match[0].padStart(3, '0');
+    }
+    const yearMonth = quoteDate.replace(/-/g, '').slice(0, 6);
+    setQuoteFolio(`COT-${yearMonth}-${clientDigits}`);
+  }, [selectedClientNum, quoteDate]);
+
+  // Sync clients database updates
+  useEffect(() => {
+    saveStoredClients(clientsList);
+  }, [clientsList]);
+
+  // Handle client selection
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClientNum(clientId);
+    const found = clientsList.find(c => c.id === clientId);
+    if (found) {
+      setClientName(found.razon_social);
+      setContactName(found.contacto_nombre || "");
+      setContactEmail(found.contacto_email || "");
+      setContactPhone(found.contacto_telefono || "");
+      if (found.contactos && found.contactos.length > 0) {
+        setCurrentQuoteContacts(found.contactos);
+      } else {
+        const defaultContact: ClientContact = {
+          id: `cnt-${Date.now()}`,
+          nombre: found.contacto_nombre || "Contacto Principal",
+          puesto: "Representante / Compras",
+          email: found.contacto_email || "contacto@cliente.com",
+          telefono: found.contacto_telefono || "",
+          es_principal: true,
+          enviar_cotizacion: true
+        };
+        setCurrentQuoteContacts([defaultContact]);
+      }
+    }
+  };
+
+  const handleUpdateCurrentQuoteContacts = (newContacts: ClientContact[]) => {
+    setCurrentQuoteContacts(newContacts);
+    const primary = newContacts.find(c => c.es_principal && c.enviar_cotizacion) || newContacts.find(c => c.enviar_cotizacion) || newContacts[0];
+    if (primary) {
+      setContactName(primary.nombre);
+      setContactEmail(primary.email);
+      setContactPhone(primary.telefono);
+    }
+    if (selectedClientNum) {
+      updateClientContacts(selectedClientNum, newContacts);
+      setClientsList(getStoredClients());
+    }
+  };
+
+  const handleAddServiceRow = () => {
+    const defaultServiceName = availableServices.length > 0 ? availableServices[0].nombre : "NOM-011-STPS-2001 (Ruido Industrial)";
+    const defaultServiceCost = availableServices.length > 0 ? availableServices[0].precio_base_sugerido : 1800;
+    const newRow = {
+      id: `srv-dir-${Date.now()}`,
+      serviceName: defaultServiceName,
+      puntos: 5,
+      costo_punto: defaultServiceCost
+    };
+    setItemizedServices([...itemizedServices, newRow]);
+  };
+
+  const handleUpdateServiceRow = (id: string, key: string, value: any) => {
+    setItemizedServices(itemizedServices.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [key]: value };
+        if (key === "serviceName") {
+          const matched = availableServices.find(s => s.nombre === value);
+          if (matched) {
+            updated.costo_punto = matched.precio_base_sugerido;
+          }
+        }
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  const handleRemoveServiceRow = (id: string) => {
+    if (itemizedServices.length <= 1) return;
+    setItemizedServices(itemizedServices.filter(item => item.id !== id));
+  };
+
+  const handleSaveServicesCatalog = (updatedServices: MetrologyServiceItem[]) => {
+    setAvailableServices(updatedServices);
+    saveStoredServices(updatedServices);
+  };
+
+  // Calculations for dynamic form with editable costs & discount %
+  const subtotalServices = itemizedServices.reduce((acc, curr) => acc + (curr.puntos * curr.costo_punto), 0);
+  const subtotalBruto = subtotalServices + estimatedViatics;
+  const discountAmount = Math.round(subtotalBruto * ((discountPercentage || 0) / 100));
+  const subtotalNetoConDescuento = subtotalBruto - discountAmount;
+  const computedIva = Math.round(subtotalNetoConDescuento * 0.16);
+  const computedTotal = subtotalNetoConDescuento + computedIva;
+
   // --- LOCAL STATES FOR DIRECTOR OF OPERATIONS INTERACTION ---
   const [isAddQuoteOpen, setIsAddQuoteOpen] = useState(false);
-  const [newQuoteForm, setNewQuoteForm] = useState({
-    cliente: '',
-    servicio: 'Mapeo de Ruido NOM-011-STPS',
-    puntos: 5,
-    viaticos: 1500
-  });
 
   const [isAddOdtOpen, setIsAddOdtOpen] = useState(false);
   const [newOdtForm, setNewOdtForm] = useState({
@@ -378,56 +538,118 @@ export default function DirectorViews(props: DirectorViewsProps) {
   const [isSyncingQuotes, setIsSyncingQuotes] = useState(false);
   const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
 
-  // --- SUBMISSION HANDLERS ---
-  const handleCreateQuote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newQuoteForm.cliente) {
-      alert("Por favor ingrese el nombre del cliente.");
+  // Construction of base Quote Object for CEO & Director of Operations
+  const buildQuotePayload = (status: "Borrador" | "Enviada") => {
+    const quoteMonthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const currentMonthIndex = new Date(quoteDate).getMonth();
+    const quoteMonth = quoteMonthNames[currentMonthIndex] || "Julio";
+    const serviceNamesArray = itemizedServices.map(i => i.serviceName);
+    const activeContacts = currentQuoteContacts.filter(c => c.enviar_cotizacion);
+
+    return {
+      id: quoteFolio,
+      id_propuesta: quoteFolio,
+      cliente: isSubcontracted && subcontractorName ? `${clientName} (Subcontratado: ${subcontractorName})` : clientName,
+      cliente_num: selectedClientNum || "CLI-001",
+      es_subcontratado: isSubcontracted,
+      subcontratado_nombre: subcontractorName,
+      contacto: contactName || (activeContacts[0]?.nombre) || "Representante de Compras",
+      email: contactEmail || (activeContacts[0]?.email) || "contacto@cliente.com",
+      telefono: contactPhone || (activeContacts[0]?.telefono) || "",
+      contactos: currentQuoteContacts,
+      contactos_destinatarios: activeContacts.map(c => ({ nombre: c.nombre, email: c.email, puesto: c.puesto })),
+      fecha: quoteDate,
+      mes: quoteMonth,
+      servicios: serviceNamesArray,
+      servicio: serviceNamesArray.join(" + "),
+      servicios_desglosados: itemizedServices,
+      puntos: itemizedServices.reduce((acc, curr) => acc + curr.puntos, 0),
+      costo_punto: itemizedServices[0]?.costo_punto || 1800,
+      viaticos: estimatedViatics,
+      subtotal_servicios: subtotalServices,
+      subtotal_bruto: subtotalBruto,
+      descuento_porcentaje: discountPercentage || 0,
+      descuento_monto: discountAmount,
+      subtotal: subtotalNetoConDescuento,
+      iva: computedIva,
+      costo: computedTotal,
+      condiciones: commercialConditions,
+      estado: status
+    };
+  };
+
+  // ACTION 1: Guardar Borrador de Cotización
+  const handleSaveDraftQuote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!clientName) {
+      alert("Por favor seleccione un cliente o ingrese su razón social.");
       return;
     }
-    const computedCosto = (newQuoteForm.puntos * 2500) + Number(newQuoteForm.viaticos);
-    const newQuote = {
-      id: `COT-00${generatedQuotes.length + 1}`,
-      cliente: newQuoteForm.cliente,
-      servicio: newQuoteForm.servicio,
-      puntos: Number(newQuoteForm.puntos),
-      costo: computedCosto,
-      fecha: new Date().toISOString().split('T')[0],
-      estado: "Enviada"
-    };
 
-    setGeneratedQuotes([newQuote, ...generatedQuotes]);
+    const draftQuote = buildQuotePayload("Borrador");
 
-    // Create corresponding invoice
+    const exists = generatedQuotes.some(q => q.id === draftQuote.id || q.id_propuesta === draftQuote.id);
+    const updated = exists
+      ? generatedQuotes.map(q => (q.id === draftQuote.id || q.id_propuesta === draftQuote.id) ? draftQuote : q)
+      : [draftQuote, ...generatedQuotes];
+    setGeneratedQuotes(updated);
+
+    setIsSyncingQuotes(true);
+    setSyncStatusMessage("Guardando borrador en Supabase...");
+    const syncRes = await saveCotizacionToSupabase(draftQuote, activePersona?.id_usuario);
+    setIsSyncingQuotes(false);
+
+    if (syncRes.success) {
+      setSyncStatusMessage(`💾 Borrador ${draftQuote.id} guardado en Supabase (public.cotizaciones).`);
+      alert(`💾 Cotización ${draftQuote.id} guardada como BORRADOR.\nCliente: ${draftQuote.cliente}\nPuede continuar editando conceptos, costos o contactos sin generar facturación.`);
+    } else {
+      setSyncStatusMessage(`⚠️ Borrador guardado localmente.`);
+      alert(`💾 Cotización ${draftQuote.id} guardada localmente como BORRADOR.`);
+    }
+  };
+
+  // ACTION 2: Emitir Cotización Oficial
+  const handleEmitOfficialQuote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!clientName) {
+      alert("Por favor seleccione un cliente o ingrese su razón social antes de emitir.");
+      return;
+    }
+
+    const officialQuote = buildQuotePayload("Enviada");
+
+    const filtered = generatedQuotes.filter(q => q.id !== officialQuote.id && q.id_propuesta !== officialQuote.id);
+    setGeneratedQuotes([officialQuote, ...filtered]);
+
+    // Create corresponding invoice in Finanzas
     const newInvoice = {
       id_factura: invoices.length + 1,
-      cliente: newQuoteForm.cliente,
-      monto: computedCosto,
+      cliente: officialQuote.cliente,
+      monto: computedTotal,
       estado: "Pendiente",
-      vencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      vencimiento: new Date(Date.now() + (commercialConditions.vigencia_dias || 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      mes: officialQuote.mes,
+      servicios: officialQuote.servicios,
+      servicio: officialQuote.servicio
     };
     setInvoices([newInvoice, ...invoices]);
 
     setIsAddQuoteOpen(false);
-    setNewQuoteForm({
-      cliente: '',
-      servicio: 'Mapeo de Ruido NOM-011-STPS',
-      puntos: 5,
-      viaticos: 1500
-    });
 
-    // Guardar en tiempo real en la tabla 'cotizaciones' de Supabase
+    // Sync to Supabase
     setIsSyncingQuotes(true);
-    setSyncStatusMessage("Guardando cotización en Supabase...");
-    const syncRes = await saveCotizacionToSupabase(newQuote, activePersona?.id_usuario);
+    setSyncStatusMessage("Emitiendo cotización en Supabase...");
+    const syncRes = await saveCotizacionToSupabase(officialQuote, activePersona?.id_usuario);
     setIsSyncingQuotes(false);
 
+    const activeEmails = currentQuoteContacts.filter(c => c.enviar_cotizacion).map(c => `${c.nombre} (${c.email})`).join(", ");
+
     if (syncRes.success) {
-      setSyncStatusMessage(`✅ Cotización ${newQuote.id} guardada en Supabase (public.cotizaciones).`);
-      alert(`✅ Cotización ${newQuote.id} generada y registrada con éxito para ${newQuote.cliente} por un monto total de $${newQuote.costo.toLocaleString()} MXN.\n\n☁️ Guardada y respaldada en Supabase (public.cotizaciones).`);
+      setSyncStatusMessage(`✅ Cotización ${officialQuote.id} emitida en Supabase.`);
+      alert(`✅ ¡Cotización Oficial ${officialQuote.id} Emitida Exitosamente!\n\nCliente: ${officialQuote.cliente}\nDestinatarios: ${activeEmails || officialQuote.email}\nDescuento Aplicado: ${discountPercentage}% (-$${discountAmount.toLocaleString('es-MX')} MXN)\nTotal Final: $${computedTotal.toLocaleString('es-MX')} MXN (IVA Incluido).\n\n☁️ Guardada y sincronizada en Supabase (public.cotizaciones).`);
     } else {
-      setSyncStatusMessage(`⚠️ Guardada localmente. Error en Supabase: ${syncRes.message}`);
-      alert(`Cotización ${newQuote.id} generada localmente.\n\nRespuesta de Supabase: ${syncRes.message}`);
+      setSyncStatusMessage(`⚠️ Guardada localmente.`);
+      alert(`✅ Cotización ${officialQuote.id} emitida exitosamente.\nTotal: $${computedTotal.toLocaleString('es-MX')} MXN.`);
     }
   };
 
@@ -2954,98 +3176,348 @@ export default function DirectorViews(props: DirectorViewsProps) {
             </div>
           )}
 
-          {/* Form Modal for Creating Quote */}
+          {/* Form Modal for Creating Quote with Full Checklist Features */}
           {isAddQuoteOpen && (
-            <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-xl space-y-4">
-              <div className="border-b border-emerald-150 pb-2 flex items-center justify-between">
-                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-mono">
-                  Generar Nueva Cotización Comercial
-                </h4>
+            <div className="bg-white border-2 border-emerald-500/30 p-6 rounded-2xl shadow-xl space-y-6 animate-in fade-in zoom-in-95 duration-150">
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono flex items-center gap-2">
+                    <FileEdit className="w-5 h-5 text-emerald-600" />
+                    <span>Emisión & Costeo de Cotización Metrológica Oficial</span>
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">Configure clientes, múltiples contactos destinatarios, desglose de servicios con costos editables, descuento y condiciones comerciales.</p>
+                </div>
                 <button 
                   onClick={() => setIsAddQuoteOpen(false)} 
-                  className="text-slate-400 hover:text-slate-600 text-xs font-bold font-mono"
+                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg cursor-pointer"
                 >
-                  [Cancelar]
+                  ✕ Cerrar
                 </button>
               </div>
 
-              <form onSubmit={handleCreateQuote} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
-                <div className="space-y-1 md:col-span-2">
-                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Cliente Industrial *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Siderúrgica de Monterrey S.A."
-                    value={newQuoteForm.cliente}
-                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, cliente: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Servicio / Normativa *</label>
-                  <select
-                    value={newQuoteForm.servicio}
-                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, servicio: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
-                  >
-                    <option value="Mapeo de Ruido NOM-011-STPS">Mapeo de Ruido NOM-011-STPS</option>
-                    <option value="Estudio de Iluminación NOM-025-STPS">Estudio de Iluminación NOM-025-STPS</option>
-                    <option value="Dosimetrías de Ruido NOM-011-STPS">Dosimetrías de Ruido NOM-011-STPS</option>
-                    <option value="Evaluación de Vibraciones NOM-024-STPS">Evaluación de Vibraciones NOM-024-STPS</option>
-                    <option value="Estudio de Presiones NOM-016-STPS">Estudio de Presiones NOM-016-STPS</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Puntos de Medición / Muestras</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={newQuoteForm.puntos}
-                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, puntos: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold uppercase text-[9px]">Viáticos Estimados ($ MXN)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={newQuoteForm.viaticos}
-                    onChange={(e) => setNewQuoteForm({ ...newQuoteForm, viaticos: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
-                  />
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 font-mono text-[10.5px] space-y-1 flex flex-col justify-center">
-                  <div className="text-slate-500 uppercase text-[9px] font-bold">Costo Computado Estimado:</div>
-                  <div className="text-sm font-bold text-slate-900">
-                    ${((newQuoteForm.puntos * 2500) + Number(newQuoteForm.viaticos)).toLocaleString()} MXN
+              <div className="space-y-6">
+                {/* 1. SELECCIÓN DE CLIENTE Y FECHA */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <span className="font-bold text-slate-800 text-xs uppercase font-mono flex items-center gap-1.5">
+                      <Building className="w-4 h-4 text-emerald-600" />
+                      1. Información del Cliente Industrial & Folio
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      Folio Asignado: <strong className="text-emerald-700">{quoteFolio}</strong>
+                    </span>
                   </div>
-                  <div className="text-[9px] text-slate-400">Tarifa base: $2,500 por punto metrológico.</div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="block text-slate-500 font-bold uppercase text-[9px]">Cliente Registrado en Base de Datos *</label>
+                      <select
+                        value={selectedClientNum}
+                        onChange={(e) => handleSelectClient(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold"
+                      >
+                        <option value="">-- Seleccionar de la Base de Datos --</option>
+                        {clientsList.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.razon_social} ({c.id})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-slate-500 font-bold uppercase text-[9px]">Razón Social / Nombre Comercial *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Siderúrgica de Monterrey S.A. de C.V."
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-slate-500 font-bold uppercase text-[9px]">Fecha de Elaboración</label>
+                      <input
+                        type="date"
+                        value={quoteDate}
+                        onChange={(e) => setQuoteDate(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Subcontratación Toggle */}
+                  <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-200 text-xs">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isSubcontracted}
+                        onChange={(e) => setIsSubcontracted(e.target.checked)}
+                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                      />
+                      <span className="font-semibold text-slate-700">Servicio mediante Subcontratación / Tercería</span>
+                    </label>
+                    {isSubcontracted && (
+                      <div className="flex-1 min-w-[200px]">
+                        <input
+                          type="text"
+                          placeholder="Nombre de la empresa subcontratada / aliada..."
+                          value={subcontractorName}
+                          onChange={(e) => setSubcontractorName(e.target.value)}
+                          className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="md:col-span-2 flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddQuoteOpen(false)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
-                  >
-                    Cerrar Formulario
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>Emitir y Enviar Cotización</span>
-                  </button>
+                {/* 2. BASE DE DATOS DE CONTACTOS MULTI-DESTINATARIO */}
+                <ClientMultiContactSelector
+                  contacts={currentQuoteContacts}
+                  onChangeContacts={handleUpdateCurrentQuoteContacts}
+                  clientName={clientName || "Cliente Seleccionado"}
+                />
+
+                {/* 3. CONCEPTOS DE COTIZACIÓN Y CATÁLOGO DE SERVICIOS */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-emerald-600" />
+                      <span className="font-bold text-slate-800 text-xs uppercase font-mono">
+                        3. Conceptos Metrológicos y Costeo de Servicios
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsServiceCatalogOpen(true)}
+                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="Abrir catálogo para dar de alta o editar servicios metrológicos"
+                      >
+                        <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Edición a Servicios Disponibles</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddServiceRow}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Agregar Concepto</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {itemizedServices.map((row, index) => (
+                      <div key={row.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                        <div className="md:col-span-5 space-y-1">
+                          <label className="block text-slate-500 font-bold uppercase text-[9px]">Servicio Metrológico #{index + 1}</label>
+                          <select
+                            value={row.serviceName}
+                            onChange={(e) => handleUpdateServiceRow(row.id, "serviceName", e.target.value)}
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs text-slate-800 font-medium focus:bg-white focus:ring-1 focus:ring-emerald-500"
+                          >
+                            {availableServices.map((srv) => (
+                              <option key={srv.id} value={srv.nombre}>
+                                {srv.norma ? `[${srv.norma}] ` : ''}{srv.nombre} (${srv.categoria})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1">
+                          <label className="block text-slate-500 font-bold uppercase text-[9px]">Puntos / Muestras</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={row.puntos}
+                            onChange={(e) => handleUpdateServiceRow(row.id, "puntos", Math.max(1, Number(e.target.value) || 1))}
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-mono font-bold text-center"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1">
+                          <label className="block text-slate-500 font-bold uppercase text-[9px]">Costo Unitario ($)</label>
+                          <div className="relative">
+                            <span className="absolute left-2 top-2 text-slate-400 font-mono text-xs">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.costo_punto}
+                              onChange={(e) => handleUpdateServiceRow(row.id, "costo_punto", Math.max(0, Number(e.target.value) || 0))}
+                              className="w-full p-2 pl-5 bg-slate-50 border border-slate-200 rounded text-xs font-mono font-bold text-emerald-800"
+                              title="Costo por punto 100% editable"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2 space-y-1">
+                          <label className="block text-slate-500 font-bold uppercase text-[9px]">Total Concepto</label>
+                          <div className="p-2 bg-slate-100 rounded text-xs font-mono font-bold text-slate-800 text-right">
+                            ${(row.puntos * row.costo_punto).toLocaleString('es-MX')} MXN
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-1 flex justify-center pb-1">
+                          {itemizedServices.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveServiceRow(row.id)}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
+                              title="Eliminar este concepto"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Viáticos y Desglose Financiero con Descuento % */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-200">
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-slate-500 font-bold uppercase text-[9px]">Viáticos y Logística de Campo ($ MXN)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-xs">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={estimatedViatics}
+                            onChange={(e) => setEstimatedViatics(Math.max(0, Number(e.target.value) || 0))}
+                            className="w-full p-2.5 pl-6 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800"
+                          />
+                        </div>
+                        <span className="text-[10px] text-slate-400">Incluye traslados técnicos, hospedaje y transportación de instrumental patronal.</span>
+                      </div>
+
+                      {/* Campo Interactivo de Descuento % */}
+                      <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-amber-900 font-bold text-xs uppercase font-mono flex items-center gap-1.5">
+                            <Percent className="w-4 h-4 text-amber-700" />
+                            Descuento Comercial (%)
+                          </label>
+                          <span className="text-[10px] font-mono text-amber-800 font-semibold">
+                            Ahorro: <strong className="text-amber-950">-${discountAmount.toLocaleString('es-MX')} MXN</strong>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            step="1"
+                            value={discountPercentage}
+                            onChange={(e) => setDiscountPercentage(Number(e.target.value))}
+                            className="flex-1 accent-amber-600 cursor-pointer"
+                          />
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={discountPercentage}
+                              onChange={(e) => setDiscountPercentage(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                              className="w-16 p-1.5 bg-white border border-amber-300 rounded font-mono font-bold text-center text-xs text-amber-950"
+                            />
+                            <span className="font-mono font-bold text-xs text-amber-900">%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resumen Financiero Completo */}
+                    <div className="bg-slate-900 text-white p-4 rounded-xl font-mono text-xs space-y-2 flex flex-col justify-between shadow-md">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-slate-400 text-[11px]">
+                          <span>Subtotal Servicios ({itemizedServices.length} conc.):</span>
+                          <span>${subtotalServices.toLocaleString('es-MX')} MXN</span>
+                        </div>
+                        <div className="flex justify-between text-slate-400 text-[11px]">
+                          <span>Viáticos Técnicos:</span>
+                          <span>${estimatedViatics.toLocaleString('es-MX')} MXN</span>
+                        </div>
+                        <div className="flex justify-between text-slate-200 border-t border-slate-800 pt-1.5 font-bold">
+                          <span>Subtotal Bruto:</span>
+                          <span>${subtotalBruto.toLocaleString('es-MX')} MXN</span>
+                        </div>
+                        {discountPercentage > 0 && (
+                          <div className="flex justify-between text-amber-400 bg-amber-950/50 px-2 py-1 rounded border border-amber-800/40 text-[11px] font-bold">
+                            <span>Descuento ({discountPercentage}%):</span>
+                            <span>-${discountAmount.toLocaleString('es-MX')} MXN</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-slate-300 border-t border-slate-800 pt-1">
+                          <span>Subtotal Neto:</span>
+                          <span>${subtotalNetoConDescuento.toLocaleString('es-MX')} MXN</span>
+                        </div>
+                        <div className="flex justify-between text-slate-400 text-[11px]">
+                          <span>IVA Trasladado (16%):</span>
+                          <span>${computedIva.toLocaleString('es-MX')} MXN</span>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-700 pt-2 flex justify-between items-center text-sm font-bold text-emerald-400">
+                        <span>TOTAL NETO (IVA Inc.):</span>
+                        <span className="text-base">${computedTotal.toLocaleString('es-MX')} MXN</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </form>
+
+                {/* 4. CONDICIONES COMERCIALES ESTRUCTURADAS */}
+                <CommercialConditionsBlock
+                  conditions={commercialConditions}
+                  onChange={setCommercialConditions}
+                />
+
+                {/* 5. BOTONES DE ACCIÓN: GUARDAR BORRADOR VS EMITIR COTIZACIÓN */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
+                  <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Los cálculos y descuentos se sincronizan en tiempo real con Supabase.</span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddQuoteOpen(false)}
+                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer transition"
+                    >
+                      Cancelar
+                    </button>
+
+                    {/* BOTÓN 1: Guardar Borrador */}
+                    <button
+                      type="button"
+                      onClick={handleSaveDraftQuote}
+                      disabled={isSyncingQuotes}
+                      className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-2 shadow-xs cursor-pointer transition disabled:opacity-50"
+                      title="Guarda la cotización como Borrador sin emitir factura en Finanzas"
+                    >
+                      <FileEdit className="w-4 h-4 text-amber-700" />
+                      <span>Editar y Guardar Borrador</span>
+                    </button>
+
+                    {/* BOTÓN 2: Emitir Cotización Oficial */}
+                    <button
+                      type="button"
+                      onClick={handleEmitOfficialQuote}
+                      disabled={isSyncingQuotes}
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer transition disabled:opacity-50"
+                      title="Emite la cotización oficial formal y genera la cuenta por cobrar en Finanzas"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Emitir Cotización Oficial</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -3054,7 +3526,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
             <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <span className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-wider">Bitácora de Cotizaciones</span>
               <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">
-                {generatedQuotes.length} Cotizaciones Emitidas
+                {generatedQuotes.length} Cotizaciones Registradas
               </span>
             </div>
 
@@ -3072,60 +3544,65 @@ export default function DirectorViews(props: DirectorViewsProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                  {generatedQuotes.map((q) => (
-                    <tr key={q.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-4 font-mono font-bold">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedQuoteForDetail(q)}
-                          className="text-emerald-600 hover:text-emerald-800 hover:underline cursor-pointer flex items-center gap-1 font-bold"
-                          title="Haga clic para ver el detalle de la cotización y reutilizar sus conceptos"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>{q.id}</span>
-                        </button>
-                      </td>
-                      <td className="px-5 py-4 font-bold text-slate-800">{q.cliente}</td>
-                      <td className="px-5 py-4 text-slate-500">{typeof q.servicio === 'string' ? q.servicio : (q.servicio?.servicio || (Array.isArray(q.servicios) ? q.servicios.join(' + ') : 'Mapeo de Ruido NOM-011'))}</td>
-                      <td className="px-5 py-4 text-center font-mono">{q.puntos}</td>
-                      <td className="px-5 py-4 font-mono font-bold text-slate-900">${q.costo.toLocaleString()} MXN</td>
-                      <td className="px-5 py-4 font-mono text-slate-400">{q.fecha}</td>
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 font-mono">
-                            {q.estado}
-                          </span>
+                  {generatedQuotes.map((q) => {
+                    const isDraft = q.estado === 'Borrador';
+                    return (
+                      <tr key={q.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold">
                           <button
                             type="button"
                             onClick={() => setSelectedQuoteForDetail(q)}
-                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
-                            title="Ver Detalle y Reutilizar"
+                            className="text-emerald-600 hover:text-emerald-800 hover:underline cursor-pointer flex items-center gap-1 font-bold"
+                            title="Haga clic para ver el detalle de la cotización y reutilizar sus conceptos"
                           >
-                            <Sparkles className="w-3 h-3 text-emerald-600" />
-                            <span>Detalle</span>
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>{q.id}</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleStartEditQuote(q)}
-                            className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-blue-200 shadow-2xs"
-                            title="Editar Cotización en Supabase"
-                          >
-                            <Edit className="w-3 h-3 text-blue-600" />
-                            <span>Editar</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteQuote(q)}
-                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-red-200 shadow-2xs"
-                            title="Eliminar de Supabase (public.cotizaciones) y la App"
-                          >
-                            <Trash2 className="w-3 h-3 text-red-600" />
-                            <span>Borrar</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-5 py-4 font-bold text-slate-800">
+                          <div>{q.cliente}</div>
+                          {q.descuento_porcentaje ? (
+                            <span className="inline-block text-[9px] text-amber-700 font-mono bg-amber-50 border border-amber-200 px-1 rounded mt-0.5">
+                              Desc: {q.descuento_porcentaje}%
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-5 py-4 text-slate-500">{typeof q.servicio === 'string' ? q.servicio : (q.servicio?.servicio || (Array.isArray(q.servicios) ? q.servicios.join(' + ') : 'Mapeo de Ruido NOM-011'))}</td>
+                        <td className="px-5 py-4 text-center font-mono">{q.puntos}</td>
+                        <td className="px-5 py-4 font-mono font-bold text-slate-900">${q.costo.toLocaleString()} MXN</td>
+                        <td className="px-5 py-4 font-mono text-slate-400">{q.fecha}</td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
+                              isDraft 
+                                ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}>
+                              {q.estado || 'Enviada'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedQuoteForDetail(q)}
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                              title="Ver Detalle y Reutilizar"
+                            >
+                              <Sparkles className="w-3 h-3 text-emerald-600" />
+                              <span>Detalle</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteQuote(q)}
+                              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-red-200 shadow-2xs"
+                              title="Eliminar de Supabase (public.cotizaciones) y la App"
+                            >
+                              <Trash2 className="w-3 h-3 text-red-600" />
+                              <span>Borrar</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -4012,12 +4489,15 @@ export default function DirectorViews(props: DirectorViewsProps) {
       {/* MODAL DETALLE DE COTIZACIÓN CON BOTÓN DE REUTILIZAR (IMAGE 1) */}
       {selectedQuoteForDetail && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
             <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-              <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
-                <FileText className="w-5 h-5 text-emerald-600" />
-                Detalle de Cotización: {selectedQuoteForDetail.id}
-              </h3>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 font-mono uppercase flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-emerald-600" />
+                  Expediente de Cotización: {selectedQuoteForDetail.id}
+                </h3>
+                <p className="text-[11px] text-slate-500 font-mono">Sincronizado con Supabase public.cotizaciones</p>
+              </div>
               <button
                 onClick={() => setSelectedQuoteForDetail(null)}
                 className="text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer p-1"
@@ -4026,47 +4506,95 @@ export default function DirectorViews(props: DirectorViewsProps) {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+            <div className="space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Cliente Registrado:</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Cliente Industrial:</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedQuoteForDetail.cliente}</span>
                 </div>
+                
+                {/* Contactos destinatarios */}
+                {(selectedQuoteForDetail.contactos_destinatarios || selectedQuoteForDetail.contactos) && (
+                  <div className="border-t border-slate-200 pt-2 text-[10.5px]">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 font-mono block">Destinatarios Registrados:</span>
+                    <div className="text-slate-700 font-medium mt-0.5">
+                      {((selectedQuoteForDetail.contactos_destinatarios || selectedQuoteForDetail.contactos) as any[]).map((c, i) => (
+                        <div key={i} className="flex justify-between py-0.5 border-b border-slate-100 last:border-0 font-mono">
+                          <span>{c.nombre} ({c.puesto || 'Contacto'})</span>
+                          <span className="text-slate-500">{c.email}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Servicio Norma:</span>
-                  <span className="font-semibold text-slate-800">{typeof selectedQuoteForDetail.servicio === 'string' ? selectedQuoteForDetail.servicio : (selectedQuoteForDetail.servicio?.servicio || (Array.isArray(selectedQuoteForDetail.servicios) ? selectedQuoteForDetail.servicios.join(' + ') : 'Mapeo Metrológico'))}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Servicio(s) / Norma:</span>
+                  <span className="font-semibold text-slate-800 text-right max-w-[260px] truncate">{typeof selectedQuoteForDetail.servicio === 'string' ? selectedQuoteForDetail.servicio : (selectedQuoteForDetail.servicio?.servicio || (Array.isArray(selectedQuoteForDetail.servicios) ? selectedQuoteForDetail.servicios.join(' + ') : 'Mapeo Metrológico'))}</span>
                 </div>
+
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Puntos de Medición:</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Puntos / Muestras Totales:</span>
                   <span className="font-extrabold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
                     {selectedQuoteForDetail.puntos} puntos
                   </span>
                 </div>
+
+                {/* Desglose de Descuentos */}
+                {selectedQuoteForDetail.descuento_porcentaje ? (
+                  <div className="border-t border-slate-200 pt-2 space-y-1 font-mono text-[11px]">
+                    <div className="flex justify-between text-slate-500">
+                      <span>Subtotal Bruto:</span>
+                      <span>${(selectedQuoteForDetail.subtotal_bruto || selectedQuoteForDetail.costo).toLocaleString('es-MX')} MXN</span>
+                    </div>
+                    <div className="flex justify-between text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      <span>Descuento Aplicado ({selectedQuoteForDetail.descuento_porcentaje}%):</span>
+                      <span>-${(selectedQuoteForDetail.descuento_monto || 0).toLocaleString('es-MX')} MXN</span>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Costo Total Calculado:</span>
-                  <span className="font-bold text-emerald-700 text-sm">
-                    ${selectedQuoteForDetail.costo.toLocaleString()} MXN
+                  <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Total Neto (IVA Inc.):</span>
+                  <span className="font-bold text-emerald-700 text-base">
+                    ${selectedQuoteForDetail.costo.toLocaleString('es-MX')} MXN
                   </span>
                 </div>
+
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2 font-mono">
                   <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Fecha de Emisión:</span>
                   <span className="text-slate-600 font-bold">{selectedQuoteForDetail.fecha}</span>
                 </div>
+
                 <div className="flex justify-between items-center border-t border-slate-200 pt-2">
                   <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">Estatus Comercial:</span>
-                  <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[10px]">
+                  <span className={`px-2.5 py-0.5 rounded border text-[10px] font-bold font-mono ${
+                    selectedQuoteForDetail.estado === 'Borrador'
+                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                      : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                  }`}>
                     {selectedQuoteForDetail.estado}
                   </span>
                 </div>
               </div>
 
+              {/* Condiciones comerciales si existen */}
+              {selectedQuoteForDetail.condiciones && (
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10.5px] font-mono space-y-1 text-slate-600">
+                  <strong className="text-slate-800 uppercase text-[9px] block">Condiciones Comerciales Pactadas:</strong>
+                  <div>• Entrega: {selectedQuoteForDetail.condiciones.tiempo_entrega || '10 a 15 días hábiles'}</div>
+                  <div>• Pago: {selectedQuoteForDetail.condiciones.forma_pago || '50% anticipo y 50% contra entrega'}</div>
+                  <div>• Vigencia: {selectedQuoteForDetail.condiciones.vigencia_dias || 30} días naturales</div>
+                </div>
+              )}
+
               <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-[11px] text-emerald-900 space-y-1">
                 <strong className="flex items-center gap-1 text-emerald-900">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
-                  Reutilizar esta Cotización para Nuevo Cliente:
+                  Cargar y Reutilizar en Editor de Cotizaciones:
                 </strong>
                 <p className="text-[10.5px]">
-                  Al hacer clic en &quot;Reutilizar Cotización&quot;, los parámetros de servicios y puntos se cargarán automáticamente en el formulario de creación.
+                  Al hacer clic en &quot;Reutilizar en Editor&quot;, todos los conceptos, costos por punto, descuentos y condiciones se precargarán en el formulario para generar una nueva propuesta o editar el borrador.
                 </p>
               </div>
             </div>
@@ -4084,7 +4612,7 @@ export default function DirectorViews(props: DirectorViewsProps) {
                   title="Editar datos de la cotización en Supabase"
                 >
                   <Edit className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Editar Cotización</span>
+                  <span>Editar</span>
                 </button>
                 <button
                   type="button"
@@ -4111,20 +4639,39 @@ export default function DirectorViews(props: DirectorViewsProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    setNewQuoteForm({
-                      cliente: '',
-                      servicio: selectedQuoteForDetail.servicio,
-                      puntos: selectedQuoteForDetail.puntos,
-                      viaticos: selectedQuoteForDetail.viaticos || 1500
-                    });
+                    const q = selectedQuoteForDetail;
+                    setClientName(q.cliente || '');
+                    setSelectedClientNum(q.cliente_num || '');
+                    if (q.servicios_desglosados && Array.isArray(q.servicios_desglosados) && q.servicios_desglosados.length > 0) {
+                      setItemizedServices(q.servicios_desglosados);
+                    } else if (q.servicio) {
+                      setItemizedServices([{
+                        id: `srv-${Date.now()}`,
+                        serviceName: typeof q.servicio === 'string' ? q.servicio : (q.servicio?.servicio || 'Mapeo de Ruido NOM-011-STPS'),
+                        puntos: q.puntos || 5,
+                        costo_punto: q.costo_punto || 1800
+                      }]);
+                    }
+                    if (q.descuento_porcentaje !== undefined) {
+                      setDiscountPercentage(q.descuento_porcentaje);
+                    }
+                    if (q.viaticos !== undefined) {
+                      setEstimatedViatics(q.viaticos);
+                    }
+                    if (q.condiciones) {
+                      setCommercialConditions(q.condiciones);
+                    }
+                    if (q.contactos && Array.isArray(q.contactos)) {
+                      setCurrentQuoteContacts(q.contactos);
+                    }
                     setIsAddQuoteOpen(true);
                     setSelectedQuoteForDetail(null);
-                    alert(`¡Parámetros de la cotización ${selectedQuoteForDetail.id} reusados exitosamente!\nComplete el nombre del cliente y emita la nueva cotización.`);
+                    alert(`¡Parámetros de la cotización ${q.id} cargados exitosamente en el editor!\nPuede ajustar servicios, costos, descuentos o emitir la cotización.`);
                   }}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Reutilizar Cotización</span>
+                  <span>Reutilizar en Editor</span>
                 </button>
               </div>
             </div>
@@ -4844,6 +5391,15 @@ export default function DirectorViews(props: DirectorViewsProps) {
           </div>
         </div>
       )}
+
+      {/* MODAL GLOBAL DE CATÁLOGO DE SERVICIOS METROLÓGICOS */}
+      <ServiceCatalogModal
+        isOpen={isServiceCatalogOpen}
+        onClose={() => setIsServiceCatalogOpen(false)}
+        onServicesUpdated={(updatedList) => {
+          setAvailableServices(updatedList);
+        }}
+      />
     </div>
   );
 }
